@@ -4,6 +4,7 @@
 //
 //   CHROME_PATH=/path/to/chrome npm run e2e            # single file over file://
 //   CHROME_PATH=/path/to/chrome npm run e2e -- site    # site build over http
+//   CHROME_PATH=/path/to/chrome npm run e2e -- https://youweizhuo.github.io/pdfpcnic/
 
 import assert from "node:assert/strict";
 import { createReadStream, existsSync, mkdirSync, statSync } from "node:fs";
@@ -17,13 +18,16 @@ if (!chrome) {
   console.error("Set CHROME_PATH to a Chrome or Chromium binary.");
   process.exit(2);
 }
-const mode = process.argv[2] === "site" ? "site" : "single";
-const out = resolve("e2e-out", mode);
+const remote = process.argv[2]?.startsWith("http") ? process.argv[2] : null;
+const mode = remote || process.argv[2] === "site" ? "site" : "single";
+const out = resolve("e2e-out", remote ? "remote" : mode);
 mkdirSync(out, { recursive: true });
 
 let server;
-let url;
-if (mode === "site") {
+let url = remote;
+if (remote) {
+  // tested as deployed
+} else if (mode === "site") {
   const types = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css" };
   server = createServer((req, res) => {
     const path = join(resolve("dist"), decodeURIComponent(new URL(req.url, "http://x").pathname));

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>pdfpcnic</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='6' width='28' height='18' rx='3' fill='%23111' stroke='%23ffd60a' stroke-width='2'/%3E%3Ccircle cx='21' cy='15' r='3' fill='%23ff453a'/%3E%3C/svg%3E" />
+    <!-- pdfpcnic, MIT. Includes PDF.js (Apache-2.0), marked (MIT) and DOMPurify (Apache-2.0 or MPL-2.0). -->
+  </head>
+  <body>
+    <section id="start" class="start">
+      <div class="start-inner">
+        <h1 class="wordmark">pdfpcnic</h1>
+        <p class="tagline">Present PDF slides with a pdfpc-style presenter view, in the browser.</p>
+
+        <label id="drop" class="drop">
+          <input id="files" type="file" accept=".pdf,.pdfpc,.json,application/pdf" multiple />
+          <span class="drop-title">Drop your PDF and its <code>.pdfpc</code> file here</span>
+          <span class="drop-sub">or <span class="link">choose files</span>. The <code>.pdfpc</code> file is optional; it brings notes, timing and reveal steps.</span>
+        </label>
+
+        <div class="start-actions">
+          <button id="resume" class="primary" type="button" hidden></button>
+          <button id="demo" type="button">Try the demo deck</button>
+        </div>
+
+        <p id="start-error" class="start-error" hidden></p>
+
+        <footer class="start-foot">
+          <span>Files stay on this computer; nothing is uploaded.</span>
+          <span id="offline-note"></span>
+          <span id="version"></span>
+        </footer>
+      </div>
+    </section>
+
+    <main id="presenter" class="presenter" hidden>
+      <header class="head">
+        <button id="timer" class="timer" type="button" title="Click: elapsed, remaining, clock (Shift+T)">0:00:00</button>
+        <div class="timer-sub"><span id="timer-mode"></span><span id="wallclock"></span></div>
+        <div class="counter"><span id="counter"></span><span id="counter-sub"></span></div>
+      </header>
+
+      <div id="current"></div>
+      <div id="split" class="split" role="separator" aria-orientation="vertical" title="Drag to resize"></div>
+
+      <div class="side-head"><span id="next-label"></span></div>
+      <div id="next"></div>
+      <article id="notes" class="notes"></article>
+
+      <aside class="side">
+        <div id="badges" class="badges"></div>
+        <p id="audience-status" class="hintline"></p>
+        <p id="screen-status" class="hintline"></p>
+        <nav class="toolbar">
+          <button type="button" data-action="openAudience">Audience <kbd>o</kbd></button>
+          <button type="button" data-action="laserMode">Laser <kbd>2</kbd></button>
+          <button type="button" data-action="blank">Black <kbd>b</kbd></button>
+          <button type="button" data-action="freeze">Freeze <kbd>f</kbd></button>
+          <button type="button" data-action="overview">Overview <kbd>Tab</kbd></button>
+          <button type="button" data-action="fullscreen">Fullscreen <kbd>w</kbd></button>
+          <button type="button" data-action="help">Keys <kbd>?</kbd></button>
+          <button type="button" id="open-files">Open…</button>
+        </nav>
+      </aside>
+
+      <ol id="strip" class="strip"></ol>
+    </main>
+
+    <div id="solo" class="solo" hidden></div>
+
+    <section id="overview" class="overview" hidden>
+      <ol id="overview-grid" class="overview-grid"></ol>
+    </section>
+
+    <section id="help" class="help" hidden>
+      <div class="help-card">
+        <h2>Keys</h2>
+        <div id="help-grid" class="help-grid"></div>
+        <p class="help-foot">Same keys as pdfpc. Click or right-click the audience window to step; double-click it for fullscreen.</p>
+      </div>
+    </section>
+
+    <dialog id="goto" class="goto">
+      <form method="dialog">
+        <label>Go to slide <input id="goto-input" type="number" min="1" inputmode="numeric" autocomplete="off" /></label>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

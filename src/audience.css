@@ -1,0 +1,48 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+}
+body.idle {
+  cursor: none;
+}
+#stage {
+  position: absolute;
+  inset: 0;
+}
+.slide-view {
+  position: relative;
+}
+.slide-view canvas {
+  position: absolute;
+  display: block;
+}
+.laser-dot {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ff4d4d 0 35%, rgb(255 40 40 / 0.55) 55%, rgb(255 0 0 / 0) 72%);
+  pointer-events: none;
+}
+#black {
+  position: absolute;
+  inset: 0;
+  background: #000;
+}
+#hint {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgb(0 0 0 / 0.7);
+  color: #ddd;
+  font: 14px system-ui, sans-serif;
+  pointer-events: none;
+}
+[hidden] {
+  display: none !important;
+}

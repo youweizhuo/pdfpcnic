@@ -1,0 +1,18 @@
+{
+  "pdfpcFormat": 2,
+  "duration": 10,
+  "endSlide": 6,
+  "disableMarkdown": false,
+  "pages": [
+    { "idx": 0, "label": "1", "overlay": 0, "note": "**Welcome.** This is the title slide.\n\nThe timer starts when you leave this page, like pdfpc. Press **?** for all keys." },
+    { "idx": 1, "label": "2", "overlay": 0, "note": "The audience window opens on the second screen when the browser allows window placement (Chrome, Edge).\n\n- Otherwise drag it to the projector\n- Double-click it, or press **Shift+W** here, for fullscreen" },
+    { "idx": 2, "label": "3", "overlay": 0, "note": "Three reveal steps share one page label, so they count as **one slide**.\n\n*Next* on the right shows the next slide, not the next step." },
+    { "idx": 3, "label": "3", "overlay": 1, "note": "Step two of three." },
+    { "idx": 4, "label": "3", "overlay": 2, "note": "Last step. Going back from the next slide jumps to the first step." },
+    { "idx": 5, "label": "4", "overlay": 0, "note": "Press `2` for the laser, `1` to go back to normal.\n\n`+` and `-` resize the laser while it is on." },
+    { "idx": 6, "label": "5", "overlay": 0, "note": "**01:20 → 01:50** · 30 s\n\n各位老师好，这一页的备注是中文。备注字号可以用 `+` 和 `-` 调整。\n\n*ref* Markdown works: **bold**, *italic*, `code`." },
+    { "idx": 7, "label": "6", "overlay": 0, "hidden": true, "note": "You only see this slide through the overview, the thumbnails or `g`." },
+    { "idx": 8, "label": "7", "overlay": 0, "note": "The end slide. The counter shows progress up to here." },
+    { "idx": 9, "label": "8", "overlay": 0, "note": "Backup material." }
+  ]
+}

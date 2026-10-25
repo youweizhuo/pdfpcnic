@@ -1,0 +1,28 @@
+{
+  "name": "pdfpcnic",
+  "version": "0.1.0",
+  "description": "pdfpc-style PDF presenter that runs in the browser, also as a single offline HTML file",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && vite build --mode single && node scripts/copy-single.mjs",
+    "build:site": "vite build",
+    "build:single": "vite build --mode single",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "e2e": "node scripts/e2e.mjs"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.16.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vite-plugin-singlefile": "^2.3.4"
+  },
+  "dependencies": {
+    "dompurify": "^3.4.17",
+    "marked": "^18.1.1",
+    "pdfjs-dist": "^6.4.299"
+  }
+}

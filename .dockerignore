@@ -1,0 +1,8 @@
+# Read by both Podman and Docker.
+.git
+.github
+node_modules
+dist
+dist-single
+e2e-out
+docs

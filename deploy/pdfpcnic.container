@@ -1,0 +1,28 @@
+# pdfpcnic as a service that starts with the server, through Podman's Quadlet
+# (Podman 4.4 or later). See docs/self-hosting.md.
+#
+# Rootless: copy to ~/.config/containers/systemd/, then
+#   systemctl --user daemon-reload && systemctl --user start pdfpcnic
+# As root: copy to /etc/containers/systemd/ and drop the --user.
+
+[Unit]
+Description=pdfpcnic, a pdfpc-style presenter in the browser
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+ContainerName=pdfpcnic
+# Built with: podman build -t pdfpcnic https://github.com/youweizhuo/pdfpcnic.git#main
+Image=localhost/pdfpcnic:latest
+# Behind a reverse proxy on this server, publish to it alone: 127.0.0.1:8080:8080
+PublishPort=8080:8080
+# nginx writes only to /tmp, which Podman mounts as tmpfs.
+ReadOnly=true
+DropCapability=ALL
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

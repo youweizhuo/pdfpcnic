@@ -803,7 +803,8 @@ class Presenter {
       const text = $("pace-slide-text");
       const over = here - budget;
       const tone = !started ? "idle" : over > 0 ? grade(over, target, this.slack) : "on";
-      text.textContent = !started ? span(budget) : over > 0 ? `${span(over)} over` : `${span(-over)} left`;
+      // Words only once it's serious; the line says the rest.
+      text.textContent = tone === "serious" || tone === "severe" ? `${span(over)} over` : "";
       text.className = `slidebar-text t-${tone}`;
       const fill = $("slide-fill");
       fill.style.width = `${(started ? Math.min(1, here / budget) : 0) * 100}%`;

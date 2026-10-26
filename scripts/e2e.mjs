@@ -252,7 +252,8 @@ try {
     // on time, with its two minutes ahead and the plan's 30 s of spare time:
     // moving on now would end 2:30 early.
     await reach(390);
-    assert.match(await text("#pace-slide-text"), /^(2:00|1:59) left$/);
+    // Under the slide, just a line until you're seriously over.
+    assert.equal(await text("#pace-slide-text"), "");
     assert.match(await text("#pace-all-text"), /^2:(29|30) early$/);
     assert.match(await cls("#pace-all-text"), /t-early/);
     assert.match(await fill(), /t-early/);
@@ -280,15 +281,15 @@ try {
     // Reached 1:30 into its window: moving on now ends a minute early, which
     // is within the minute of slack, so on time.
     await reach(480);
-    assert.match(await text("#pace-slide-text"), /^(2:00|1:59) left$/);
+    assert.equal(await text("#pace-slide-text"), "");
     assert.equal(await text("#pace-all-text"), "on time");
     assert.match(await cls("#pace-all-text"), /t-on/);
     // 2:30 on it: the slide is 30 s over; the talk would end 1:30 late, serious
     // (the levels are 1 and 2 minutes).
     await at(630);
     await settle();
-    assert.match(await text("#pace-slide-text"), /^(29|30|31) s over$/);
-    assert.match(await cls("#pace-slide-text"), /t-late/);
+    assert.equal(await text("#pace-slide-text"), "");
+    assert.match(await cls("#slide-fill"), /t-late/);
     assert.match(await text("#pace-all-text"), /^1:3\d late$/);
     assert.match(await cls("#pace-all-text"), /t-serious/);
     // 4:00 on it: two minutes over, very serious; the talk would end 3:00 late.

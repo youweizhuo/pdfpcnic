@@ -38,7 +38,7 @@
     <main id="presenter" class="presenter" hidden>
       <div id="current"></div>
       <div id="audience-state" class="audience-state" hidden><strong></strong><span></span></div>
-      <!-- This slide's planned time, filling as you spend it. -->
+      <!-- This slide's planned time, filling as you spend it; words only once seriously over. -->
       <div id="pace-slide" class="slidebar">
         <div class="slidebar-track"><div id="slide-fill" class="slide-fill"></div></div>
         <span id="pace-slide-text" class="slidebar-text"></span>
@@ -47,9 +47,7 @@
       <div id="stage-split" class="hsplit" role="separator" aria-orientation="horizontal" title="Drag to trade slide size for notes"></div>
       <article id="notes" class="notes"><div id="notes-body" class="notes-body"></div></article>
 
-      <!-- The next slide, with the clock and the talk's pace level with the
-           foot of the current slide, and the two bars on one row. -->
-      <div class="glance">
+      <aside class="side">
         <div id="next"></div>
         <section class="time">
           <div class="clock">
@@ -60,15 +58,12 @@
             <span id="timer-mode"></span>
             <button id="timer-reset" type="button" hidden>Reset to 0:00:00</button>
           </p>
+          <div
+            id="talkbar"
+            class="talkbar"
+            title="The slides as planned, this one yellow. The line under them: time spent, colored like the early/late by the clock. Red line: the target end."
+          ></div>
         </section>
-      </div>
-      <div
-        id="talkbar"
-        class="talkbar"
-        title="The slides as planned, this one yellow. The line under them: time spent, colored like the early/late by the clock. Red line: the target end. Drag the columns' edges to resize."
-      ></div>
-
-      <aside class="side">
         <p id="audience-status" class="hintline"></p>
         <p id="screen-status" class="hintline"></p>
         <nav class="toolbar">
@@ -109,7 +104,7 @@
             <h3>Pace</h3>
             <dl>
               <dt>Under the slide</dt>
-              <dd>This slide's planned time, filling as you spend it, with how much is left; once past it, how far <span class="t-late">over</span>, in the late colors.</dd>
+              <dd>A thin line that fills as you spend this slide's planned time, then turns the late colors; once seriously <span class="t-serious">over</span>, it says by how much.</dd>
               <dt>By the clock</dt>
               <dd>Where the talk would end if you moved on now, the slides after this one as planned, against the target end: early or <span class="t-late">late</span>.</dd>
               <dt><i class="sw this"></i><i class="sw next"></i></dt>

@@ -164,37 +164,31 @@ kbd {
   grid-template-columns: minmax(0, 62fr) 28px minmax(0, 38fr) 14px clamp(120px, 12vw, 220px);
   grid-template-rows: auto auto auto minmax(0, 1fr);
   grid-template-areas:
-    "current split glance ssplit strip"
-    "slidebar split talk ssplit strip"
+    "current split side ssplit strip"
+    "slidebar split side ssplit strip"
     "hsplit split side ssplit strip"
     "notes split side ssplit strip";
 }
-/* This slide's time, under it and as wide. */
+/* This slide's time: a thin line along the foot of the slide, as wide. */
 .slidebar {
   grid-area: slidebar;
   justify-self: center;
-  align-self: start;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  position: relative;
   width: calc(var(--stage) * 100%);
-  margin-top: 10px;
+  margin-top: 3px;
 }
 .slidebar.none {
   visibility: hidden;
 }
-/* Level with the slide blocks of the talk bar beside it. */
 .slidebar-track {
-  flex: 1;
-  height: 6px;
-  margin-top: 4px;
-  border-radius: 3px;
+  height: 3px;
+  border-radius: 2px;
   background: var(--panel);
 }
 .slide-fill {
   height: 100%;
   border-radius: inherit;
-  background: #d1d1d6;
+  background: #48484a;
 }
 .slide-fill.t-late {
   background: var(--late);
@@ -206,10 +200,12 @@ kbd {
   background: var(--severe);
 }
 .slidebar-text {
-  min-width: 5.5em;
-  font-size: clamp(14px, 1.1vw, 18px);
+  position: absolute;
+  top: 6px;
+  right: 0;
+  pointer-events: none;
+  font-size: clamp(13px, 1vw, 16px);
   font-variant-numeric: tabular-nums;
-  text-align: right;
   white-space: nowrap;
 }
 
@@ -230,7 +226,6 @@ kbd {
 #current {
   grid-area: current;
   justify-self: center;
-  align-self: end;
   width: calc(var(--stage) * 100%);
   max-height: 64dvh;
   aspect-ratio: var(--aspect);
@@ -353,20 +348,11 @@ kbd {
 .notes .empty {
   color: var(--faint);
 }
-/* The next slide on top, the clock at the foot, level with the current slide's. */
-.glance {
-  grid-area: glance;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 0;
-}
 .side {
   grid-area: side;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding-top: 16px;
   min-height: 0;
   overflow: hidden;
 }
@@ -405,9 +391,9 @@ kbd {
   color: var(--ahead);
 }
 
-/* Time since the start, and where the talk will end against its target. */
+/* Time since the start, and where the talk would end against its target. */
 .time {
-  margin-top: 12px;
+  margin: 14px 0 10px;
   font-variant-numeric: tabular-nums;
 }
 .clock {
@@ -463,11 +449,9 @@ kbd {
 /* Against the same clock: the slides as planned, time spent as a thin line
    under them in the color of the pace, and the target end as a red line. */
 .talkbar {
-  grid-area: talk;
-  align-self: start;
   position: relative;
   height: 19px;
-  margin-top: 10px;
+  margin-top: 14px;
   border-radius: 3px;
   background: linear-gradient(var(--panel), var(--panel)) top / 100% 14px no-repeat;
 }
@@ -943,8 +927,8 @@ kbd {
   .presenter {
     padding: 12px 16px;
     grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
-    grid-template-areas: "current" "slidebar" "notes" "glance" "talk" "side";
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas: "current" "slidebar" "notes" "side";
   }
   #current {
     width: 100%;

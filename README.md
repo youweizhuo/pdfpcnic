@@ -92,9 +92,9 @@ pdfpcnic takes that line off the note and draws it instead. It has to be the not
 may be `->`, minutes may pass 59, and the `· 36 s` is optional. `**01:22**` alone plans a slide that takes no time.
 Reveal steps repeat their slide's line, or carry windows of their own; then each step goes by its own.
 
-Under the current slide, a slim bar fills with your time on it against its planned time, with how much is left; once
-past it, it turns the late colors and says how far over you are. The notes dim along with it, character by
-character, so the dimmed part is roughly what you'd have said by now (paragraphs that open with *ref* don't count).
+Along the foot of the current slide, a thin line fills as you spend its planned time, then turns the late colors; once
+you're seriously over, it says by how much. The notes dim along with it, character by character, so the dimmed part
+is roughly what you'd have said by now (paragraphs that open with *ref* don't count).
 
 Next to the clock, the whole talk:
 

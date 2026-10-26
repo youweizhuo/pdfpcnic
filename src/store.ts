@@ -17,6 +17,8 @@ export interface SavedSession {
   timer: TimerState;
   endSlide?: number;
   bookmark?: number | null;
+  /** Seconds spent on each planned window, by the presenter's keys. */
+  spent?: Record<string, number>;
   savedAt: number;
 }
 

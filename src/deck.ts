@@ -15,6 +15,8 @@ export interface Page {
   note: string;
   /** Planned window, from the note's first line. */
   plan: Plan | null;
+  /** Seconds a slide off the talk's clock (a backup slide) takes, from the note's first line. */
+  length: number | null;
   /** Size in PDF points, rotation applied. */
   width: number;
   height: number;
@@ -119,7 +121,7 @@ export async function openDeck(data: ArrayBuffer, name: string, meta: PdfpcFile 
     }
     const slide = slides.length - 1;
     // pdfpc lets notes embedded in the PDF win over the .pdfpc file.
-    const { plan, note } = splitPlan(info[i].note || notes.get(i) || "");
+    const { plan, length, note } = splitPlan(info[i].note || notes.get(i) || "");
     pages.push({
       index: i,
       label: label(i),
@@ -128,6 +130,7 @@ export async function openDeck(data: ArrayBuffer, name: string, meta: PdfpcFile 
       hidden: hidden.has(i),
       note,
       plan,
+      length,
       width: info[i].width,
       height: info[i].height,
     });

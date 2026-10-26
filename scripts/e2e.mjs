@@ -263,8 +263,11 @@ try {
     assert.match(await page.$eval("#notes > :first-child", (e) => e.textContent), /^各位老师好/);
     const at = (s) => page.evaluate((s) => (window.pdfpcnic.state.timer = { startedAt: Date.now() - s * 1000, pausedAt: null, pausedFor: 0 }), s);
     const settle = () => new Promise((r) => setTimeout(r, 400));
-    // Come back to the slide at `s` seconds into the talk.
+    // Come back to the slide at `s` seconds into the talk, afresh: setting the
+    // clock back first wipes each slide's time, as a reset would.
     const reach = async (s) => {
+      await at(0);
+      await settle();
       await press("Shift+PageUp");
       await at(s);
       await press("Shift+PageDown");
@@ -324,6 +327,30 @@ try {
     assert.match(await text("#pace-all-text"), /^3:0\d late$/);
     assert.match(await fill(), /t-severe/);
     await page.screenshot({ path: `${out}/pace-late.png` });
+    // A slide keeps its time over visits: on to the end slide for a minute and
+    // back, it's still two minutes over, then counts on.
+    await press("Shift+PageDown");
+    await at(780);
+    await press("Shift+PageUp");
+    await at(790);
+    await settle();
+    assert.match(await text("#pace-slide-text"), /^2:1\d over$/);
+    // A backup slide runs against its own length and isn't on the plan: the
+    // talk would go on from slide 5, so the detour counts as late.
+    await press("g");
+    await page.keyboard.type("8");
+    await press("Enter");
+    await at(805);
+    await settle();
+    assert.equal(await page.$eval("#pace-slide", (e) => e.title), "This slide: 30 s, off the talk's plan");
+    assert.match(await page.$eval("#notes > :first-child", (e) => e.textContent), /^Backup material/);
+    const share = await page.$eval("#slide-fill", (e) => e.getBoundingClientRect().width / e.parentElement.getBoundingClientRect().width);
+    assert.ok(Math.abs(share - 0.5) < 0.05, `backup line at ${share}`);
+    assert.match(await text("#pace-all-text"), /^4:2\d late$/);
+    // Back on slide 5, its own time picks up where it stopped.
+    await press("Shift+Backspace");
+    await settle();
+    assert.match(await text("#pace-slide-text"), /^2:1\d over$/);
     // Fixed scale: 10:00 plus 10% room, so the target sits at 1/1.1 and the
     // last slide (08:30–09:30) where planned.
     const where = await page.$eval("#talkbar", (bar) => {

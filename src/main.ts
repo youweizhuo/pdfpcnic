@@ -111,7 +111,7 @@ class Presenter {
     readonly source: Source,
     saved: store.SavedSession | undefined,
     /** Save the place and timer, for resuming after a reload. */
-    private track: boolean,
+    readonly track: boolean,
   ) {
     this.cache = new PageCache(deck);
     const fresh =
@@ -132,6 +132,7 @@ class Presenter {
       help: false,
       solo: false,
     };
+    if (!fresh && saved.spent) this.spent = new Map(Object.entries(saved.spent));
     this.notesSize = store.pref<number | null>("notesSize", null) ?? this.deckNotesSize;
 
     const first = deck.pages[0];
@@ -155,7 +156,7 @@ class Presenter {
     this.buildStrip();
     this.buildTalkbar();
     this.wire();
-    this.stopTicking = ticker(250, () => this.renderTimer());
+    this.stopTicking = ticker(250, () => this.tick());
     this.render();
   }
 
@@ -221,7 +222,8 @@ class Presenter {
       case "prev": {
         // Inside reveal steps, step back; otherwise jump to the previous
         // slide's first step (pdfpc's rule).
-        if (here.step > 0) return this.go(s.page - 1);
+        const step = d.slides[slide].slice(0, here.step).findLast(this.visible);
+        if (step !== undefined) return this.go(step);
         const p = this.slideFrom(slide, -1);
         if (p !== null) this.go(this.firstOf(p));
         return;
@@ -234,7 +236,10 @@ class Presenter {
       }
       case "next10":
       case "prev10": {
-        const target = Math.max(0, Math.min(d.slides.length - 1, slide + (action === "next10" ? 10 : -10)));
+        const dir = action === "next10" ? 1 : -1;
+        let target = Math.max(0, Math.min(d.slides.length - 1, slide + 10 * dir));
+        // A hidden slide is passed over, as stepping does.
+        if (!this.slideVisible(target)) target = this.slideFrom(target, dir) ?? this.slideFrom(target, dir === 1 ? -1 : 1) ?? slide;
         return this.go(this.firstOf(target), true);
       }
       case "nextAny":
@@ -249,7 +254,8 @@ class Presenter {
       case "forward": {
         const from = action === "back" ? s.back : s.forward;
         const to = action === "back" ? s.forward : s.back;
-        const page = from.pop();
+        let page = from.pop();
+        while (page === s.page) page = from.pop();
         if (page === undefined) return;
         to.push(s.page);
         return this.go(page);
@@ -316,6 +322,7 @@ class Presenter {
           return;
         }
         s.timer = T.freshTimer();
+        this.forgetVisits();
         toast("Timer at 0:00:00. It starts at your next move, or press s.");
         break;
       case "endSlide":
@@ -693,8 +700,22 @@ class Presenter {
     return { duration: d.duration, startTime: d.startTime, endTime: d.endTime, slide: d.pages[s.page].slide, endSlide: s.endSlide };
   }
 
+  /** What the clock and pace show turn over with: the second of the talk (before it starts, of the day) and the minute. */
+  private beatAt(now: number): string {
+    const t = this.state.timer;
+    const second = Math.floor((t.startedAt === null ? now : T.elapsed(t, now)) / 1000);
+    return `${second}:${Math.floor(now / 60_000)}`;
+  }
+  private beat = "";
+
+  /** The ticker's beat: redraws once a shown number turns over, not on every beat. */
+  private tick(): void {
+    if (this.beatAt(Date.now()) !== this.beat) this.renderTimer();
+  }
+
   private renderTimer(): void {
     const now = Date.now();
+    this.beat = this.beatAt(now);
     this.renderClock(now);
     this.renderPace(now);
     this.renderNotesDim();
@@ -753,6 +774,22 @@ class Presenter {
     this.barScale = 0;
   }
 
+  /** The planned window of the nearest slide at or before `slide`, for slides off the plan. */
+  private planBefore(slide: number, length: number): Plan | null {
+    for (let i = Math.min(slide, this.state.endSlide); i >= 0; i--) {
+      const p = this.planOf(i, length);
+      if (p) return p;
+    }
+    return null;
+  }
+
+  /** Forgets your time on each slide, as when the timer goes back to zero. */
+  private forgetVisits(): void {
+    this.spent.clear();
+    this.visit = null;
+    this.lastPlan = null;
+  }
+
   /** A slide's planned window. Without timing lines, the talk's length is split evenly over the slides. */
   private planOf(slide: number, length: number): Plan | null {
     const n = this.state.endSlide + 1;
@@ -763,9 +800,12 @@ class Presenter {
 
   /** The talk's target length in seconds, as last drawn; settings show the slack against it. */
   private target = 0;
-  /** The planned window you're in, and when you came to it (seconds into the talk). */
-  private planKey: string | null = null;
-  private enteredAt = 0;
+  /** Seconds spent on each planned window (or slide without one) on earlier visits. */
+  private spent = new Map<string, number>();
+  /** The window you're on, and when you came to it (seconds into the talk). */
+  private visit: { key: string; since: number } | null = null;
+  /** The last planned window you were on. */
+  private lastPlan: Plan | null = null;
   /** Share of this slide's planned time used since reaching it, or null when it has none. */
   private used: number | null = null;
 
@@ -802,24 +842,28 @@ class Presenter {
     const target = length || planned;
 
     // The planned window you're in (a step with a window of its own, a
-    // forced overlay say, goes by that), and when you reached it.
-    const own = this.deck.pages[s.page].plan;
-    const plan = slide > s.endSlide ? null : (this.timed && own) || this.planOf(slide, length);
-    const budget = plan ? plan.end - plan.start : 0;
-    if (plan && started) {
-      const key = `${slide}:${plan.start}:${plan.end}`;
-      if (key !== this.planKey || at < this.enteredAt) {
-        this.planKey = key;
-        this.enteredAt = at;
+    // forced overlay say, goes by that). A slide without one, a backup slide,
+    // may still say how long it takes.
+    const page = this.deck.pages[s.page];
+    const plan = slide > s.endSlide ? null : (this.timed && page.plan) || this.planOf(slide, length);
+    const budget = plan ? plan.end - plan.start : (page.length ?? 0);
+    // Your time on it, over every visit.
+    if (started) {
+      const key = plan ? `${slide}:${plan.start}:${plan.end}` : String(slide);
+      if (this.visit && at < this.visit.since) this.forgetVisits();
+      if (this.visit?.key !== key) {
+        if (this.visit) this.spent.set(this.visit.key, (this.spent.get(this.visit.key) ?? 0) + at - this.visit.since);
+        this.visit = { key, since: at };
       }
+      if (plan) this.lastPlan = plan;
     }
-    const here = at - this.enteredAt;
+    const here = this.visit ? (this.spent.get(this.visit.key) ?? 0) + at - this.visit.since : 0;
 
     // This slide, in the bar under it: its planned time against your time
     // on it. Late always shows, in three levels. A slide planned to take no
     // time has no bar (the row keeps its place, so the notes don't jump).
     $("pace-slide").classList.toggle("none", !budget);
-    if (plan && budget) {
+    if (budget) {
       const text = $("pace-slide-text");
       const over = here - budget;
       const tone = !started ? "idle" : over > 0 ? grade(over, target, this.slack) : "on";
@@ -829,14 +873,18 @@ class Presenter {
       const fill = $("slide-fill");
       fill.style.width = `${(started ? Math.min(1, here / budget) : 0) * 100}%`;
       fill.className = `slide-fill t-${tone}`;
-      $("pace-slide").title = `This slide: planned ${mark(plan.start)}–${mark(plan.end)}, ${span(budget)}`;
+      $("pace-slide").title = plan
+        ? `This slide: planned ${mark(plan.start)}–${mark(plan.end)}, ${span(budget)}`
+        : `This slide: ${span(budget)}, off the talk's plan`;
       this.used = started ? Math.min(1, here / budget) : null;
     }
 
     // All slides: where the talk would end if you moved on now, with the
-    // slides after this one as planned, against the target end.
-    const shift = plan && started ? at - plan.end : 0;
-    const finish = slide > s.endSlide && started ? at : planned + shift;
+    // slides after this one as planned, against the target end. A slide off
+    // the plan (a backup slide, say) doesn't move you through it: you'd go on
+    // from the last planned slide you were on.
+    const from = plan ?? this.lastPlan ?? this.planBefore(slide, length);
+    const finish = planned + (started ? at - (from?.end ?? 0) : 0);
     const diff = Math.round(finish - target);
     const all = $("pace-all-text");
     const level = started ? grade(diff, target, this.slack) : "idle";
@@ -1046,12 +1094,16 @@ class Presenter {
     clearTimeout(this.saveTimer);
     this.saveTimer = window.setTimeout(() => {
       const s = this.state;
+      const spent = new Map(this.spent);
+      const v = this.visit;
+      if (v) spent.set(v.key, (spent.get(v.key) ?? 0) + Math.floor(T.elapsed(s.timer, Date.now()) / 1000) - v.since);
       void store.saveSession({
         pdfName: this.deck.name,
         page: s.page,
         timer: s.timer,
         endSlide: s.endSlide,
         bookmark: s.bookmark,
+        spent: Object.fromEntries(spent),
         savedAt: Date.now(),
       });
     }, 300);
@@ -1065,6 +1117,12 @@ class Presenter {
  * a minute, but not its messages.
  */
 function ticker(ms: number, tick: () => void): () => void {
+  let stop = () => {};
+  // Without a worker, or if the browser turns it down later, plain timers.
+  const fallback = () => {
+    const id = window.setInterval(tick, ms);
+    stop = () => clearInterval(id);
+  };
   try {
     const src = `setInterval(() => postMessage(0), ${ms});`;
     const url =
@@ -1072,12 +1130,22 @@ function ticker(ms: number, tick: () => void): () => void {
         ? `data:text/javascript,${encodeURIComponent(src)}`
         : URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
     const worker = new Worker(url);
-    worker.onmessage = tick;
-    return () => worker.terminate();
+    const loaded = () => url.startsWith("blob:") && URL.revokeObjectURL(url);
+    worker.onmessage = () => {
+      loaded();
+      worker.onmessage = tick;
+      tick();
+    };
+    worker.onerror = () => {
+      loaded();
+      worker.terminate();
+      fallback();
+    };
+    stop = () => worker.terminate();
   } catch {
-    const id = window.setInterval(tick, ms);
-    return () => clearInterval(id);
+    fallback();
   }
+  return () => stop();
 }
 
 /** Calls back while `handle` is dragged with the pointer. */
@@ -1196,7 +1264,8 @@ async function openFiles(files: Iterable<File>): Promise<void> {
       const s = p.state;
       await openSource(
         { pdf: p.source.pdf, pdfpc: got.pdfpc },
-        { saved: { pdfName: p.deck.name, page: s.page, timer: s.timer, bookmark: s.bookmark, savedAt: Date.now() } },
+        // Kept and tracked as the deck was: notes dropped on the demo don't make it the deck to resume.
+        { saved: { pdfName: p.deck.name, page: s.page, timer: s.timer, bookmark: s.bookmark, savedAt: Date.now() }, keep: p.track, track: p.track },
       );
       toast(`Loaded notes from ${got.pdfpc.name}.`);
     } else if (got.pdfpc) {

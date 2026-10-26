@@ -13,6 +13,6 @@
     { "idx": 6, "label": "5", "overlay": 0, "note": "**06:30 → 08:30** · 120 s\n\n各位老师好，这一页的备注是中文。备注字号可以用 `+` 和 `-` 调整，`[` 和 `]` 调整当前幻灯片的大小。\n\n*ref* A note's first line, like `**06:30 → 08:30** · 120 s`, is this slide's planned window. It's drawn as the bars on the right instead of shown here." },
     { "idx": 7, "label": "6", "overlay": 0, "hidden": true, "note": "You only see this slide through the overview, the thumbnails or `g`." },
     { "idx": 8, "label": "7", "overlay": 0, "note": "**08:30 → 09:30** · 60 s\n\nThe end slide. The counter shows progress up to here." },
-    { "idx": 9, "label": "8", "overlay": 0, "note": "Backup material." }
+    { "idx": 9, "label": "8", "overlay": 0, "note": "**30 s**\n\nBackup material, after the end slide. Its line runs against its own 30 s; the talk's clock keeps going, so early/late counts the detour." }
   ]
 }

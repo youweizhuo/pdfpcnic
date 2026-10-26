@@ -5,6 +5,7 @@
 //
 //   **01:22 → 01:58** · 36 s     the slide's window, m:ss from the start
 //   **01:22**                    a slide planned to take no time
+//   **45 s**                     a backup slide: its length, off the talk's clock
 //
 // The line has to come first, on its own; `->` works for the arrow and
 // minutes may pass 59. pdfpcnic draws it in the pace panel instead of
@@ -17,15 +18,20 @@ export interface Plan {
 }
 
 const HEAD = /^\*\*(\d+):([0-5]\d)(?:\s*(?:→|->)\s*(\d+):([0-5]\d))?\*\*(?:\s*·\s*\d+\s*s)?[ \t]*(?:\r?\n|$)/;
+const LENGTH = /^\*\*(\d+)\s*s\*\*[ \t]*(?:\r?\n|$)/;
 
-/** Takes the planned window off the front of a note. */
-export function splitPlan(note: string): { plan: Plan | null; note: string } {
-  const m = HEAD.exec(note.trimStart());
-  if (!m) return { plan: null, note };
+/** Takes the planned window, or a backup slide's length in seconds, off the front of a note. */
+export function splitPlan(note: string): { plan: Plan | null; length: number | null; note: string } {
+  const text = note.trimStart();
+  const rest = (m: RegExpExecArray) => text.slice(m[0].length).trimStart();
+  const len = LENGTH.exec(text);
+  if (len) return { plan: null, length: Number(len[1]), note: rest(len) };
+  const m = HEAD.exec(text);
+  if (!m) return { plan: null, length: null, note };
   const start = Number(m[1]) * 60 + Number(m[2]);
   const end = m[3] === undefined ? start : Number(m[3]) * 60 + Number(m[4]);
-  if (end < start) return { plan: null, note };
-  return { plan: { start, end }, note: note.trimStart().slice(m[0].length).trimStart() };
+  if (end < start) return { plan: null, length: null, note };
+  return { plan: { start, end }, length: null, note: rest(m) };
 }
 
 /** A span of seconds: "12 s" or "1:20". */

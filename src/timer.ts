@@ -50,7 +50,8 @@ export interface Talk {
 /** Talk length in ms: from the end time if one is set, else from the duration. */
 export function talkLength(t: TimerState, talk: Talk, now: number): number {
   if (talk.endTime) {
-    const from = t.startedAt ?? now;
+    // Before the clock starts, from the talk's start time when it has one.
+    const from = t.startedAt ?? (talk.startTime ? clockTime(talk.startTime, now) : now);
     const ms = clockTime(talk.endTime, from) - from;
     if (ms > 0) return ms;
   }

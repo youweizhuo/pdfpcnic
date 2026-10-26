@@ -90,17 +90,21 @@ A note can start with the slide's planned window, in minutes and seconds from th
 
 pdfpcnic takes that line off the note and draws it instead. It has to be the note's first line, on its own. The arrow
 may be `->`, minutes may pass 59, and the `· 36 s` is optional. `**01:22**` alone plans a slide that takes no time.
-Reveal steps repeat their slide's line, or carry windows of their own; then each step goes by its own.
+Reveal steps repeat their slide's line, or carry windows of their own; then each step goes by its own. A backup slide
+(after `endSlide`) can say just how long it takes, `**45 s**`; TokenSlides writes that for the slides after
+`#show: appendix`, and marks them backup.
 
-Along the foot of the current slide, a thin line fills as you spend its planned time, then turns the late colors; once
-you're seriously over, it says by how much. The notes dim along with it, character by character, so the dimmed part
-is roughly what you'd have said by now (paragraphs that open with *ref* don't count).
+Along the foot of the current slide, a line fills as you spend its planned time, then turns the late colors; once
+you're seriously over, it says by how much. A slide keeps its time over your visits: come back to it and the line
+goes on where it stopped. The notes dim along with it, character by character, so the dimmed part is roughly what
+you'd have said by now (paragraphs that open with *ref* don't count).
 
 Next to the clock, the whole talk:
 
 - **Early or late**: where the talk would end if you moved on right now, with the slides after this one as planned,
   against the target end (`duration` or `endTime`, else where the plan ends). Reach a two-minute slide on time and it
-  starts at "2:00 early", comes to "on time" as you finish the slide, and turns late if you stay on.
+  starts at "2:00 early", comes to "on time" as you finish the slide, and turns late if you stay on. A backup slide
+  isn't on the plan, so there it counts from the last planned slide you were on: a detour shows as late.
 - **The bar** is fixed, with a red line at the target end and some room past it: the slides as planned, this one in
   yellow, and under them a thin line of time spent, colored like the early or late beside the clock.
 

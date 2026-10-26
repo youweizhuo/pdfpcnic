@@ -1,5 +1,5 @@
 import type { Deck } from "./deck";
-import type { PageCache } from "./render";
+import { THUMB_WIDTH, type PageCache } from "./render";
 
 export interface Point {
   x: number;
@@ -143,8 +143,8 @@ export class Thumb {
   ) {
     const p = deck.pages[page];
     this.canvas = document.createElement("canvas");
-    this.canvas.width = 320;
-    this.canvas.height = Math.round((320 * p.height) / p.width);
+    this.canvas.width = THUMB_WIDTH;
+    this.canvas.height = Math.round((THUMB_WIDTH * p.height) / p.width);
     this.canvas.style.aspectRatio = `${p.width} / ${p.height}`;
   }
 

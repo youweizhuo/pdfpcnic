@@ -96,14 +96,15 @@ Under the clock:
 
 - **This slide**: the time left in its window. Anywhere inside the window is on time. Past its end it says how far
   over you are; reach the slide before its start and it says how early you are.
-- **All slides**: where the talk will end at this pace (the plan, moved by however far you are off this slide),
-  against the target end: early or late. The target is `duration` or `endTime`, else where the plan ends.
-- **The bar** is fixed, with a red line at the target end and some room past it. Its top row is the slides as planned,
-  this one in yellow. Under it, time spent fills in from the left, colored by how you stand against this slide.
+- **All slides**: where the talk will end at this pace, against the target end (`duration` or `endTime`, else where
+  the plan ends). This slide is counted as taking its planned time from when you reached it, or longer while you stay,
+  and the slides after it as planned. Reach a one-minute slide 50 seconds into its window and it already says you'll
+  be late; a little early just says on time.
+- **The bar** is fixed, with a red line at the target end and some room past it: the slides as planned, this one in
+  yellow, and under them a thin line of time spent, colored by how you stand against this slide.
 
-Colors grade how far off you are, as a share of the target length. Late always shows: orange, deep orange from 3%
-(serious) and red from 6% (very serious). Early shows, in blue, only past 5%; a little early is fine and stays white.
-All three levels can be changed in **Settings** (`,`).
+Late always shows: orange, deep orange from 1 minute (serious) and red from 2 minutes (very serious). Early shows, in
+blue, only past 1 minute. **Settings** (`,`) changes the three levels, in time or as shares of the talk.
 
 Without timing lines, the talk's length is split evenly over the slides (pdfpc's even pace). **Help** (`?`) has a key
 to the colors.

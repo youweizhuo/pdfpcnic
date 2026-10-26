@@ -69,6 +69,20 @@ const audience = new Audience({
 
 let presenter: Presenter | null = null;
 
+const LEVELS = ["early", "serious", "severe"] as const;
+type SlackLevel = (typeof LEVELS)[number];
+
+/** Slider ranges for the pace levels: [min, max, step] in seconds, or in percent. */
+const SLACK_RANGE: Record<Slack["unit"], Record<SlackLevel, [number, number, number]>> = {
+  time: { early: [0, 300, 15], serious: [15, 600, 15], severe: [15, 900, 15] },
+  share: { early: [0, 20, 1], serious: [1, 30, 1], severe: [1, 40, 1] },
+};
+
+function loadSlack(): Slack {
+  const saved = store.pref<Slack | null>("paceSlack", null);
+  return saved && saved.unit in SLACK ? { ...SLACK[saved.unit], ...saved } : { ...SLACK.time };
+}
+
 class Presenter {
   readonly state: State;
   private cache: PageCache;
@@ -86,7 +100,7 @@ class Presenter {
   private stripSlide = -1;
   private laserSize = store.pref("laserSize", 0.035);
   private notesSize: number;
-  private slack: Slack = { ...SLACK, ...store.pref<Partial<Slack>>("slack", {}) };
+  private slack: Slack = loadSlack();
 
   constructor(
     readonly deck: Deck,
@@ -393,18 +407,37 @@ class Presenter {
     range("set-stage", (v) => this.setStage(v / 100));
     range("set-notes", (v) => this.setNotesSize(v));
     range("set-laser", (v) => this.setLaserSize(v / 100));
-    // The late levels keep their order: serious never past severe.
-    const setSlack = (key: keyof Slack, v: number) => {
-      const s = { ...this.slack, [key]: v / 100 };
+    // Pace levels: sliders in seconds or percent, as the unit says. The late
+    // levels keep their order: serious never past severe.
+    const setSlack = (key: SlackLevel, v: number) => {
+      const s = { ...this.slack, [key]: this.slack.unit === "time" ? v : v / 100 };
       if (key === "serious") s.severe = Math.max(s.severe, s.serious);
       if (key === "severe") s.serious = Math.min(s.serious, s.severe);
-      this.slack = s;
-      store.setPref("slack", s);
-      this.renderTimer();
+      this.useSlack(s);
     };
-    range("set-early", (v) => setSlack("early", v));
-    range("set-serious", (v) => setSlack("serious", v));
-    range("set-severe", (v) => setSlack("severe", v));
+    for (const key of LEVELS) range(`set-${key}`, (v) => setSlack(key, v));
+    for (const b of document.querySelectorAll<HTMLButtonElement>("#set-unit button")) {
+      b.addEventListener(
+        "click",
+        () => {
+          // Keep the levels where they are, in the other unit, if the talk's length is known.
+          const unit = b.dataset.unit as Slack["unit"];
+          const t = this.target;
+          if (unit === this.slack.unit) return;
+          const next: Slack = { ...SLACK[unit] };
+          if (t) {
+            for (const key of LEVELS) {
+              const [min, max] = SLACK_RANGE[unit][key];
+              const v = unit === "time" ? Math.round((this.slack[key] * t) / 15) * 15 : Math.round((this.slack[key] / t) * 100);
+              next[key] = Math.min(max, Math.max(min, v)) / (unit === "time" ? 1 : 100);
+            }
+          }
+          this.useSlack(next);
+          this.syncSettings();
+        },
+        { signal },
+      );
+    }
     $("set-defaults").addEventListener(
       "click",
       () => {
@@ -412,9 +445,7 @@ class Presenter {
         this.setNotesSize(this.deckNotesSize);
         store.setPref("notesSize", null);
         this.setLaserSize(0.035);
-        this.slack = { ...SLACK };
-        store.setPref("slack", this.slack);
-        this.renderTimer();
+        this.useSlack({ ...SLACK.time });
         this.applySplit(0.62);
         store.setPref("split", this.split);
         this.syncSettings();
@@ -506,10 +537,25 @@ class Presenter {
     show("set-notes", this.notesSize, `${this.notesSize} px`);
     const laser = Math.round(this.laserSize * 200) / 2;
     show("set-laser", laser, `${laser}%`);
-    for (const key of ["early", "serious", "severe"] as const) {
-      const pct = Math.round(this.slack[key] * 100);
-      show(`set-${key}`, pct, this.target ? `${pct}% · ${span(this.slack[key] * this.target)}` : `${pct}%`);
+    const { unit } = this.slack;
+    const t = this.target;
+    for (const b of document.querySelectorAll<HTMLButtonElement>("#set-unit button")) {
+      b.classList.toggle("on", b.dataset.unit === unit);
     }
+    for (const key of LEVELS) {
+      const v = this.slack[key];
+      const input = $<HTMLInputElement>(`set-${key}`);
+      [input.min, input.max, input.step] = SLACK_RANGE[unit][key].map(String);
+      // The other unit alongside, for this talk.
+      if (unit === "time") show(`set-${key}`, v, t ? `${span(v)} (${Math.round((v / t) * 100)}%)` : span(v));
+      else show(`set-${key}`, Math.round(v * 100), t ? `${Math.round(v * 100)}% (${span(v * t)})` : `${Math.round(v * 100)}%`);
+    }
+  }
+
+  private useSlack(slack: Slack): void {
+    this.slack = slack;
+    store.setPref("paceSlack", slack);
+    this.renderTimer();
   }
 
   // Rendering
@@ -690,6 +736,9 @@ class Presenter {
 
   /** The talk's target length in seconds, as last drawn; settings show the slack against it. */
   private target = 0;
+  /** The planned window you're in, and when you came to it (seconds into the talk). */
+  private planKey: string | null = null;
+  private enteredAt = 0;
 
   private renderPace(now: number): void {
     const s = this.state;
@@ -723,13 +772,24 @@ class Presenter {
       $("pace-slide").title = plan.end > plan.start ? `Planned ${mark(plan.start)}–${mark(plan.end)}` : `Planned at ${mark(plan.start)}`;
     }
 
-    // All slides: where the talk ends at this pace (the plan, moved by how
-    // far you are off this slide), against the target end.
-    const finish = slide > s.endSlide && started ? at : planned + (where?.offset ?? 0);
+    // All slides: where the talk ends at this pace, against the target end.
+    // This slide takes its planned length from when you came to it (or
+    // longer, while you stay), and the rest goes as planned.
+    if (plan && started) {
+      const key = `${slide}:${plan.start}:${plan.end}`;
+      if (key !== this.planKey || at < this.enteredAt) {
+        this.planKey = key;
+        this.enteredAt = at;
+      }
+    }
+    const shift = plan && started ? Math.max(at, this.enteredAt + plan.end - plan.start) - plan.end : 0;
+    const finish = slide > s.endSlide && started ? at : planned + shift;
     const diff = Math.round(finish - target);
     const all = $("pace-all-text");
-    all.textContent = diff < 0 ? `${span(diff)} early` : diff > 0 ? `${span(diff)} late` : "on time";
-    all.className = `pace-num t-${started ? grade(diff, target, this.slack) : "idle"}`;
+    const allLevel = started ? grade(diff, target, this.slack) : "idle";
+    // A little early is simply on time here.
+    all.textContent = diff > 0 ? `${span(diff)} late` : allLevel === "early" ? `${span(diff)} early` : "on time";
+    all.className = `pace-num t-${allLevel}`;
     $("pace-all").title = `Planned to end at ${mark(planned)}; target ${mark(target)}`;
 
     // The bar: fixed, with room past the target end. Time spent fills it,

@@ -403,15 +403,15 @@ kbd {
   font-size: clamp(17px, 1.5vw, 28px);
   text-align: right;
 }
-/* Two rows against the same clock: the slides as planned on top, time spent
+/* Against the same clock: the slides as planned, time spent as a thin line
    under them in the color of the pace, and the target end as a red line. */
 .talkbar {
   grid-column: 1 / -1;
   position: relative;
-  height: 22px;
+  height: 19px;
   margin-top: 12px;
   border-radius: 3px;
-  background: var(--panel);
+  background: linear-gradient(var(--panel), var(--panel)) top / 100% 14px no-repeat;
 }
 .talkbar > * {
   position: absolute;
@@ -419,13 +419,15 @@ kbd {
   bottom: 0;
 }
 .talkbar .past {
+  bottom: auto;
+  height: 14px;
   right: 0;
   border-radius: 0 3px 3px 0;
   background: rgb(255 69 58 / 0.12);
 }
 .talkbar .seg {
   bottom: auto;
-  height: 12px;
+  height: 14px;
   background: #48484a;
   box-shadow: inset -1px 0 0 #000;
 }
@@ -435,8 +437,8 @@ kbd {
 .talkbar .spent {
   top: auto;
   left: 0;
-  height: 8px;
-  border-radius: 0 0 0 3px;
+  height: 3px;
+  border-radius: 2px;
   background: #d1d1d6;
 }
 .talkbar .spent.t-late {
@@ -787,6 +789,23 @@ kbd {
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
+}
+.switch {
+  grid-column: 2 / -1;
+  display: flex;
+  gap: 4px;
+}
+.switch button {
+  padding: 5px 12px;
+  border: 1px solid #3a3a3c;
+  border-radius: 8px;
+  background: #2c2c2e;
+  color: var(--dim);
+  cursor: pointer;
+}
+.switch button.on {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .setting input {
   width: 100%;

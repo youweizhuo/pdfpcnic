@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: End-to-end checks (Chrome)
+        run: npm run e2e && npm run e2e -- site
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+      - name: End-to-end checks (Firefox)
+        run: npm run e2e:firefox
+        env:
+          FIREFOX_PATH: /usr/bin/firefox
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: e2e-screenshots
+          path: e2e-out
+          if-no-files-found: ignore

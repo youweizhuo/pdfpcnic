@@ -1,0 +1,55 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: End-to-end checks (Chrome)
+        run: npm run e2e && npm run e2e -- site
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+      - name: End-to-end checks (Firefox)
+        run: npm run e2e:firefox
+        env:
+          FIREFOX_PATH: /usr/bin/firefox
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: e2e-screenshots
+          path: e2e-out
+          if-no-files-found: ignore
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

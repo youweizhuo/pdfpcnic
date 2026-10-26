@@ -161,19 +161,21 @@ kbd {
   inset: 0;
   display: grid;
   padding: 18px 0 18px 28px;
-  grid-template-columns: minmax(0, 62fr) 28px minmax(0, 38fr) clamp(120px, 12vw, 220px);
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 62fr) 28px minmax(0, 38fr) 14px clamp(120px, 12vw, 220px);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   grid-template-areas:
-    "current split side strip"
-    "slidebar split side strip"
-    "notes split side strip";
+    "current split glance ssplit strip"
+    "slidebar split talk ssplit strip"
+    "hsplit split side ssplit strip"
+    "notes split side ssplit strip";
 }
 /* This slide's time, under it and as wide. */
 .slidebar {
   grid-area: slidebar;
   justify-self: center;
+  align-self: start;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   width: calc(var(--stage) * 100%);
   margin-top: 10px;
@@ -181,9 +183,11 @@ kbd {
 .slidebar.none {
   visibility: hidden;
 }
+/* Level with the slide blocks of the talk bar beside it. */
 .slidebar-track {
   flex: 1;
   height: 6px;
+  margin-top: 4px;
   border-radius: 3px;
   background: var(--panel);
 }
@@ -226,6 +230,7 @@ kbd {
 #current {
   grid-area: current;
   justify-self: center;
+  align-self: end;
   width: calc(var(--stage) * 100%);
   max-height: 64dvh;
   aspect-ratio: var(--aspect);
@@ -251,8 +256,38 @@ kbd {
   transition: background 0.15s;
 }
 .split:hover::after,
-.split.dragging::after {
+.split.dragging::after,
+.hsplit:hover::after,
+.hsplit.dragging::after {
+  background: var(--faint);
+}
+.strip-split {
+  grid-area: ssplit;
+}
+.strip-split::after {
+  left: 6px;
+}
+/* With the thumbnails hidden, the handle stays in view to bring them back. */
+.strip-split.collapsed::after {
   background: var(--line);
+}
+/* Between the current slide and its notes. */
+.hsplit {
+  grid-area: hsplit;
+  position: relative;
+  height: 14px;
+  cursor: row-resize;
+  touch-action: none;
+}
+.hsplit::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: transparent;
+  transition: background 0.15s;
 }
 #next {
   flex: none;
@@ -284,7 +319,7 @@ kbd {
 .notes {
   grid-area: notes;
   overflow: auto;
-  padding: 20px 8px 8px 0;
+  padding: 6px 8px 8px 0;
   font-size: var(--notes);
   line-height: 1.5;
   overflow-wrap: anywhere;
@@ -318,11 +353,20 @@ kbd {
 .notes .empty {
   color: var(--faint);
 }
+/* The next slide on top, the clock at the foot, level with the current slide's. */
+.glance {
+  grid-area: glance;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 0;
+}
 .side {
   grid-area: side;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding-top: 16px;
   min-height: 0;
   overflow: hidden;
 }
@@ -361,13 +405,14 @@ kbd {
   color: var(--ahead);
 }
 
-/* All of the time in one place: the clock, then the pace bars. */
+/* Time since the start, and where the talk will end against its target. */
 .time {
-  margin: 14px 0 10px;
+  margin-top: 12px;
   font-variant-numeric: tabular-nums;
 }
 .clock {
   display: flex;
+  justify-content: space-between;
   align-items: baseline;
   gap: 14px;
   white-space: nowrap;
@@ -385,19 +430,6 @@ kbd {
 }
 .timer.idle {
   color: var(--dim);
-}
-.counter {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  margin-left: auto;
-}
-#counter {
-  font-size: clamp(17px, 1.5vw, 28px);
-}
-#counter-sub {
-  color: var(--dim);
-  font-size: 13px;
 }
 .timer-line {
   display: flex;
@@ -424,22 +456,6 @@ kbd {
   border-color: var(--dim);
 }
 
-/* Pace: a line for this slide and one for all of them, over the talk bar. */
-.pace {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: 4px 10px;
-  margin-top: 16px;
-  white-space: nowrap;
-}
-.pace-row {
-  display: contents;
-}
-.pace-label {
-  color: var(--dim);
-  font-size: clamp(14px, 1.1vw, 18px);
-}
 .pace-num {
   font-size: clamp(17px, 1.5vw, 28px);
   text-align: right;
@@ -447,10 +463,11 @@ kbd {
 /* Against the same clock: the slides as planned, time spent as a thin line
    under them in the color of the pace, and the target end as a red line. */
 .talkbar {
-  grid-column: 1 / -1;
+  grid-area: talk;
+  align-self: start;
   position: relative;
   height: 19px;
-  margin-top: 12px;
+  margin-top: 10px;
   border-radius: 3px;
   background: linear-gradient(var(--panel), var(--panel)) top / 100% 14px no-repeat;
 }
@@ -574,7 +591,7 @@ kbd {
   grid-area: strip;
   grid-row: 1 / -1;
   margin: 0;
-  padding: 0 14px 45vh 10px;
+  padding: 0 14px 45vh 2px;
   list-style: none;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -926,13 +943,14 @@ kbd {
   .presenter {
     padding: 12px 16px;
     grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
-    grid-template-areas: "current" "slidebar" "notes" "side";
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+    grid-template-areas: "current" "slidebar" "notes" "glance" "talk" "side";
   }
   #current {
     width: 100%;
   }
   .split,
+  .hsplit,
   .strip {
     display: none;
   }

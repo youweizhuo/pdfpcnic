@@ -96,17 +96,19 @@ Under the current slide, a slim bar fills with your time on it against its plann
 past it, it turns the late colors and says how far over you are. The notes dim along with it, character by
 character, so the dimmed part is roughly what you'd have said by now (paragraphs that open with *ref* don't count).
 
-Under the clock, the whole talk:
+Next to the clock, the whole talk:
 
-- **All slides**: where the talk will end at this pace, against the target end (`duration` or `endTime`, else where
-  the plan ends). This slide is counted as taking its planned time from when you reached it, or longer while you stay,
-  and the slides after it as planned. Reach a one-minute slide 50 seconds into its window and it already says you'll
-  be late; a little early just says on time.
+- **Early or late**: where the talk would end if you moved on right now, with the slides after this one as planned,
+  against the target end (`duration` or `endTime`, else where the plan ends). Reach a two-minute slide on time and it
+  starts at "2:00 early", comes to "on time" as you finish the slide, and turns late if you stay on.
 - **The bar** is fixed, with a red line at the target end and some room past it: the slides as planned, this one in
-  yellow, and under them a thin line of time spent, colored like All slides.
+  yellow, and under them a thin line of time spent, colored like the early or late beside the clock.
 
 Late always shows: orange, deep orange from 1 minute (serious) and red from 2 minutes (very serious). Early shows, in
 blue, only past 1 minute. **Settings** (`,`) changes the three levels, in time or as shares of the talk, and how much the notes dim.
+
+Drag the handle between the current slide and its notes to trade one for the other, the line between the columns to
+resize them, and the left edge of the thumbnails to resize them; double-click that edge to hide or show the thumbnails.
 
 Without timing lines, the talk's length is split evenly over the slides (pdfpc's even pace). **Help** (`?`) has a key
 to the colors.

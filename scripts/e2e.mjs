@@ -114,7 +114,6 @@ try {
     }));
     assert.deepEqual(d, { pages: 10, slides: 8, end: 6, hidden: [7] });
     assert.match(await text("#notes"), /Welcome/);
-    assert.equal(await text("#counter"), "1/7");
   });
 
   await check("current and next slides render", async () => {
@@ -135,7 +134,6 @@ try {
   await check("reveal steps: step forward, Shift+PageDown skips, back jumps to first step", async () => {
     await press("ArrowRight");
     assert.equal((await state()).page, 2);
-    assert.match(await text("#counter-sub"), /step 1\/3/);
     // Each step here has a window of its own; the talk bar spans all three.
     await press("ArrowRight");
     assert.equal(await page.$eval("#pace-slide", (e) => e.title), "This slide: planned 03:30–04:10, 40 s");
@@ -237,7 +235,7 @@ try {
   await check("a note's timing line becomes the pace panel", async () => {
     // Slide 5 of the demo plans 06:30 → 08:30, of a 10 minute talk planned to 09:30.
     assert.equal(await page.$eval("#pace-slide", (e) => e.title), "This slide: planned 06:30–08:30, 2:00");
-    assert.equal(await page.$eval("#pace-all", (e) => e.title), "Planned to end at 09:30; target 10:00");
+    assert.equal(await page.$eval("#pace-all-text", (e) => e.title), "Where the talk ends at this pace. Planned to end at 09:30; target 10:00");
     assert.match(await page.$eval("#notes > :first-child", (e) => e.textContent), /^各位老师好/);
     const at = (s) => page.evaluate((s) => (window.pdfpcnic.state.timer = { startedAt: Date.now() - s * 1000, pausedAt: null, pausedFor: 0 }), s);
     const settle = () => new Promise((r) => setTimeout(r, 400));
@@ -250,16 +248,17 @@ try {
     };
     const cls = (sel) => page.$eval(sel, (e) => e.className);
     const fill = () => cls("#talkbar .spent");
-    // On time, with the plan's 30 s of spare time.
+    // All slides says where the talk would end if you moved on now. Reached
+    // on time, with its two minutes ahead and the plan's 30 s of spare time:
+    // moving on now would end 2:30 early.
     await reach(390);
     assert.match(await text("#pace-slide-text"), /^(2:00|1:59) left$/);
-    assert.equal(await text("#pace-all-text"), "on time");
-    assert.match(await cls("#pace-all-text"), /t-on/);
-    assert.match(await fill(), /t-on/);
-    // A minute into its two: the first half of the note is dimmed.
+    assert.match(await text("#pace-all-text"), /^2:(29|30) early$/);
+    assert.match(await cls("#pace-all-text"), /t-early/);
+    assert.match(await fill(), /t-early/);
+    // A minute into its two: half the spoken characters dim, none of the *ref* paragraph.
     await at(450);
     await settle();
-    // Half the spoken characters, none of the *ref* paragraph.
     const dim = () =>
       page.evaluate(() => {
         const h = CSS.highlights.get("spoken");
@@ -278,21 +277,21 @@ try {
     assert.equal(await dim(), null);
     await page.click("#set-defaults");
     await press("Escape");
-    // Reached 1:30 into its window: the slide still has its two minutes, but
-    // the talk now ends a minute past 10:00, which is serious (the levels are
-    // 1 and 2 minutes).
+    // Reached 1:30 into its window: moving on now ends a minute early, which
+    // is within the minute of slack, so on time.
     await reach(480);
     assert.match(await text("#pace-slide-text"), /^(2:00|1:59) left$/);
-    assert.match(await text("#pace-all-text"), /^1:0\d late$/);
-    assert.match(await cls("#pace-all-text"), /t-serious/);
-    assert.match(await fill(), /t-serious/);
-    // 2:30 on it: the slide is 30 s over; the talk ends 1:30 late.
+    assert.equal(await text("#pace-all-text"), "on time");
+    assert.match(await cls("#pace-all-text"), /t-on/);
+    // 2:30 on it: the slide is 30 s over; the talk would end 1:30 late, serious
+    // (the levels are 1 and 2 minutes).
     await at(630);
     await settle();
     assert.match(await text("#pace-slide-text"), /^(29|30|31) s over$/);
     assert.match(await cls("#pace-slide-text"), /t-late/);
     assert.match(await text("#pace-all-text"), /^1:3\d late$/);
-    // 4:00 on it: two minutes over, very serious; the talk ends 3:00 late.
+    assert.match(await cls("#pace-all-text"), /t-serious/);
+    // 4:00 on it: two minutes over, very serious; the talk would end 3:00 late.
     await at(720);
     await settle();
     assert.match(await text("#pace-slide-text"), /^2:0\d over$/);
@@ -300,11 +299,6 @@ try {
     assert.match(await text("#pace-all-text"), /^3:0\d late$/);
     assert.match(await fill(), /t-severe/);
     await page.screenshot({ path: `${out}/pace-late.png` });
-    // Reached 20 s before its window, 50 s early in all: a little early, no color.
-    await reach(370);
-    assert.match(await text("#pace-slide-text"), /^(2:00|1:59) left$/);
-    assert.match(await cls("#pace-slide-text"), /t-on/);
-    assert.equal(await text("#pace-all-text"), "on time");
     // Fixed scale: 10:00 plus 10% room, so the target sits at 1/1.1 and the
     // last slide (08:30–09:30) where planned.
     const where = await page.$eval("#talkbar", (bar) => {
@@ -316,13 +310,10 @@ try {
     const near = (a, b) => Math.abs(a - b) < 0.01;
     assert.ok(near(where.target[0], 0.909), `target at ${where.target}`);
     assert.ok(near(where.last[0], 510 / 660) && near(where.last[1], 570 / 660), `last slide at ${where.last}`);
+    // 50 s early: on time with a minute of slack, early with 5% (30 s here).
+    await reach(490);
+    assert.equal(await text("#pace-all-text"), "on time");
     await page.screenshot({ path: `${out}/pace.png` });
-    // Reached a minute and a half before its window: two minutes early in all, blue.
-    await reach(300);
-    assert.match(await text("#pace-all-text"), /^(1:59|2:0\d) early$/);
-    assert.match(await cls("#pace-all-text"), /t-early/);
-    // In shares of the talk instead: 5% early slack is 30 s here, so 50 s early shows.
-    await reach(370);
     await press(",");
     await page.click('#set-unit [data-unit="share"]');
     assert.match(await page.$eval("#set-early + output", (e) => e.textContent), /^\d+% \(/);
@@ -391,6 +382,31 @@ try {
     assert.equal(await width(), before);
     await press("Escape");
     assert.equal(await page.$eval("#settings", (e) => e.open), false);
+  });
+
+  await check("drag handles: the slide against its notes, and the thumbnails", async () => {
+    const drag = async (sel, dx, dy) => {
+      const b = await (await page.$(sel)).boundingBox();
+      const [x, y] = [b.x + b.width / 2, b.y + b.height / 2];
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x + dx, y + dy, { steps: 5 });
+      await page.mouse.up();
+    };
+    const height = () => page.$eval("#current", (e) => e.getBoundingClientRect().height);
+    const before = await height();
+    await drag("#stage-split", 0, -80);
+    assert.ok((await height()) < before - 40, "the slide didn't shrink");
+    await drag("#stage-split", 0, 200);
+    assert.equal(await height(), before);
+    const strip = () => page.$eval("#strip", (e) => (e.hidden ? 0 : e.getBoundingClientRect().width));
+    const wide = await strip();
+    await drag("#strip-split", -60, 0);
+    assert.ok((await strip()) > wide + 40, "the thumbnails didn't widen");
+    await page.click("#strip-split", { count: 2 });
+    assert.equal(await strip(), 0);
+    await page.click("#strip-split", { count: 2 });
+    assert.ok((await strip()) > wide + 40, "the thumbnails didn't come back at their width");
   });
 
   await check("help sheet", async () => {

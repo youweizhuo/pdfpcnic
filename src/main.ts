@@ -145,7 +145,7 @@ class Presenter {
 
     $("start").hidden = true;
     $("presenter").hidden = false;
-    this.applySplit(store.pref("split", 0.62));
+    this.applyColumns(store.pref("split", 0.62), store.pref<number | null>("strip", null));
     this.applyStage(store.pref("stage", 1));
     Spoken.setDim(this.notesDim);
     this.current.start();
@@ -452,37 +452,43 @@ class Presenter {
         this.setLaserSize(0.035);
         this.useSlack({ ...SLACK.time });
         this.setNotesDim(0.5);
-        this.applySplit(0.62);
+        this.applyColumns(0.62, null);
         store.setPref("split", this.split);
+        store.setPref("strip", null);
         this.syncSettings();
       },
       { signal },
     );
 
-    const split = $("split");
-    split.addEventListener(
-      "pointerdown",
-      (e) => {
-        split.setPointerCapture(e.pointerId);
-        split.classList.add("dragging");
+    // Columns, the current slide against its notes, and the thumbnails can all be dragged.
+    draggable($("split"), signal, {
+      move: (e) => {
+        const left = $("notes").getBoundingClientRect().left;
+        const right = $("strip-split").getBoundingClientRect().left - $("split").offsetWidth;
+        this.applyColumns((e.clientX - left) / (right - left), this.stripWidth);
       },
-      { signal },
-    );
-    split.addEventListener(
-      "pointermove",
-      (e) => {
-        if (!split.hasPointerCapture(e.pointerId)) return;
-        const left = this.current.root.getBoundingClientRect().left;
-        const right = $("strip").getBoundingClientRect().left - split.offsetWidth;
-        this.applySplit((e.clientX - left) / (right - left));
+      end: () => store.setPref("split", this.split),
+    });
+    let from = { y: 0, height: 0, stage: 1 };
+    draggable($("stage-split"), signal, {
+      start: (e) => (from = { y: e.clientY, height: this.current.root.offsetHeight, stage: this.stage }),
+      move: (e) => this.applyStage((from.stage * (from.height + e.clientY - from.y)) / from.height),
+      end: () => store.setPref("stage", this.stage),
+    });
+    draggable($("strip-split"), signal, {
+      move: (e) => {
+        const right = $("presenter").getBoundingClientRect().right;
+        const width = right - e.clientX - $("strip-split").offsetWidth / 2;
+        // Dragged nearly shut, the thumbnails go away.
+        this.applyColumns(this.split, width < 70 ? 0 : Math.min(420, width));
       },
-      { signal },
-    );
-    split.addEventListener(
-      "pointerup",
+      end: () => store.setPref("strip", this.stripWidth),
+    });
+    $("strip-split").addEventListener(
+      "dblclick",
       () => {
-        split.classList.remove("dragging");
-        store.setPref("split", this.split);
+        this.applyColumns(this.split, this.stripWidth === 0 ? (this.stripOpen ?? null) : 0);
+        store.setPref("strip", this.stripWidth);
       },
       { signal },
     );
@@ -500,16 +506,24 @@ class Presenter {
   }
 
   private split = 0.62;
-  private applySplit(f: number): void {
-    this.split = Math.min(0.8, Math.max(0.4, f || 0.62));
+  /** Thumbnail strip width in px: null for the default, 0 when hidden. */
+  private stripWidth: number | null = null;
+  /** The width to bring a hidden strip back to. */
+  private stripOpen: number | null = null;
+  private applyColumns(split: number, strip: number | null): void {
+    this.split = Math.min(0.8, Math.max(0.4, split || 0.62));
+    if (strip !== 0) this.stripOpen = strip;
+    this.stripWidth = strip;
+    $("strip").hidden = strip === 0;
+    $("strip-split").classList.toggle("collapsed", strip === 0);
     $("presenter").style.gridTemplateColumns =
-      `minmax(0, ${this.split}fr) 28px minmax(0, ${1 - this.split}fr) clamp(120px, 12vw, 220px)`;
+      `minmax(0, ${this.split}fr) 28px minmax(0, ${1 - this.split}fr) 14px ${strip === null ? "clamp(120px, 12vw, 220px)" : `${strip}px`}`;
   }
 
   /** Current slide width as a share of its column; what it gives up goes to the notes. */
   private stage = 1;
   private applyStage(f: number): void {
-    this.stage = Math.min(1, Math.max(0.5, Math.round(f * 20) / 20));
+    this.stage = Math.min(1, Math.max(0.5, Math.round(f * 100) / 100));
     document.documentElement.style.setProperty("--stage", String(this.stage));
   }
   private setStage(f: number): void {
@@ -595,17 +609,6 @@ class Presenter {
 
     this.solo?.show(shown);
     this.renderLaser();
-
-    const steps = d.slides[here.slide].length;
-    $("counter").textContent = `${here.slide + 1}/${s.endSlide + 1}`;
-    $("counter-sub").textContent = [
-      steps > 1 ? `step ${here.step + 1}/${steps}` : "",
-      here.slide > s.endSlide ? "backup" : "",
-      here.hidden ? "hidden" : "",
-      d.pages.length !== d.slides.length ? `page ${s.page + 1}/${d.pages.length}` : "",
-    ]
-      .filter(Boolean)
-      .join(" · ");
 
     if (this.notesPage !== s.page) {
       this.notesPage = s.page;
@@ -774,8 +777,7 @@ class Presenter {
     const at = T.elapsed(s.timer, now) / 1000;
     const started = s.timer.startedAt !== null;
     const planned = this.timed ? this.planned : length;
-    $("pace").hidden = !planned;
-    $("pace-slide").hidden = !planned;
+    for (const id of ["pace-slide", "pace-all-text", "talkbar"]) $(id).hidden = !planned;
     if (!planned) return;
     const target = length || planned;
 
@@ -810,10 +812,9 @@ class Presenter {
       this.used = started ? Math.min(1, here / budget) : null;
     }
 
-    // All slides: where the talk ends at this pace, against the target end:
-    // this slide taking its planned time from when you reached it (or longer,
-    // while you stay), the rest as planned.
-    const shift = plan && started ? Math.max(at, this.enteredAt + budget) - plan.end : 0;
+    // All slides: where the talk would end if you moved on now, with the
+    // slides after this one as planned, against the target end.
+    const shift = plan && started ? at - plan.end : 0;
     const finish = slide > s.endSlide && started ? at : planned + shift;
     const diff = Math.round(finish - target);
     const all = $("pace-all-text");
@@ -821,7 +822,7 @@ class Presenter {
     // A little early is simply on time here.
     all.textContent = diff > 0 ? `${span(diff)} late` : level === "early" ? `${span(diff)} early` : "on time";
     all.className = `pace-num t-${level}`;
-    $("pace-all").title = `Planned to end at ${mark(planned)}; target ${mark(target)}`;
+    all.title = `Where the talk ends at this pace. Planned to end at ${mark(planned)}; target ${mark(target)}`;
 
     // The bar: fixed, with room past the target end. Time spent runs under
     // it, colored like "All slides".
@@ -1033,6 +1034,32 @@ class Presenter {
       });
     }, 300);
   }
+}
+
+/** Calls back while `handle` is dragged with the pointer. */
+function draggable(
+  handle: HTMLElement,
+  signal: AbortSignal,
+  on: { start?: (e: PointerEvent) => void; move: (e: PointerEvent) => void; end: () => void },
+): void {
+  handle.addEventListener(
+    "pointerdown",
+    (e) => {
+      handle.setPointerCapture(e.pointerId);
+      handle.classList.add("dragging");
+      on.start?.(e);
+    },
+    { signal },
+  );
+  handle.addEventListener("pointermove", (e) => handle.hasPointerCapture(e.pointerId) && on.move(e), { signal });
+  handle.addEventListener(
+    "pointerup",
+    () => {
+      handle.classList.remove("dragging");
+      on.end();
+    },
+    { signal },
+  );
 }
 
 /** Turns wheel or touchpad scrolling into single steps. */

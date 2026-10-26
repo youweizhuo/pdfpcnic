@@ -7,8 +7,8 @@
     <title>pdfpcnic</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='6' width='28' height='18' rx='3' fill='%23111' stroke='%23ffd60a' stroke-width='2'/%3E%3Ccircle cx='21' cy='15' r='3' fill='%23ff453a'/%3E%3C/svg%3E" />
     <!-- pdfpcnic, MIT. Includes PDF.js (Apache-2.0), marked (MIT) and DOMPurify (Apache-2.0 or MPL-2.0). -->
-    <script type="module" crossorigin src="./assets/index-5e9UQBbI.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-BMWWUmyX.css">
+    <script type="module" crossorigin src="./assets/index-BY9MxZe5.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Dh0fReVZ.css">
   </head>
   <body>
     <section id="start" class="start">
@@ -39,7 +39,7 @@
 
     <main id="presenter" class="presenter" hidden>
       <div id="current"></div>
-      <div id="badges" class="badges"></div>
+      <div id="audience-state" class="audience-state" hidden><strong></strong><span></span></div>
       <div id="split" class="split" role="separator" aria-orientation="vertical" title="Drag to resize"></div>
       <article id="notes" class="notes"></article>
 
@@ -49,7 +49,6 @@
         <section class="time">
           <div class="clock">
             <button id="timer" class="timer idle" type="button" title="Click to pause or resume (p)">0:00:00</button>
-            <span id="wallclock"></span>
             <span class="counter"><span id="counter"></span><span id="counter-sub"></span></span>
           </div>
           <p id="timer-line" class="timer-line">
@@ -57,36 +56,32 @@
             <button id="timer-reset" type="button" hidden>Reset to 0:00:00</button>
           </p>
           <div id="pace" class="pace">
-            <div id="pace-slide" class="pace-row" title="This slide's planned window, and the time left in it (orange: over, blue: early)">
-              <span class="pace-label">Slide</span><span id="pace-window" class="pace-plan"></span><span id="pace-slide-text" class="pace-num"></span>
+            <div id="pace-slide" class="pace-row">
+              <span class="pace-label">This slide</span><span id="pace-slide-text" class="pace-num"></span>
             </div>
-            <div class="pace-row" title="The talk's length, and the time left of it">
-              <span class="pace-label">Talk</span><span id="pace-budget" class="pace-plan"></span><span id="pace-left" class="pace-num"></span>
+            <div id="pace-all" class="pace-row">
+              <span class="pace-label">All slides</span><span id="pace-all-text" class="pace-num"></span>
             </div>
             <div
               id="talkbar"
               class="talkbar"
-              title="The whole bar is the talk. Gray: time spent. White: now. Yellow: what's left of this slide. Then the slides to come, as planned; spare time after them. Red: past the end."
+              title="Top: the slides as planned, this one yellow. Under them: time spent, white on time, orange behind, blue ahead. Red line: the target end."
             ></div>
           </div>
         </section>
         <p id="audience-status" class="hintline"></p>
         <p id="screen-status" class="hintline"></p>
-        <!-- Out of sight while the talk runs; the mouse brings it back. -->
         <nav class="toolbar">
-          <div class="tools">
-            <button type="button" data-action="openAudience" title="Open the audience window (o)">Audience</button>
-            <button type="button" data-action="blank" title="Black out the audience (b)">Black</button>
-            <button type="button" data-action="freeze" title="Keep the audience on this slide (f)">Freeze</button>
-            <button type="button" data-action="laserMode" title="Laser pointer (2, and 1 to stop)">Laser</button>
-          </div>
-          <div class="tools">
-            <button type="button" data-action="overview" title="All slides (Tab)">Overview</button>
-            <button type="button" data-action="fullscreen" title="Presenter fullscreen (w)">Fullscreen</button>
-            <button type="button" id="open-files" title="Open another deck">Open…</button>
-            <button type="button" data-action="settings" title="Slide, notes and laser sizes (,)">Settings</button>
-            <button type="button" data-action="help" title="Keys and what the bars mean (?)">Help</button>
-          </div>
+          <button type="button" data-action="openAudience">Audience <kbd>o</kbd></button>
+          <button type="button" data-action="blank">Black <kbd>b</kbd></button>
+          <button type="button" data-action="freeze">Freeze <kbd>f</kbd></button>
+          <button type="button" data-action="laserMode">Laser <kbd>2</kbd></button>
+          <button type="button" data-action="overview">Overview <kbd>Tab</kbd></button>
+          <button type="button" data-action="fullscreen">Fullscreen <kbd>w</kbd></button>
+          <button type="button" data-action="settings">Settings <kbd>,</kbd></button>
+          <button type="button" data-action="help">Help <kbd>?</kbd></button>
+          <button type="button" id="open-files">Open…</button>
+          <span id="wallclock" class="wallclock" title="Time of day"></span>
         </nav>
       </aside>
 
@@ -106,20 +101,20 @@
           <section id="legend" class="legend">
             <h3>Pace</h3>
             <dl>
-              <dt>Slide</dt>
-              <dd>This slide's planned window, and the time left in it; once past it, how far <span class="t-late">over</span>, and before it, how <span class="t-early">early</span>.</dd>
-              <dt>Talk</dt>
-              <dd>The talk's length (<code>duration</code>, else the planned total), and the time left of it. The bar is the whole talk:</dd>
-              <dt><i class="sw spent"></i></dt>
-              <dd>time spent, up to <b>now</b>, the white line;</dd>
-              <dt><i class="sw this"></i></dt>
-              <dd>what's left of this slide's window;</dd>
-              <dt><i class="sw next"></i><i class="sw next"></i></dt>
-              <dd>the slides to come, as long as planned. Where they end is where the talk will end;</dd>
-              <dt><i class="sw spare"></i></dt>
-              <dd>spare time before the end;</dd>
-              <dt><i class="sw over"></i></dt>
-              <dd>past the end: slides that won't fit, or time over.</dd>
+              <dt>This slide</dt>
+              <dd>Time left in its planned window; past it, how far <span class="t-late">over</span>; before it, how <span class="t-early">early</span>.</dd>
+              <dt>All slides</dt>
+              <dd>Where you'll finish at this pace, against the target end: <span class="t-early">early</span> or <span class="t-late">late</span>.</dd>
+              <dt><i class="sw this"></i><i class="sw next"></i></dt>
+              <dd>The bar's top row: the slides as planned, this one yellow. Under it, time spent:</dd>
+              <dt><i class="sw on"></i></dt>
+              <dd>on time: it ends under the yellow block;</dd>
+              <dt><i class="sw late"></i></dt>
+              <dd>behind: it has run past the yellow block;</dd>
+              <dt><i class="sw early"></i></dt>
+              <dd>ahead: it hasn't reached the yellow block yet.</dd>
+              <dt><i class="sw target"></i></dt>
+              <dd>Red line: the target end, <code>duration</code>, else where the plan ends.</dd>
             </dl>
           </section>
         </div>

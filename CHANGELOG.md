@@ -3,7 +3,7 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
-## 1.0.0 (unreleased)
+## 1.0.0 (2026-10-26)
 
 The first stable release: the presenter, its pace display and the offline file are complete for talks given with
 pdfpc files, and the site can now be self-hosted.

@@ -169,26 +169,26 @@ kbd {
     "hsplit split side ssplit strip"
     "notes split side ssplit strip";
 }
-/* This slide's time: a thin line along the foot of the slide, as wide. */
+/* This slide's time: a line along the foot of the slide, as wide, as thick
+   as the time line of the talk bar. */
 .slidebar {
   grid-area: slidebar;
   justify-self: center;
   position: relative;
   width: calc(var(--stage) * 100%);
-  margin-top: 3px;
 }
 .slidebar.none {
   visibility: hidden;
 }
 .slidebar-track {
-  height: 3px;
-  border-radius: 2px;
+  height: 6px;
+  border-radius: 0 0 3px 3px;
   background: var(--panel);
 }
 .slide-fill {
   height: 100%;
   border-radius: inherit;
-  background: #48484a;
+  background: #d1d1d6;
 }
 .slide-fill.t-late {
   background: var(--late);
@@ -201,7 +201,7 @@ kbd {
 }
 .slidebar-text {
   position: absolute;
-  top: 6px;
+  top: 9px;
   right: 0;
   pointer-events: none;
   font-size: clamp(13px, 1vw, 16px);
@@ -450,7 +450,7 @@ kbd {
    under them in the color of the pace, and the target end as a red line. */
 .talkbar {
   position: relative;
-  height: 19px;
+  height: 22px;
   margin-top: 14px;
   border-radius: 3px;
   background: linear-gradient(var(--panel), var(--panel)) top / 100% 14px no-repeat;
@@ -479,8 +479,8 @@ kbd {
 .talkbar .spent {
   top: auto;
   left: 0;
-  height: 3px;
-  border-radius: 2px;
+  height: 6px;
+  border-radius: 3px;
   background: #d1d1d6;
 }
 .talkbar .spent.t-late {

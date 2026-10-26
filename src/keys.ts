@@ -1,4 +1,5 @@
-// pdfpc's default key bindings, plus `o` to open the audience window.
+// pdfpc's default key bindings, plus `o` to open the audience window and
+// `[` `]` to size the current slide.
 
 export type Action =
   | "next"
@@ -28,11 +29,12 @@ export type Action =
   | "audienceFullscreen"
   | "timerStart"
   | "timerPause"
-  | "timerView"
   | "timerReset"
   | "endSlide"
   | "help"
-  | "openAudience";
+  | "openAudience"
+  | "slideSmaller"
+  | "slideBigger";
 
 const BINDINGS: Record<string, Action> = {
   ArrowRight: "next",
@@ -70,13 +72,14 @@ const BINDINGS: Record<string, Action> = {
   "Shift+w": "audienceFullscreen",
   s: "timerStart",
   p: "timerPause",
-  "Shift+t": "timerView",
   "Ctrl+t": "timerReset",
   // Browsers keep Ctrl+T for a new tab outside fullscreen.
   "Shift+r": "timerReset",
   "Ctrl+e": "endSlide",
   "?": "help",
   o: "openAudience",
+  "[": "slideSmaller",
+  "]": "slideBigger",
 };
 
 /** Normalizes a key event to the names above, e.g. "Shift+PageDown", "Ctrl+t", "?". */
@@ -125,11 +128,11 @@ export const HELP: Array<[string, Array<[string, string]>]> = [
   [
     "Presenter",
     [
-      ["s / p", "start / pause timer"],
-      ["Shift+T", "timer: elapsed, remaining, clock"],
+      ["s / p", "start / pause timer (or click the clock)"],
       ["Ctrl+T or Shift+R", "reset timer"],
       ["Ctrl+E", "mark the end slide"],
       ["+ / −", "notes size (laser size in laser mode)"],
+      ["[ / ]", "current slide smaller / bigger, for room for notes"],
       ["w", "presenter fullscreen"],
       ["?", "this help"],
     ],

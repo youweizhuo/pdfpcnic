@@ -3,7 +3,8 @@
 A [pdfpc](https://github.com/pdfpc/pdfpc)-style presenter for PDF slides that runs in the browser. Use it from the
 website, or carry it as **one HTML file** for machines with no network. Its layout follows
 [Présentation.app](https://iihm.imag.fr/blanch/software/osx-presentation/): black and frameless, with a big clock,
-the current slide with notes under it, the next slide beside it, and thumbnails down the edge.
+the current slide with notes under it, the next slide beside it, and thumbnails down the edge. Under the next slide,
+a pace panel draws the planned time of each slide, if your notes carry one.
 
 **Open it:** <https://youweizhuo.github.io/pdfpcnic/> · **Offline copy:** `pdfpcnic.html` from the
 [latest release](https://github.com/youweizhuo/pdfpcnic/releases/latest)
@@ -42,10 +43,10 @@ The same keys as pdfpc, plus `o` for the audience window. Press `?` for the full
 | `b` / `f` | black screen / freeze the audience on this slide |
 | `2` / `1` | laser pointer on / off (`+` `-` change its size) |
 | `Esc` | leave black, freeze and laser |
-| `s` / `p` | start / pause the timer |
-| `Shift+T` | timer shows elapsed, remaining or the time of day |
+| `s` / `p`, click the clock | start / pause the timer |
 | `Ctrl+T` or `Shift+R` | reset the timer |
 | `+` / `-` | notes text size |
+| `[` / `]` | current slide smaller / bigger, trading room with the notes |
 | `w` / `Shift+W` | presenter / audience fullscreen |
 
 ## pdfpc support
@@ -68,11 +69,34 @@ As in pdfpc:
 
 - Pages that share a PDF page label count as one slide.
 - Note annotations in the PDF (sticky notes and highlights) become notes and are left off the slides.
-- The timer turns orange when you are more than a minute behind pace, blue when ahead, and red once over time.
 
 Not supported: Beamer notes on half pages, transitions, movies, drawing tools and spotlight. Changes made while
 presenting (`Ctrl+E` for the end slide, `m` for the bookmark) stay in the browser rather than being written back to
 the `.pdfpc` file.
+
+## Pace
+
+The clock counts up from zero, beside the time of day, as in Présentation.app. It never changes color; pace has a
+panel of its own under the next slide.
+
+A note can start with the slide's planned window, in minutes and seconds from the start of the talk:
+
+```
+**01:22 → 01:58** · 36 s
+```
+
+pdfpcnic takes that line off the note and draws it instead. It has to be the note's first line, on its own. The arrow
+may be `->`, minutes may pass 59, and the `· 36 s` is optional. `**01:22**` alone plans a slide that takes no time.
+Reveal steps repeat their slide's line.
+
+- **This slide**: the window, and a bar that fills across it. Anywhere inside the window is on time. Past its end the
+  bar turns orange and counts the time over; reach the slide before its start and it says how early you are, in blue.
+- **Talk**: the time left (of `duration` or `endTime`, else the planned total), a bar with a segment per slide, this
+  one in yellow, with a white mark for now and a red one at the set length, and the expected finish: the planned total,
+  moved by how far you are off this slide's window.
+
+Without planned windows, the panel uses pdfpc's rule: ahead or behind an even pace through the slides, with a
+minute's leeway.
 
 ## Browsers
 

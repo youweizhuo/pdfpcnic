@@ -13,6 +13,8 @@
   --laser: #ff3b30;
   --notes: 24px;
   --aspect: 16 / 9;
+  /* Current slide width, as a share of its column. */
+  --stage: 0.85;
   font-family:
     system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei",
     "Noto Sans CJK SC", sans-serif;
@@ -146,8 +148,9 @@ kbd {
   color: inherit;
 }
 
-/* Presenter: Présentation.app's layout. Big timer over the current slide,
-   notes under it, the next slide beside it, thumbnails down the right edge. */
+/* Presenter: Présentation.app's layout. Big clock over the current slide,
+   notes under it, the next slide beside it with the pace panel below,
+   thumbnails down the right edge. */
 
 .presenter {
   position: fixed;
@@ -158,15 +161,17 @@ kbd {
   grid-template-rows: auto auto minmax(0, 1fr);
   grid-template-areas:
     "head split sidehead strip"
-    "current split next strip"
+    "current split side strip"
     "notes split side strip";
 }
+/* As wide as the current slide, so the counter sits over its corner. */
 .head {
   grid-area: head;
   display: flex;
   align-items: flex-end;
   gap: 18px;
-  min-width: 0;
+  width: calc(var(--stage) * 100%);
+  min-width: max-content;
   padding-bottom: 12px;
 }
 .timer {
@@ -180,33 +185,32 @@ kbd {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
-.timer.idle,
-.timer.pre {
+.timer.idle {
   color: var(--dim);
-}
-.timer.ahead {
-  color: var(--ahead);
-}
-.timer.behind,
-.timer.paused {
-  color: var(--behind);
-}
-.timer.over {
-  color: var(--over);
 }
 .timer-sub {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
+  white-space: nowrap;
+}
+#wallclock {
+  font-size: clamp(20px, 2.1vw, 40px);
+  font-weight: 300;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+#timer-mode {
   color: var(--dim);
   font-size: 14px;
-  white-space: nowrap;
+}
+#timer-mode.warn {
+  color: var(--behind);
 }
 .counter {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  margin-left: auto;
   white-space: nowrap;
 }
 #counter {
@@ -236,7 +240,7 @@ kbd {
 }
 #current {
   grid-area: current;
-  width: 100%;
+  width: calc(var(--stage) * 100%);
   max-height: 64dvh;
   aspect-ratio: var(--aspect);
 }
@@ -272,8 +276,7 @@ kbd {
   font-size: 14px;
 }
 #next {
-  grid-area: next;
-  align-self: start;
+  flex: none;
   width: 100%;
   aspect-ratio: var(--aspect);
 }
@@ -326,13 +329,14 @@ kbd {
   flex-direction: column;
   gap: 8px;
   min-height: 0;
-  padding-top: 20px;
   overflow: hidden;
 }
 .badges {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin-left: auto;
+  align-self: center;
 }
 .badge {
   padding: 4px 8px;
@@ -353,9 +357,96 @@ kbd {
 .badge.b-laser {
   background: var(--laser);
 }
-.badge.b-paused {
+
+/* Pace panel: the planned window of this slide and of the talk, as bars.
+   One grid for both rows, so the bars line up. */
+.pace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 16px;
+  margin: 16px 0 12px;
+  font-variant-numeric: tabular-nums;
+}
+.pace-row {
+  display: contents;
+}
+.pace-head {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 8px;
+  font-size: clamp(17px, 1.5vw, 26px);
+}
+.pace-head > :first-child {
+  color: var(--dim);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pace-text {
+  font-size: clamp(17px, 1.5vw, 26px);
+  text-align: right;
+}
+.bar {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--line);
+}
+.bar .fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--fg);
+}
+.talkbar {
+  height: 16px;
+  border-radius: 2px;
+}
+.talkbar .seg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: #3a3a3c;
+  box-shadow: inset -1px 0 0 #000;
+}
+.talkbar .seg.done {
+  background: #636366;
+}
+#talk-spent {
+  left: 0;
+}
+.talkbar .seg.current {
+  background: var(--accent);
+}
+.talkbar .now,
+.talkbar .budget {
+  position: absolute;
+  top: -5px;
+  bottom: -5px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--fg);
+}
+.talkbar .budget {
+  background: var(--over);
+  opacity: 0.8;
+}
+.t-early {
+  color: var(--ahead);
+}
+.bar .fill.t-early {
+  background: var(--ahead);
+}
+.t-late {
+  color: var(--behind);
+}
+.bar .fill.t-late {
   background: var(--behind);
-  color: #000;
+}
+.t-over {
+  color: var(--over);
 }
 .hintline {
   margin: 0;
@@ -601,16 +692,21 @@ kbd {
 @media (max-width: 760px) {
   .presenter {
     padding: 12px 16px;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
-    grid-template-areas: "head" "current" "next" "notes" "side";
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas: "head" "current" "notes" "side";
+  }
+  .head,
+  #current {
+    width: 100%;
+    min-width: 0;
   }
   .split,
   .strip,
   .side-head {
     display: none;
   }
-  .next {
+  #next {
     width: 40%;
     margin-top: 10px;
   }

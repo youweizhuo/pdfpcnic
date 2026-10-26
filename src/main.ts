@@ -5,6 +5,7 @@ import { Audience } from "./audience";
 import { openDeck, type Deck } from "./deck";
 import { actionFor, HELP, type Action } from "./keys";
 import { renderNote } from "./notes";
+import { against, mark, span, type Plan } from "./pace";
 import { parsePdfpc, PdfpcError, type PdfpcFile } from "./pdfpc";
 import { PageCache } from "./render";
 import * as store from "./store";
@@ -43,7 +44,6 @@ interface State {
   laser: boolean;
   laserAt: Point | null;
   timer: T.TimerState;
-  timerView: T.TimerView;
   endSlide: number;
   /** Bookmarked page. */
   bookmark: number | null;
@@ -104,7 +104,6 @@ class Presenter {
       laser: false,
       laserAt: null,
       timer: fresh ? T.freshTimer() : saved.timer,
-      timerView: deck.duration || deck.endTime ? "remaining" : "elapsed",
       endSlide: Math.min((fresh ? undefined : saved.endSlide) ?? deck.endSlide, deck.slides.length - 1),
       bookmark: (fresh ? undefined : saved.bookmark) ?? (deck.savedSlide === null ? null : deck.slides[deck.savedSlide][0]),
       back: [],
@@ -129,9 +128,11 @@ class Presenter {
     $("start").hidden = true;
     $("presenter").hidden = false;
     this.applySplit(store.pref("split", 0.62));
+    this.applyStage(store.pref("stage", 0.85));
     this.current.start();
     this.next.start();
     this.buildStrip();
+    this.buildTalkbar();
     this.wire();
     this.tick = window.setInterval(() => this.renderTimer(), 250);
     this.render();
@@ -291,11 +292,6 @@ class Presenter {
       case "timerPause":
         s.timer = T.togglePause(s.timer, now);
         break;
-      case "timerView": {
-        const views: T.TimerView[] = d.duration || d.endTime ? ["remaining", "elapsed", "clock"] : ["elapsed", "clock"];
-        s.timerView = views[(views.indexOf(s.timerView) + 1) % views.length];
-        break;
-      }
       case "timerReset":
         s.timer = T.freshTimer();
         toast("Timer reset. It starts again when you leave the first slide, or press s.");
@@ -303,6 +299,7 @@ class Presenter {
       case "endSlide":
         s.endSlide = slide;
         this.buildStrip();
+        this.buildTalkbar();
         toast(`Slide ${slide + 1} is now the end slide; later ones count as backup.`);
         break;
       case "help":
@@ -312,6 +309,12 @@ class Presenter {
         void audience.show().then((ok) => {
           if (!ok) toast("The browser blocked the audience window. Allow pop-ups for this page, then press o again.", "error", 8000);
         });
+        return;
+      case "slideSmaller":
+      case "slideBigger":
+        this.applyStage(this.stage + (action === "slideBigger" ? 0.05 : -0.05));
+        store.setPref("stage", this.stage);
+        toast(`Current slide at ${Math.round(this.stage * 100)}% of its column.`, "info", 1500);
         return;
     }
     this.render();
@@ -355,7 +358,7 @@ class Presenter {
     );
     cur.addEventListener("wheel", wheelStepper((d) => this.act(d > 0 ? "next" : "prev")), { signal, passive: true });
     $("next").addEventListener("click", () => this.act("nextSlide"), { signal });
-    $("timer").addEventListener("click", () => this.act("timerView"), { signal });
+    $("timer").addEventListener("click", () => this.act("timerPause"), { signal });
 
     for (const b of document.querySelectorAll<HTMLButtonElement>(".toolbar [data-action]")) {
       b.addEventListener(
@@ -416,6 +419,13 @@ class Presenter {
       `minmax(0, ${this.split}fr) 28px minmax(0, ${1 - this.split}fr) clamp(120px, 12vw, 220px)`;
   }
 
+  /** Current slide width as a share of its column; what it gives up goes to the notes. */
+  private stage = 0.85;
+  private applyStage(f: number): void {
+    this.stage = Math.min(1, Math.max(0.5, Math.round(f * 20) / 20));
+    document.documentElement.style.setProperty("--stage", String(this.stage));
+  }
+
   // Rendering
 
   /** The next slide's final step, as pdfpc shows it, or null at the end. */
@@ -466,12 +476,15 @@ class Presenter {
       item?.classList.add("current");
       item?.scrollIntoView({ block: "center", behavior: "smooth" });
     }
+    this.segs.forEach((seg, i) => {
+      seg.classList.toggle("done", i < here.slide);
+      seg.classList.toggle("current", i === here.slide);
+    });
 
     const badges: Array<[string, string]> = [];
     if (s.black) badges.push(["b-black", "BLACK"]);
     if (s.frozen !== null) badges.push(["b-frozen", "FROZEN"]);
     if (s.laser) badges.push(["b-laser", "LASER"]);
-    if (s.timer.pausedAt !== null) badges.push(["b-paused", "TIMER PAUSED"]);
     $("badges").replaceChildren(...badges.map(([c, t]) => el("span", `badge ${c}`, t)));
     this.renderStatus();
 
@@ -512,28 +525,131 @@ class Presenter {
     this.solo?.setLaser(onAudience, this.laserSize);
   }
 
-  private renderTimer(): void {
-    const s = this.state;
+  private talk(): T.Talk {
     const d = this.deck;
+    const s = this.state;
+    return { duration: d.duration, startTime: d.startTime, endTime: d.endTime, slide: d.pages[s.page].slide, endSlide: s.endSlide };
+  }
+
+  private renderTimer(): void {
     const now = Date.now();
-    const talk = { duration: d.duration, startTime: d.startTime, endTime: d.endTime, slide: d.pages[s.page].slide, endSlide: s.endSlide };
-    const reading = T.read(s.timer, talk, s.timerView, now);
+    this.renderClock(now);
+    this.renderPace(now);
+  }
+
+  /** Présentation.app's clock: time since the start, and the time of day. */
+  private renderClock(now: number): void {
+    const s = this.state;
+    const t = s.timer;
     const timer = $("timer");
-    timer.textContent = reading.text;
-    timer.className = `timer ${reading.tone}`;
-    const length = T.talkLength(s.timer, talk, now);
-    const minutes = length ? ` of ${Math.round(length / 60_000)} min` : "";
-    $("timer-mode").textContent =
-      s.timerView === "clock"
-        ? "time of day"
-        : reading.tone === "pre"
-          ? `until the start at ${d.startTime}`
-          : s.timer.startedAt === null
-            ? "starts when you leave slide 1"
-            : `${s.timerView}${minutes}${s.timer.pausedAt !== null ? " · paused" : ""}`;
-    const clock = new Date(now);
-    $("wallclock").textContent =
-      s.timerView === "clock" ? "" : `${clock.getHours()}:${String(clock.getMinutes()).padStart(2, "0")}`;
+    timer.textContent = T.format(T.elapsed(t, now));
+    timer.classList.toggle("idle", t.startedAt === null || t.pausedAt !== null);
+    $("wallclock").textContent = T.formatClock(now);
+    const until = T.untilStart(this.talk(), now);
+    const mode = $("timer-mode");
+    mode.textContent =
+      t.pausedAt !== null
+        ? "paused · click to resume"
+        : t.startedAt !== null
+          ? ""
+          : until
+            ? `talk starts at ${this.deck.startTime}, in ${T.format(until)}`
+            : s.page === 0
+              ? "starts when you leave slide 1"
+              : "press s to start";
+    mode.classList.toggle("warn", t.pausedAt !== null);
+  }
+
+  /** Each slide's planned window, from its first page that has one. */
+  private plans: Array<Plan | null> = [];
+  /** Planned length of the talk proper in seconds, 0 when nothing is planned. */
+  private planned = 0;
+  private segs: HTMLElement[] = [];
+  private barScale = 0;
+
+  /** The talk bar: one segment per planned slide, as long as its window. */
+  private buildTalkbar(): void {
+    const d = this.deck;
+    this.plans = d.slides.map((pages) => pages.map((p) => d.pages[p].plan).find((p) => p !== null) ?? null);
+    const main = this.plans.slice(0, this.state.endSlide + 1);
+    this.planned = Math.max(0, ...main.map((p) => p?.end ?? 0));
+    this.segs = [];
+    main.forEach((p, slide) => {
+      if (p && p.end > p.start) this.segs[slide] = el("div", "seg");
+    });
+    // Without a plan, the bar fills with the time spent.
+    const spent = el("div", "seg done");
+    spent.id = "talk-spent";
+    spent.hidden = this.planned > 0;
+    $("talkbar").replaceChildren(...this.segs.filter(Boolean), spent, el("div", "budget"), el("div", "now"));
+    this.barScale = 0;
+  }
+
+  private renderPace(now: number): void {
+    const s = this.state;
+    const slide = this.deck.pages[s.page].slide;
+    const talk = this.talk();
+    const length = Math.round(T.talkLength(s.timer, talk, now) / 1000);
+    const at = T.elapsed(s.timer, now) / 1000;
+    const started = s.timer.startedAt !== null;
+    const planned = this.planned > 0;
+    $("pace").hidden = !planned && !length;
+
+    // This slide: its window, how much of it has gone, and how far off it you are.
+    const plan = slide <= s.endSlide ? this.plans[slide] : null;
+    $("pace-slide").hidden = !plan;
+    const where = plan && started ? against(plan, at) : null;
+    if (plan) {
+      const tone = where?.tone ?? "on";
+      $("pace-window").textContent = plan.end > plan.start ? `${mark(plan.start)} – ${mark(plan.end)}` : `at ${mark(plan.start)}`;
+      const fill = $("pace-fill");
+      fill.style.width = `${(where?.fill ?? 0) * 100}%`;
+      fill.className = `fill t-${tone}`;
+      const text = $("pace-slide-text");
+      text.className = `pace-text t-${tone}`;
+      text.textContent = !where
+        ? `${span(plan.end - plan.start)} planned`
+        : tone === "late"
+          ? `${span(where.offset)} over`
+          : tone === "early"
+            ? `${span(where.offset)} early`
+            : `${span(plan.end - at)} left`;
+    }
+
+    // The talk: time left, and where you stand on the bar.
+    const left = $("pace-left");
+    left.textContent = !length ? `${span(this.planned)} planned` : at <= length ? `${span(length - at)} left` : `${span(at - length)} over`;
+    left.className = length && at > length ? "t-over" : "";
+    const text = $("pace-talk-text");
+    if (planned) {
+      // The rest of the talk as planned, shifted by how far off this slide you are.
+      const offset = where?.offset ?? 0;
+      text.textContent = plan ? `ends ≈ ${mark(this.planned + offset)}` : slide > s.endSlide ? "backup" : "";
+      text.className = `pace-text ${offset > 0 ? "t-late" : offset < 0 ? "t-early" : ""}`;
+    } else {
+      // pdfpc's rule: against an even pace through the slides, a minute's leeway.
+      const drift = T.drift(s.timer, talk, now) / 1000;
+      const off = started && Math.abs(drift) >= 60;
+      text.textContent = !started ? "" : off ? `${span(drift)} ${drift > 0 ? "behind" : "ahead"}` : "on pace";
+      text.className = `pace-text ${off ? (drift > 0 ? "t-late" : "t-early") : ""}`;
+    }
+
+    const bar = $("talkbar");
+    const scale = Math.max(this.planned, length) || 1;
+    if (scale !== this.barScale) {
+      this.barScale = scale;
+      const pct = (x: number) => `${(Math.min(1, x / scale) * 100).toFixed(3)}%`;
+      this.segs.forEach((seg, i) => {
+        const p = this.plans[i]!;
+        seg.style.left = pct(p.start);
+        seg.style.width = pct(p.end - p.start);
+      });
+      const budget = bar.querySelector<HTMLElement>(".budget")!;
+      budget.hidden = !(planned && length);
+      budget.style.left = pct(length);
+    }
+    bar.querySelector<HTMLElement>(".now")!.style.left = `${Math.min(1, at / scale) * 100}%`;
+    if (!planned) $("talk-spent").style.width = `${Math.min(1, at / scale) * 100}%`;
   }
 
   private renderStatus(): void {

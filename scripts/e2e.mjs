@@ -224,6 +224,44 @@ try {
     assert.match(await text("#notes"), /各位老师好/);
   });
 
+  await check("a note's timing line becomes the pace panel", async () => {
+    // Slide 5 of the demo plans 06:30 → 08:30, of 09:30 in all.
+    assert.equal(await text("#pace-window"), "06:30 – 08:30");
+    assert.match(await page.$eval("#notes > :first-child", (e) => e.textContent), /^各位老师好/);
+    const at = (s) => page.evaluate((s) => (window.pdfpcnic.state.timer = { startedAt: Date.now() - s * 1000, pausedAt: null, pausedFor: 0 }), s);
+    await at(540);
+    await new Promise((r) => setTimeout(r, 400));
+    assert.match(await text("#pace-slide-text"), /^3\d s over$/);
+    assert.match(await page.$eval("#pace-fill", (e) => e.className), /t-late/);
+    assert.match(await text("#pace-talk-text"), /^ends ≈ 10:0\d$/);
+    await page.screenshot({ path: `${out}/pace-late.png` });
+    await at(420);
+    await new Promise((r) => setTimeout(r, 400));
+    assert.match(await text("#pace-slide-text"), /^1:[23]\d left$/);
+    assert.match(await text("#pace-talk-text"), /^ends ≈ 09:30$/);
+    await page.screenshot({ path: `${out}/pace.png` });
+  });
+
+  await check("clicking the clock pauses and resumes the timer", async () => {
+    await page.click("#timer");
+    assert.ok((await state()).timer.pausedAt > 0);
+    assert.match(await text("#timer-mode"), /paused/);
+    await page.click("#timer");
+    assert.equal((await state()).timer.pausedAt, null);
+  });
+
+  await check("[ and ] trade current-slide size for room for notes", async () => {
+    const box = () => page.$eval("#current", (e) => e.getBoundingClientRect().height);
+    const notes = () => page.$eval("#notes", (e) => e.getBoundingClientRect().height);
+    const [before, room] = [await box(), await notes()];
+    await press("[");
+    assert.ok((await box()) < before && (await notes()) > room, "[ didn't shrink the slide");
+    await press("]", "]");
+    assert.ok((await box()) > before, "] didn't grow the slide");
+    await press("[");
+    assert.equal(await box(), before);
+  });
+
   await check("help sheet", async () => {
     await press("?");
     assert.equal(await page.$eval("#help", (e) => e.hidden), false);

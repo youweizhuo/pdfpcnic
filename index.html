@@ -37,8 +37,9 @@
 
     <main id="presenter" class="presenter" hidden>
       <header class="head">
-        <button id="timer" class="timer" type="button" title="Click: elapsed, remaining, clock (Shift+T)">0:00:00</button>
-        <div class="timer-sub"><span id="timer-mode"></span><span id="wallclock"></span></div>
+        <button id="timer" class="timer idle" type="button" title="Click to pause or resume (p)">0:00:00</button>
+        <div class="timer-sub"><span id="wallclock"></span><span id="timer-mode"></span></div>
+        <div id="badges" class="badges"></div>
         <div class="counter"><span id="counter"></span><span id="counter-sub"></span></div>
       </header>
 
@@ -46,11 +47,22 @@
       <div id="split" class="split" role="separator" aria-orientation="vertical" title="Drag to resize"></div>
 
       <div class="side-head"><span id="next-label"></span></div>
-      <div id="next"></div>
       <article id="notes" class="notes"></article>
 
       <aside class="side">
-        <div id="badges" class="badges"></div>
+        <div id="next"></div>
+        <section id="pace" class="pace">
+          <div id="pace-slide" class="pace-row">
+            <div class="pace-head"><span>This slide</span><span id="pace-window"></span></div>
+            <div class="bar"><div id="pace-fill" class="fill"></div></div>
+            <span id="pace-slide-text" class="pace-text"></span>
+          </div>
+          <div id="pace-talk" class="pace-row">
+            <div class="pace-head"><span>Talk</span><span id="pace-left"></span></div>
+            <div id="talkbar" class="bar talkbar"></div>
+            <span id="pace-talk-text" class="pace-text"></span>
+          </div>
+        </section>
         <p id="audience-status" class="hintline"></p>
         <p id="screen-status" class="hintline"></p>
         <nav class="toolbar">

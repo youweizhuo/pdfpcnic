@@ -1,10 +1,6 @@
 // The talk timer, with pdfpc's rules: it starts when you first leave the
-// first page, counts down when the talk has a length, and colors itself by
-// pace: orange when behind, blue when ahead (by over a minute), red once over
-// time.
-
-export type TimerView = "elapsed" | "remaining" | "clock";
-export type Tone = "idle" | "normal" | "ahead" | "behind" | "over" | "paused" | "pre";
+// first page, and pauses, resumes and resets on request. It always counts up
+// from zero; pace is the pace panel's business (see pace.ts).
 
 export interface TimerState {
   /** Epoch ms when the talk started, null before. */
@@ -60,42 +56,30 @@ export function talkLength(t: TimerState, talk: Talk, now: number): number {
   return talk.duration * 60_000;
 }
 
-export interface Reading {
-  text: string;
-  tone: Tone;
+/** Ms until the talk's start time, or 0 when it has none or it has passed. */
+export function untilStart(talk: Talk, now: number): number {
+  return talk.startTime ? Math.max(0, clockTime(talk.startTime, now) - now) : 0;
 }
 
-export function read(t: TimerState, talk: Talk, view: TimerView, now: number): Reading {
-  if (view === "clock") return { text: formatClock(now), tone: "normal" };
-  if (t.startedAt === null) {
-    if (talk.startTime) {
-      const until = clockTime(talk.startTime, now) - now;
-      if (until > 0) return { text: format(-until), tone: "pre" };
-    }
-    const length = talkLength(t, talk, now);
-    return { text: format(view === "remaining" ? length : 0), tone: "idle" };
-  }
-  const spent = elapsed(t, now);
+/**
+ * pdfpc's pace rule, for decks without planned times: ms behind an even pace
+ * through the slides (negative when ahead).
+ */
+export function drift(t: TimerState, talk: Talk, now: number): number {
   const length = talkLength(t, talk, now);
-  const shown = view === "remaining" && length ? length - spent : spent;
-  if (t.pausedAt !== null) return { text: format(shown), tone: "paused" };
-  if (!length) return { text: format(shown), tone: "normal" };
-  if (spent > length) return { text: format(shown), tone: "over" };
-  const slides = talk.endSlide + 1;
-  const expected = (length * (Math.min(talk.slide, talk.endSlide) + 0.5)) / slides;
-  const drift = spent - expected;
-  return { text: format(shown), tone: drift > 60_000 ? "behind" : drift < -60_000 ? "ahead" : "normal" };
+  const expected = (length * (Math.min(talk.slide, talk.endSlide) + 0.5)) / (talk.endSlide + 1);
+  return elapsed(t, now) - expected;
 }
 
-function format(ms: number): string {
-  const sign = ms < 0 ? "−" : "";
+/** "H:MM:SS". */
+export function format(ms: number): string {
   const s = Math.floor(Math.abs(ms) / 1000);
   const two = (n: number) => String(n).padStart(2, "0");
-  return `${sign}${Math.floor(s / 3600)}:${two(Math.floor(s / 60) % 60)}:${two(s % 60)}`;
+  return `${Math.floor(s / 3600)}:${two(Math.floor(s / 60) % 60)}:${two(s % 60)}`;
 }
 
-function formatClock(now: number): string {
+/** Time of day, "HH:MM". */
+export function formatClock(now: number): string {
   const d = new Date(now);
-  const two = (n: number) => String(n).padStart(2, "0");
-  return `${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }

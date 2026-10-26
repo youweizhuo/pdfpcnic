@@ -28,20 +28,6 @@ export function splitPlan(note: string): { plan: Plan | null; note: string } {
   return { plan: { start, end }, note: note.trimStart().slice(m[0].length).trimStart() };
 }
 
-export type Tone = "early" | "on" | "late";
-
-/**
- * Where `at` seconds into the talk stand against a slide's window. Anywhere
- * inside it is on time; `offset` is how far past its end (positive) or short
- * of its start (negative), and `fill` how much of it has gone by.
- */
-export function against(plan: Plan, at: number): { offset: number; fill: number; tone: Tone } {
-  const offset = at - Math.min(Math.max(at, plan.start), plan.end);
-  const span = plan.end - plan.start;
-  const fill = span > 0 ? Math.min(1, Math.max(0, (at - plan.start) / span)) : at >= plan.start ? 1 : 0;
-  return { offset, fill, tone: offset > 0 ? "late" : offset < 0 ? "early" : "on" };
-}
-
 /** A span of seconds: "12 s" or "1:20". */
 export function span(seconds: number): string {
   const s = Math.round(Math.abs(seconds));

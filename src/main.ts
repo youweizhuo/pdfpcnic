@@ -5,7 +5,7 @@ import { Audience } from "./audience";
 import { openDeck, type Deck } from "./deck";
 import { actionFor, HELP, type Action } from "./keys";
 import { renderNote } from "./notes";
-import { against, grade, mark, SLACK, span, type Plan, type Slack } from "./pace";
+import { grade, mark, SLACK, span, type Plan, type Slack } from "./pace";
 import { parsePdfpc, PdfpcError, type PdfpcFile } from "./pdfpc";
 import { PageCache } from "./render";
 import * as store from "./store";
@@ -101,6 +101,8 @@ class Presenter {
   private laserSize = store.pref("laserSize", 0.035);
   private notesSize: number;
   private slack: Slack = loadSlack();
+  /** How much the covered part of a note dims, 0 for not at all. */
+  private notesDim = store.pref("notesDim", 0.5);
 
   constructor(
     readonly deck: Deck,
@@ -144,6 +146,7 @@ class Presenter {
     $("presenter").hidden = false;
     this.applySplit(store.pref("split", 0.62));
     this.applyStage(store.pref("stage", 1));
+    document.documentElement.style.setProperty("--notes-dim", String(1 - this.notesDim));
     this.current.start();
     this.next.start();
     this.buildStrip();
@@ -407,6 +410,7 @@ class Presenter {
     range("set-stage", (v) => this.setStage(v / 100));
     range("set-notes", (v) => this.setNotesSize(v));
     range("set-laser", (v) => this.setLaserSize(v / 100));
+    range("set-dim", (v) => this.setNotesDim(v / 100));
     // Pace levels: sliders in seconds or percent, as the unit says. The late
     // levels keep their order: serious never past severe.
     const setSlack = (key: SlackLevel, v: number) => {
@@ -446,6 +450,7 @@ class Presenter {
         store.setPref("notesSize", null);
         this.setLaserSize(0.035);
         this.useSlack({ ...SLACK.time });
+        this.setNotesDim(0.5);
         this.applySplit(0.62);
         store.setPref("split", this.split);
         this.syncSettings();
@@ -537,6 +542,8 @@ class Presenter {
     show("set-notes", this.notesSize, `${this.notesSize} px`);
     const laser = Math.round(this.laserSize * 200) / 2;
     show("set-laser", laser, `${laser}%`);
+    const dim = Math.round(this.notesDim * 100);
+    show("set-dim", dim, dim ? `${dim}%` : "off");
     const { unit } = this.slack;
     const t = this.target;
     for (const b of document.querySelectorAll<HTMLButtonElement>("#set-unit button")) {
@@ -550,6 +557,13 @@ class Presenter {
       if (unit === "time") show(`set-${key}`, v, t ? `${span(v)} (${Math.round((v / t) * 100)}%)` : span(v));
       else show(`set-${key}`, Math.round(v * 100), t ? `${Math.round(v * 100)}% (${span(v * t)})` : `${Math.round(v * 100)}%`);
     }
+  }
+
+  private setNotesDim(f: number): void {
+    this.notesDim = Math.min(0.8, Math.max(0, f));
+    store.setPref("notesDim", this.notesDim);
+    document.documentElement.style.setProperty("--notes-dim", String(1 - this.notesDim));
+    this.renderNotesDim();
   }
 
   private useSlack(slack: Slack): void {
@@ -594,10 +608,10 @@ class Presenter {
 
     if (this.notesPage !== s.page) {
       this.notesPage = s.page;
-      const notes = $("notes");
-      if (here.note) renderNote(notes, here.note, d.markdown);
-      else notes.replaceChildren(el("p", "empty", "No notes for this slide."));
-      notes.scrollTop = 0;
+      const body = $("notes-body");
+      if (here.note) renderNote(body, here.note, d.markdown);
+      else body.replaceChildren(el("p", "empty", "No notes for this slide."));
+      $("notes").scrollTop = 0;
     }
 
     if (this.stripSlide !== here.slide) {
@@ -671,6 +685,7 @@ class Presenter {
     const now = Date.now();
     this.renderClock(now);
     this.renderPace(now);
+    this.renderNotesDim();
   }
 
   /** Présentation.app's clock: time since the start, and the time of day. */
@@ -739,8 +754,19 @@ class Presenter {
   /** The planned window you're in, and when you came to it (seconds into the talk). */
   private planKey: string | null = null;
   private enteredAt = 0;
+  /** Share of this slide's planned time used since reaching it, or null when it has none. */
+  private used: number | null = null;
+
+  /** Dims the part of the note you'd have covered by now, by its height. */
+  private renderNotesDim(): void {
+    const body = $("notes-body");
+    const on = this.used !== null && this.notesDim > 0;
+    body.classList.toggle("pacing", on);
+    if (on) body.style.setProperty("--used", this.used!.toFixed(3));
+  }
 
   private renderPace(now: number): void {
+    this.used = null;
     const s = this.state;
     const slide = this.deck.pages[s.page].slide;
     const length = Math.round(T.talkLength(s.timer, this.talk(), now) / 1000);
@@ -751,30 +777,11 @@ class Presenter {
     if (!planned) return;
     const target = length || planned;
 
-    // This slide: the time left in its window, or how far off it you are.
-    // A step with a window of its own (a forced overlay, say) goes by that.
+    // The planned window you're in (a step with a window of its own, a
+    // forced overlay say, goes by that), and when you reached it.
     const own = this.deck.pages[s.page].plan;
     const plan = slide > s.endSlide ? null : (this.timed && own) || this.planOf(slide, length);
-    $("pace-slide").hidden = !plan;
-    const where = plan && started ? against(plan, at) : null;
-    // Late always shows, in three levels; a little early doesn't.
-    const level = where ? grade(where.offset, target, this.slack) : "on";
-    if (plan) {
-      const text = $("pace-slide-text");
-      text.className = `pace-num t-${where ? level : "idle"}`;
-      text.textContent = !where
-        ? span(plan.end - plan.start)
-        : where.tone === "late"
-          ? `${span(where.offset)} over`
-          : where.tone === "early"
-            ? `${span(where.offset)} early`
-            : `${span(plan.end - at)} left`;
-      $("pace-slide").title = plan.end > plan.start ? `Planned ${mark(plan.start)}–${mark(plan.end)}` : `Planned at ${mark(plan.start)}`;
-    }
-
-    // All slides: where the talk ends at this pace, against the target end.
-    // This slide takes its planned length from when you came to it (or
-    // longer, while you stay), and the rest goes as planned.
+    const budget = plan ? plan.end - plan.start : 0;
     if (plan && started) {
       const key = `${slide}:${plan.start}:${plan.end}`;
       if (key !== this.planKey || at < this.enteredAt) {
@@ -782,18 +789,35 @@ class Presenter {
         this.enteredAt = at;
       }
     }
-    const shift = plan && started ? Math.max(at, this.enteredAt + plan.end - plan.start) - plan.end : 0;
+    const here = at - this.enteredAt;
+
+    // This slide: its planned time against your time on it. Late always
+    // shows, in three levels; a slide planned to take no time has no line.
+    $("pace-slide").hidden = !budget;
+    if (plan && budget) {
+      const text = $("pace-slide-text");
+      const over = here - budget;
+      text.textContent = !started ? span(budget) : over > 0 ? `${span(over)} over` : `${span(-over)} left`;
+      text.className = `pace-num t-${!started ? "idle" : over > 0 ? grade(over, target, this.slack) : "on"}`;
+      $("pace-slide").title = `Planned ${mark(plan.start)}–${mark(plan.end)}, ${span(budget)}`;
+      this.used = started ? Math.min(1, here / budget) : null;
+    }
+
+    // All slides: where the talk ends at this pace, against the target end:
+    // this slide taking its planned time from when you reached it (or longer,
+    // while you stay), the rest as planned.
+    const shift = plan && started ? Math.max(at, this.enteredAt + budget) - plan.end : 0;
     const finish = slide > s.endSlide && started ? at : planned + shift;
     const diff = Math.round(finish - target);
     const all = $("pace-all-text");
-    const allLevel = started ? grade(diff, target, this.slack) : "idle";
+    const level = started ? grade(diff, target, this.slack) : "idle";
     // A little early is simply on time here.
-    all.textContent = diff > 0 ? `${span(diff)} late` : allLevel === "early" ? `${span(diff)} early` : "on time";
-    all.className = `pace-num t-${allLevel}`;
+    all.textContent = diff > 0 ? `${span(diff)} late` : level === "early" ? `${span(diff)} early` : "on time";
+    all.className = `pace-num t-${level}`;
     $("pace-all").title = `Planned to end at ${mark(planned)}; target ${mark(target)}`;
 
-    // The bar: fixed, with room past the target end. Time spent fills it,
-    // colored by how you stand against this slide's window.
+    // The bar: fixed, with room past the target end. Time spent runs under
+    // it, colored like "All slides".
     this.target = target;
     const bar = $("talkbar");
     const scale = Math.max(target * 1.1, planned);
@@ -810,7 +834,7 @@ class Presenter {
     }
     const spent = bar.querySelector<HTMLElement>(".spent")!;
     spent.style.width = x(at);
-    spent.className = `spent t-${level}`;
+    spent.className = `spent t-${started ? level : "on"}`;
   }
 
   private renderStatus(): void {

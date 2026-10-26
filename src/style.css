@@ -16,6 +16,8 @@
   --severe: #ff453a;
   --laser: #ff3b30;
   --notes: 24px;
+  /* Opacity of the part of a note you'd have covered by now (see Settings). */
+  --notes-dim: 0.5;
   --aspect: 16 / 9;
   /* Current slide width, as a share of its column. */
   --stage: 0.85;
@@ -250,8 +252,15 @@ kbd {
   scrollbar-width: thin;
   scrollbar-color: #3a3a3c transparent;
 }
-.notes > :first-child {
+.notes-body > :first-child {
   margin-top: 0;
+}
+/* The part of the note you'd have covered by now, dimmed, with a soft edge
+   that reaches the top at 0 and the bottom at 1. */
+.notes-body.pacing {
+  --edge: calc(var(--used) * (100% + 1.5em));
+  -webkit-mask-image: linear-gradient(rgb(0 0 0 / var(--notes-dim)) calc(var(--edge) - 1.5em), #000 var(--edge));
+  mask-image: linear-gradient(rgb(0 0 0 / var(--notes-dim)) calc(var(--edge) - 1.5em), #000 var(--edge));
 }
 .notes p,
 .notes ul,
@@ -271,7 +280,7 @@ kbd {
 .notes a {
   color: var(--ahead);
 }
-.notes.plain {
+.notes-body.plain {
   white-space: pre-wrap;
 }
 .notes .empty {

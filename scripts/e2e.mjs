@@ -138,7 +138,7 @@ try {
     assert.match(await text("#counter-sub"), /step 1\/3/);
     // Each step here has a window of its own; the talk bar spans all three.
     await press("ArrowRight");
-    assert.equal(await page.$eval("#pace-slide", (e) => e.title), "Planned 03:30–04:10");
+    assert.equal(await page.$eval("#pace-slide", (e) => e.title), "Planned 03:30–04:10, 40 s");
     await press("ArrowLeft");
     await press("Shift+PageDown");
     assert.equal((await state()).page, 5);
@@ -236,7 +236,7 @@ try {
 
   await check("a note's timing line becomes the pace panel", async () => {
     // Slide 5 of the demo plans 06:30 → 08:30, of a 10 minute talk planned to 09:30.
-    assert.equal(await page.$eval("#pace-slide", (e) => e.title), "Planned 06:30–08:30");
+    assert.equal(await page.$eval("#pace-slide", (e) => e.title), "Planned 06:30–08:30, 2:00");
     assert.equal(await page.$eval("#pace-all", (e) => e.title), "Planned to end at 09:30; target 10:00");
     assert.match(await page.$eval("#notes > :first-child", (e) => e.textContent), /^各位老师好/);
     const at = (s) => page.evaluate((s) => (window.pdfpcnic.state.timer = { startedAt: Date.now() - s * 1000, pausedAt: null, pausedFor: 0 }), s);
@@ -256,25 +256,44 @@ try {
     assert.equal(await text("#pace-all-text"), "on time");
     assert.match(await cls("#pace-all-text"), /t-on/);
     assert.match(await fill(), /t-on/);
-    // Reached 1:30 into its two minutes: inside the window, but the talk now
-    // ends a minute past 10:00, which is serious (the levels are 1 and 2 minutes).
+    // A minute into its two: the first half of the note is dimmed.
+    await at(450);
+    await settle();
+    const dim = () => page.$eval("#notes-body", (e) => (e.classList.contains("pacing") ? Number(e.style.getPropertyValue("--used")) : null));
+    assert.ok(Math.abs((await dim()) - 0.5) < 0.02, `notes dimmed to ${await dim()}`);
+    await press(",");
+    await page.$eval("#set-dim", (e) => {
+      e.value = 0;
+      e.dispatchEvent(new Event("input"));
+    });
+    assert.equal(await dim(), null);
+    await page.click("#set-defaults");
+    await press("Escape");
+    // Reached 1:30 into its window: the slide still has its two minutes, but
+    // the talk now ends a minute past 10:00, which is serious (the levels are
+    // 1 and 2 minutes).
     await reach(480);
-    assert.match(await text("#pace-slide-text"), /^(30|29) s left$/);
+    assert.match(await text("#pace-slide-text"), /^(2:00|1:59) left$/);
     assert.match(await text("#pace-all-text"), /^1:0\d late$/);
     assert.match(await cls("#pace-all-text"), /t-serious/);
-    // Still here at 10:30, two minutes past the window: very serious. The
-    // talk ends 1:30 late (the 30 s of spare time take some of it): serious.
+    assert.match(await fill(), /t-serious/);
+    // 2:30 on it: the slide is 30 s over; the talk ends 1:30 late.
     await at(630);
+    await settle();
+    assert.match(await text("#pace-slide-text"), /^(29|30|31) s over$/);
+    assert.match(await cls("#pace-slide-text"), /t-late/);
+    assert.match(await text("#pace-all-text"), /^1:3\d late$/);
+    // 4:00 on it: two minutes over, very serious; the talk ends 3:00 late.
+    await at(720);
     await settle();
     assert.match(await text("#pace-slide-text"), /^2:0\d over$/);
     assert.match(await cls("#pace-slide-text"), /t-severe/);
-    assert.match(await text("#pace-all-text"), /^1:3\d late$/);
-    assert.match(await cls("#pace-all-text"), /t-serious/);
+    assert.match(await text("#pace-all-text"), /^3:0\d late$/);
     assert.match(await fill(), /t-severe/);
     await page.screenshot({ path: `${out}/pace-late.png` });
-    // 20 s early on the slide, 50 s early in all: a little early, no color.
+    // Reached 20 s before its window, 50 s early in all: a little early, no color.
     await reach(370);
-    assert.match(await text("#pace-slide-text"), /^(20|19) s early$/);
+    assert.match(await text("#pace-slide-text"), /^(2:00|1:59) left$/);
     assert.match(await cls("#pace-slide-text"), /t-on/);
     assert.equal(await text("#pace-all-text"), "on time");
     // Fixed scale: 10:00 plus 10% room, so the target sits at 1/1.1 and the
@@ -289,11 +308,10 @@ try {
     assert.ok(near(where.target[0], 0.909), `target at ${where.target}`);
     assert.ok(near(where.last[0], 510 / 660) && near(where.last[1], 570 / 660), `last slide at ${where.last}`);
     await page.screenshot({ path: `${out}/pace.png` });
-    // A minute and a half early: blue.
+    // Reached a minute and a half before its window: two minutes early in all, blue.
     await reach(300);
-    assert.match(await text("#pace-slide-text"), /^1:(29|3\d) early$/);
-    assert.match(await cls("#pace-slide-text"), /t-early/);
     assert.match(await text("#pace-all-text"), /^(1:59|2:0\d) early$/);
+    assert.match(await cls("#pace-all-text"), /t-early/);
     // In shares of the talk instead: 5% early slack is 30 s here, so 50 s early shows.
     await reach(370);
     await press(",");

@@ -4,7 +4,8 @@ A [pdfpc](https://github.com/pdfpc/pdfpc)-style presenter for PDF slides that ru
 website, or carry it as **one HTML file** for machines with no network. Its layout follows
 [Présentation.app](https://iihm.imag.fr/blanch/software/osx-presentation/): black and frameless, with the current
 slide and its notes on the left, the next slide beside them, and thumbnails down the edge. All the time sits under the
-next slide: the clock, the time of day, and pace bars for this slide and for the whole talk.
+next slide: the clock, the time of day, and one bar for the whole talk. The toolbar steps aside while the talk runs and
+comes back when you move the mouse.
 
 **Open it:** <https://youweizhuo.github.io/pdfpcnic/> · **Offline copy:** `pdfpcnic.html` from the
 [latest release](https://github.com/youweizhuo/pdfpcnic/releases/latest)
@@ -90,19 +91,22 @@ A note can start with the slide's planned window, in minutes and seconds from th
 
 pdfpcnic takes that line off the note and draws it instead. It has to be the note's first line, on its own. The arrow
 may be `->`, minutes may pass 59, and the `· 36 s` is optional. `**01:22**` alone plans a slide that takes no time.
-Reveal steps repeat their slide's line.
+Reveal steps repeat their slide's line, or carry windows of their own; then each step goes by its own.
 
-Each bar has a label on the left and one number on the right:
+Under the clock:
 
-- **Slide**, with its window (`02:06–02:58`). The bar fills across the window, and the number is the time left in it.
-  Anywhere inside the window is on time. Past its end, the bar turns orange and the number says how far over you are;
-  reach the slide before its start and it says how early you are, in blue.
-- **Talk**, with its length (`duration` or `endTime`, else the planned total), and the time left of it, in red once
-  you're past it. The bar has a segment per slide, this one in yellow, a white mark for now and a red one at the set
-  length. When you're off plan, an orange (or blue) stretch at the end shows where the talk now looks set to end.
+- **Slide** `02:06–02:58`: this slide's window, and the time left in it. Anywhere inside the window is on time. Past
+  its end the number turns orange and says how far over you are; reach the slide before its start and it says how early
+  you are, in blue.
+- **Talk** `10:00`: the talk's length (`duration` or `endTime`, else the planned total), and the time left of it, in
+  red once you're past it.
+- **The bar** is the whole talk. Left of the white line (now) is the time spent. Right of it is what's left of the
+  plan: the rest of this slide in yellow, then the slides to come, each as long as planned and moved along by however
+  far you are off this slide. So where the blocks end is where the talk will end. Empty bar after them is spare time;
+  anything past the talk's length is on red.
 
-Without timing lines, the talk's length is split evenly over the slides (pdfpc's even pace), and the bars work
-the same way.
+Without timing lines, the talk's length is split evenly over the slides (pdfpc's even pace). **Help** (`?`) has a key
+to the colors.
 
 ## Browsers
 

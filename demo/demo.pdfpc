@@ -6,9 +6,9 @@
   "pages": [
     { "idx": 0, "label": "1", "overlay": 0, "note": "**00:00 → 00:45** · 45 s\n\n**Welcome.** This is the title slide.\n\nThe clock starts when you leave this page, like pdfpc. Press **?** for all keys." },
     { "idx": 1, "label": "2", "overlay": 0, "note": "**00:45 → 02:30** · 105 s\n\nThe audience window opens on the second screen when the browser allows window placement (Chrome, Edge).\n\n- Otherwise drag it to the projector\n- Double-click it, or press **Shift+W** here, for fullscreen" },
-    { "idx": 2, "label": "3", "overlay": 0, "note": "**02:30 → 05:00** · 150 s\n\nThree reveal steps share one page label, so they count as **one slide**.\n\n*Next* on the right shows the next slide, not the next step." },
-    { "idx": 3, "label": "3", "overlay": 1, "note": "**02:30 → 05:00** · 150 s\n\nStep two of three." },
-    { "idx": 4, "label": "3", "overlay": 2, "note": "**02:30 → 05:00** · 150 s\n\nLast step. Going back from the next slide jumps to the first step." },
+    { "idx": 2, "label": "3", "overlay": 0, "note": "**02:30 → 03:30** · 60 s\n\nThree reveal steps share one page label, so they count as **one slide**.\n\n*Next* on the right shows the next slide, not the next step." },
+    { "idx": 3, "label": "3", "overlay": 1, "note": "**03:30 → 04:10** · 40 s\n\nStep two of three. Steps can have windows of their own." },
+    { "idx": 4, "label": "3", "overlay": 2, "note": "**04:10 → 05:00** · 50 s\n\nLast step. Going back from the next slide jumps to the first step." },
     { "idx": 5, "label": "4", "overlay": 0, "note": "**05:00 → 06:30** · 90 s\n\nPress `2` for the laser, `1` to go back to normal.\n\n`+` and `-` resize the laser while it is on." },
     { "idx": 6, "label": "5", "overlay": 0, "note": "**06:30 → 08:30** · 120 s\n\n各位老师好，这一页的备注是中文。备注字号可以用 `+` 和 `-` 调整，`[` 和 `]` 调整当前幻灯片的大小。\n\n*ref* A note's first line, like `**06:30 → 08:30** · 120 s`, is this slide's planned window. It's drawn as the bars on the right instead of shown here." },
     { "idx": 7, "label": "6", "overlay": 0, "hidden": true, "note": "You only see this slide through the overview, the thumbnails or `g`." },

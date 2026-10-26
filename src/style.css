@@ -220,6 +220,22 @@ kbd {
   border: 1px dashed var(--line);
   color: var(--faint);
 }
+#next.empty::after {
+  content: "End of the slides";
+}
+#next.backup::after {
+  content: "Backup";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.75);
+  color: var(--fg);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 .notes {
   grid-area: notes;
   overflow: auto;
@@ -265,22 +281,24 @@ kbd {
   min-height: 0;
   overflow: hidden;
 }
-.next-cap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 24px;
-  color: var(--dim);
-  font-size: 14px;
-}
+/* What the audience isn't seeing as it is, over the corner of the current
+   slide (laid over it in the same grid area, as wide). */
 .badges {
+  grid-area: current;
+  justify-self: center;
+  align-self: start;
+  z-index: 1;
   display: flex;
-  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px;
-  margin-left: auto;
+  width: calc(var(--stage) * 100%);
+  padding: 10px;
+  box-sizing: border-box;
+  pointer-events: none;
 }
 .badge {
   padding: 4px 8px;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.5);
   border-radius: 6px;
   background: var(--line);
   color: var(--fg);
@@ -367,80 +385,64 @@ kbd {
   border-color: var(--dim);
 }
 
-/* Pace: a row for this slide and one for the talk, each a label with one
-   number over a bar. */
+/* Pace: a line for this slide and one for the talk, then the talk as one bar. */
 .pace {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin-top: 16px;
-}
-.pace-head {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: baseline;
-  gap: 12px;
-  margin-bottom: 7px;
+  gap: 4px 10px;
+  margin-top: 16px;
   white-space: nowrap;
 }
-.pace-label {
+.pace-row {
+  display: contents;
+}
+.pace-label,
+.pace-plan {
   color: var(--dim);
   font-size: clamp(13px, 1vw, 17px);
 }
-.pace-label span {
-  margin-left: 6px;
-}
 .pace-num {
   font-size: clamp(17px, 1.5vw, 28px);
-}
-.bar {
-  position: relative;
-  height: 10px;
-  border-radius: 5px;
-  background: var(--line);
-}
-.bar .fill {
-  height: 100%;
-  border-radius: inherit;
-  background: var(--fg);
+  text-align: right;
 }
 .talkbar {
+  grid-column: 1 / -1;
+  position: relative;
   height: 16px;
-  border-radius: 2px;
+  margin-top: 10px;
+  border-radius: 3px;
+  background: var(--panel);
 }
-.talkbar .seg {
+.talkbar > * {
   position: absolute;
   top: 0;
   bottom: 0;
-  background: #3a3a3c;
+}
+.talkbar .spent {
+  left: 0;
+  border-radius: 3px 0 0 3px;
+  background: #8e8e93;
+}
+.talkbar .seg {
+  background: #48484a;
   box-shadow: inset -1px 0 0 #000;
 }
-.talkbar .seg.done {
-  background: #636366;
-}
 .talkbar .seg.current {
+  min-width: 5px;
   background: var(--accent);
 }
-/* From the planned end to where the talk now looks set to end. */
-.talkbar .shift {
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  background: currentColor;
-  opacity: 0.85;
+/* Past the talk's length: laid over the slides that won't fit. */
+.talkbar .overrun {
+  right: 0;
+  background: rgb(255 69 58 / 0.55);
 }
-.talkbar .now,
-.talkbar .budget {
-  position: absolute;
+.talkbar .now {
   top: -5px;
   bottom: -5px;
   width: 2px;
   margin-left: -1px;
   background: var(--fg);
-}
-.talkbar .budget {
-  background: var(--over);
-  opacity: 0.8;
 }
 .t-idle {
   color: var(--dim);
@@ -448,14 +450,8 @@ kbd {
 .t-early {
   color: var(--ahead);
 }
-.bar .fill.t-early {
-  background: var(--ahead);
-}
 .t-late {
   color: var(--behind);
-}
-.bar .fill.t-late {
-  background: var(--behind);
 }
 .t-over {
   color: var(--over);
@@ -474,32 +470,33 @@ kbd {
 }
 .toolbar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: auto;
-  opacity: 0.5;
-  transition: opacity 0.2s;
+  flex-direction: column;
+  gap: 2px;
+  margin: auto -8px 0;
+  transition: opacity 0.4s;
 }
-.toolbar:hover,
-.toolbar:focus-within {
-  opacity: 1;
+.presenter.quiet .toolbar:not(:hover, :focus-within) {
+  opacity: 0;
+}
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
 }
 .toolbar button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 9px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-  font-size: 13px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--dim);
+  font-size: 14px;
   cursor: pointer;
 }
 .toolbar button:hover {
-  border-color: var(--faint);
+  background: var(--panel);
+  color: var(--fg);
 }
 .toolbar button.on {
-  border-color: var(--accent);
   color: var(--accent);
 }
 
@@ -631,7 +628,8 @@ kbd {
   grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
   gap: 8px 40px;
 }
-.help-grid h3 {
+.help-grid h3,
+.legend h3 {
   margin: 8px 0 10px;
   color: var(--accent);
   font-size: 13px;
@@ -654,6 +652,49 @@ kbd {
 .help-grid dd {
   margin: 0;
   color: var(--dim);
+}
+.legend dl {
+  display: grid;
+  grid-template-columns: 4.5em 1fr;
+  align-items: center;
+  gap: 7px 14px;
+  margin: 0;
+  font-size: 14px;
+}
+.legend dt {
+  display: flex;
+  gap: 2px;
+  font-family: inherit;
+}
+.legend dd {
+  margin: 0;
+  color: var(--dim);
+}
+.legend b {
+  color: var(--fg);
+  font-weight: 500;
+}
+.sw {
+  width: 1.4em;
+  height: 12px;
+  border-radius: 2px;
+}
+.sw.spent {
+  background: #8e8e93;
+  box-shadow: inset -2px 0 0 var(--fg);
+}
+.sw.this {
+  background: var(--accent);
+}
+.sw.next {
+  background: #48484a;
+}
+.sw.spare {
+  background: var(--panel);
+  outline: 1px solid var(--line);
+}
+.sw.over {
+  background: rgb(255 69 58 / 0.55);
 }
 .help-foot {
   margin: 18px 0 0;

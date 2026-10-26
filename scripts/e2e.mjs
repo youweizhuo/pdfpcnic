@@ -136,6 +136,10 @@ try {
     await press("ArrowRight");
     assert.equal((await state()).page, 2);
     assert.match(await text("#counter-sub"), /step 1\/3/);
+    // Each step here has a window of its own; the talk bar spans all three.
+    await press("ArrowRight");
+    assert.equal(await text("#pace-window"), "03:30–04:10");
+    await press("ArrowLeft");
     await press("Shift+PageDown");
     assert.equal((await state()).page, 5);
     await press("ArrowLeft");
@@ -145,6 +149,7 @@ try {
   await check("hidden slide is skipped", async () => {
     await press("End");
     assert.equal((await state()).page, 8);
+    assert.equal(await page.$eval("#next", (e) => e.classList.contains("backup")), true);
     await press("ArrowLeft");
     assert.equal((await state()).page, 6);
     await press("ArrowRight");
@@ -188,6 +193,7 @@ try {
   await check("black screen covers the audience", async () => {
     await press("b");
     assert.equal(await audience.$eval("#black", (e) => e.hidden), false);
+    assert.equal(await text("#badges"), "BLACK");
     await press("b");
     assert.equal(await audience.$eval("#black", (e) => e.hidden), true);
   });
@@ -230,20 +236,27 @@ try {
     assert.equal(await text("#pace-budget"), "10:00");
     assert.match(await page.$eval("#notes > :first-child", (e) => e.textContent), /^各位老师好/);
     const at = (s) => page.evaluate((s) => (window.pdfpcnic.state.timer = { startedAt: Date.now() - s * 1000, pausedAt: null, pausedFor: 0 }), s);
-    await at(540);
+    const overrun = () => page.$eval("#talkbar .overrun", (e) => e.hidden);
+    // A minute late: the slide to come no longer fits before 10:00.
+    await at(570);
     await new Promise((r) => setTimeout(r, 400));
-    assert.match(await text("#pace-slide-text"), /^3\d s over$/);
-    assert.match(await page.$eval("#pace-fill", (e) => e.className), /t-late/);
-    assert.match(await text("#pace-left"), /^(1:00|59 s) left$/);
-    // The plan's end moves out by the time over, toward the 10 minute mark.
-    const shift = await page.$eval("#talkbar .shift", (e) => ({ hidden: e.hidden, late: e.classList.contains("t-late"), w: e.offsetWidth }));
-    assert.deepEqual([shift.hidden, shift.late, shift.w > 0], [false, true, true]);
+    assert.match(await text("#pace-slide-text"), /^1:0\d over$/);
+    assert.match(await page.$eval("#pace-slide-text", (e) => e.className), /t-late/);
+    assert.match(await text("#pace-left"), /^(30|29) s left$/);
+    assert.equal(await overrun(), false);
     await page.screenshot({ path: `${out}/pace-late.png` });
+    // On time: the last slide sits where it's planned, 08:30–09:30 of 10:00.
     await at(420);
     await new Promise((r) => setTimeout(r, 400));
     assert.match(await text("#pace-slide-text"), /^1:[23]\d left$/);
     assert.match(await text("#pace-left"), /^3:0\d left$/);
-    assert.equal(await page.$eval("#talkbar .shift", (e) => e.hidden), true);
+    assert.equal(await overrun(), true);
+    const last = await page.$$eval("#talkbar .seg:not([hidden])", (els) => {
+      const bar = els[0].parentElement.getBoundingClientRect();
+      const r = els.at(-1).getBoundingClientRect();
+      return [(r.left - bar.left) / bar.width, (r.right - bar.left) / bar.width];
+    });
+    assert.ok(Math.abs(last[0] - 0.85) < 0.01 && Math.abs(last[1] - 0.95) < 0.01, `last block at ${last}`);
     await page.screenshot({ path: `${out}/pace.png` });
   });
 
@@ -267,6 +280,17 @@ try {
     assert.match(await text("#timer-mode"), /next move/);
     await press("ArrowRight", "ArrowLeft");
     assert.ok((await state()).timer.startedAt > 0);
+  });
+
+  await check("the toolbar steps aside while the talk runs, until the mouse moves", async () => {
+    const quiet = () => page.$eval("#presenter", (e) => e.classList.contains("quiet"));
+    await page.mouse.move(900, 700);
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(await quiet(), false);
+    await new Promise((r) => setTimeout(r, 3300));
+    assert.equal(await quiet(), true);
+    await page.mouse.move(920, 680);
+    assert.equal(await quiet(), false);
   });
 
   await check("[ and ] trade current-slide size for room for notes", async () => {

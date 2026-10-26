@@ -12,7 +12,15 @@ interface Job {
   thumb: boolean;
   priority: number;
   prefetch: boolean;
+  /** May never be needed: waits until the machine is idle. */
+  lazy: boolean;
 }
+
+/** Resolves when the main thread has a moment with nothing else to do. */
+const idle = () =>
+  new Promise<void>((done) =>
+    "requestIdleCallback" in window ? requestIdleCallback(() => done(), { timeout: 2000 }) : setTimeout(done, 200),
+  );
 
 /**
  * Renders pages on demand and keeps them as bitmaps. One full-size bitmap per
@@ -61,21 +69,25 @@ export class PageCache {
   want(page: number, width: number, priority: number): void {
     width = Math.min(Math.ceil(width), MAX_WIDTH);
     if ((this.full.get(page)?.width ?? 0) >= width * 0.98) return;
-    this.enqueue({ page, width, thumb: false, priority, prefetch: false });
+    this.enqueue({ page, width, thumb: false, priority, prefetch: false, lazy: false });
   }
 
   wantThumb(page: number, priority = 100): void {
     if (this.thumbs.has(page)) return;
-    this.enqueue({ page, width: THUMB_WIDTH, thumb: true, priority, prefetch: false });
+    this.enqueue({ page, width: THUMB_WIDTH, thumb: true, priority, prefetch: false, lazy: true });
   }
 
-  /** Replaces the set of pages rendered ahead of time (neighbors of the current one). */
-  prefetch(pages: number[], width: number): void {
+  /**
+   * Replaces the set of pages rendered ahead of time (neighbors of the
+   * current one): `soon` right away, `later` once the machine is idle.
+   */
+  prefetch(soon: number[], later: number[], width: number): void {
     this.queue = this.queue.filter((j) => !j.prefetch);
-    pages.forEach((page, i) => {
+    width = Math.min(Math.ceil(width), MAX_WIDTH);
+    [...soon, ...later].forEach((page, i) => {
       if (page < 0 || page >= this.deck.pages.length) return;
-      if ((this.full.get(page)?.width ?? 0) >= Math.min(width, MAX_WIDTH) * 0.98) return;
-      this.enqueue({ page, width: Math.min(Math.ceil(width), MAX_WIDTH), thumb: false, priority: 10 + i, prefetch: true });
+      if ((this.full.get(page)?.width ?? 0) >= width * 0.98) return;
+      this.enqueue({ page, width, thumb: false, priority: 10 + i, prefetch: true, lazy: i >= soon.length });
     });
   }
 
@@ -94,6 +106,7 @@ export class PageCache {
       same.width = Math.max(same.width, job.width);
       same.priority = Math.min(same.priority, job.priority);
       same.prefetch &&= job.prefetch;
+      same.lazy &&= job.lazy;
     } else {
       this.queue.push(job);
     }
@@ -106,6 +119,11 @@ export class PageCache {
     try {
       while (this.queue.length && !this.disposed) {
         this.queue.sort((a, b) => a.priority - b.priority);
+        if (this.queue[0].lazy) {
+          await idle();
+          if (this.disposed || !this.queue.length) break;
+          this.queue.sort((a, b) => a.priority - b.priority);
+        }
         const job = this.queue.shift()!;
         const have = job.thumb ? this.thumbs.get(job.page) : this.full.get(job.page);
         if (have && have.width >= job.width * 0.98) continue;

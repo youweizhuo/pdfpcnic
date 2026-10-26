@@ -10,6 +10,10 @@
   --ahead: #64d2ff;
   --behind: #ff9f0a;
   --over: #ff453a;
+  /* Late, in three levels (see pace.ts). */
+  --late: #ffb340;
+  --serious: #ff7a1a;
+  --severe: #ff453a;
   --laser: #ff3b30;
   --notes: 24px;
   --aspect: 16 / 9;
@@ -436,7 +440,13 @@ kbd {
   background: #d1d1d6;
 }
 .talkbar .spent.t-late {
-  background: var(--behind);
+  background: var(--late);
+}
+.talkbar .spent.t-serious {
+  background: var(--serious);
+}
+.talkbar .spent.t-severe {
+  background: var(--severe);
 }
 .talkbar .spent.t-early {
   background: var(--ahead);
@@ -455,7 +465,14 @@ kbd {
   color: var(--ahead);
 }
 .t-late {
-  color: var(--behind);
+  color: var(--late);
+}
+.t-serious {
+  color: var(--serious);
+}
+.t-severe {
+  color: var(--severe);
+  font-weight: 600;
 }
 .t-over {
   color: var(--over);
@@ -724,7 +741,13 @@ kbd {
   background: #d1d1d6;
 }
 .sw.late {
-  background: var(--behind);
+  background: var(--late);
+}
+.sw.serious {
+  background: var(--serious);
+}
+.sw.severe {
+  background: var(--severe);
 }
 .sw.early {
   background: var(--ahead);
@@ -736,7 +759,7 @@ kbd {
 }
 
 .settings {
-  width: min(520px, calc(100vw - 32px));
+  width: min(600px, calc(100vw - 32px));
   padding: 22px 26px;
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -750,9 +773,17 @@ kbd {
   margin: 0 0 16px;
   font-weight: 500;
 }
+.settings h3 {
+  margin: 18px 0 12px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .setting {
   display: grid;
-  grid-template-columns: 8.5em minmax(0, 1fr) 4em auto;
+  grid-template-columns: 10em minmax(0, 1fr) 6.5em 3.2em;
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;

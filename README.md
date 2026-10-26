@@ -45,7 +45,7 @@ The same keys as pdfpc, plus `o` for the audience window. Press `?` (or **Help**
 | `Esc` | leave black, freeze and laser |
 | `s` / `p`, click the clock | start / pause the timer |
 | `Ctrl+T` or `Shift+R`, or **Reset** | reset the timer to zero; only while paused |
-| `,` | settings: current slide, notes and laser sizes |
+| `,` | settings: current slide, notes and laser sizes; pace colors |
 | `+` / `-` | notes text size |
 | `[` / `]` | current slide smaller / bigger, trading room with the notes |
 | `w` / `Shift+W` | presenter / audience fullscreen |
@@ -95,12 +95,15 @@ Reveal steps repeat their slide's line, or carry windows of their own; then each
 Under the clock:
 
 - **This slide**: the time left in its window. Anywhere inside the window is on time. Past its end it says how far
-  over you are, in orange; reach the slide before its start and it says how early you are, in blue.
+  over you are; reach the slide before its start and it says how early you are.
 - **All slides**: where the talk will end at this pace (the plan, moved by however far you are off this slide),
-  against the target end: early in blue, late in orange. The target is `duration` or `endTime`, else where the plan ends.
+  against the target end: early or late. The target is `duration` or `endTime`, else where the plan ends.
 - **The bar** is fixed, with a red line at the target end and some room past it. Its top row is the slides as planned,
-  this one in yellow. Under it, time spent fills in from the left: white while you're on time (it ends under the yellow
-  block), orange once you're behind (it has run past it) and blue while you're ahead (it hasn't reached it).
+  this one in yellow. Under it, time spent fills in from the left, colored by how you stand against this slide.
+
+Colors grade how far off you are, as a share of the target length. Late always shows: orange, deep orange from 3%
+(serious) and red from 6% (very serious). Early shows, in blue, only past 5%; a little early is fine and stays white.
+All three levels can be changed in **Settings** (`,`).
 
 Without timing lines, the talk's length is split evenly over the slides (pdfpc's even pace). **Help** (`?`) has a key
 to the colors.

@@ -5,7 +5,7 @@ import { Audience } from "./audience";
 import { openDeck, type Deck } from "./deck";
 import { actionFor, HELP, type Action } from "./keys";
 import { renderNote } from "./notes";
-import { against, mark, span, type Plan } from "./pace";
+import { against, grade, mark, SLACK, span, type Plan, type Slack } from "./pace";
 import { parsePdfpc, PdfpcError, type PdfpcFile } from "./pdfpc";
 import { PageCache } from "./render";
 import * as store from "./store";
@@ -86,6 +86,7 @@ class Presenter {
   private stripSlide = -1;
   private laserSize = store.pref("laserSize", 0.035);
   private notesSize: number;
+  private slack: Slack = { ...SLACK, ...store.pref<Partial<Slack>>("slack", {}) };
 
   constructor(
     readonly deck: Deck,
@@ -392,6 +393,18 @@ class Presenter {
     range("set-stage", (v) => this.setStage(v / 100));
     range("set-notes", (v) => this.setNotesSize(v));
     range("set-laser", (v) => this.setLaserSize(v / 100));
+    // The late levels keep their order: serious never past severe.
+    const setSlack = (key: keyof Slack, v: number) => {
+      const s = { ...this.slack, [key]: v / 100 };
+      if (key === "serious") s.severe = Math.max(s.severe, s.serious);
+      if (key === "severe") s.serious = Math.min(s.serious, s.severe);
+      this.slack = s;
+      store.setPref("slack", s);
+      this.renderTimer();
+    };
+    range("set-early", (v) => setSlack("early", v));
+    range("set-serious", (v) => setSlack("serious", v));
+    range("set-severe", (v) => setSlack("severe", v));
     $("set-defaults").addEventListener(
       "click",
       () => {
@@ -399,6 +412,9 @@ class Presenter {
         this.setNotesSize(this.deckNotesSize);
         store.setPref("notesSize", null);
         this.setLaserSize(0.035);
+        this.slack = { ...SLACK };
+        store.setPref("slack", this.slack);
+        this.renderTimer();
         this.applySplit(0.62);
         store.setPref("split", this.split);
         this.syncSettings();
@@ -490,6 +506,10 @@ class Presenter {
     show("set-notes", this.notesSize, `${this.notesSize} px`);
     const laser = Math.round(this.laserSize * 200) / 2;
     show("set-laser", laser, `${laser}%`);
+    for (const key of ["early", "serious", "severe"] as const) {
+      const pct = Math.round(this.slack[key] * 100);
+      show(`set-${key}`, pct, this.target ? `${pct}% · ${span(this.slack[key] * this.target)}` : `${pct}%`);
+    }
   }
 
   // Rendering
@@ -668,6 +688,9 @@ class Presenter {
     return length ? { start: (slide * length) / n, end: ((slide + 1) * length) / n } : null;
   }
 
+  /** The talk's target length in seconds, as last drawn; settings show the slack against it. */
+  private target = 0;
+
   private renderPace(now: number): void {
     const s = this.state;
     const slide = this.deck.pages[s.page].slide;
@@ -685,9 +708,11 @@ class Presenter {
     const plan = slide > s.endSlide ? null : (this.timed && own) || this.planOf(slide, length);
     $("pace-slide").hidden = !plan;
     const where = plan && started ? against(plan, at) : null;
+    // Late always shows, in three levels; a little early doesn't.
+    const level = where ? grade(where.offset, target, this.slack) : "on";
     if (plan) {
       const text = $("pace-slide-text");
-      text.className = `pace-num t-${where?.tone ?? "idle"}`;
+      text.className = `pace-num t-${where ? level : "idle"}`;
       text.textContent = !where
         ? span(plan.end - plan.start)
         : where.tone === "late"
@@ -704,11 +729,12 @@ class Presenter {
     const diff = Math.round(finish - target);
     const all = $("pace-all-text");
     all.textContent = diff < 0 ? `${span(diff)} early` : diff > 0 ? `${span(diff)} late` : "on time";
-    all.className = `pace-num ${!started ? "t-idle" : diff < 0 ? "t-early" : diff > 0 ? "t-late" : ""}`;
+    all.className = `pace-num t-${started ? grade(diff, target, this.slack) : "idle"}`;
     $("pace-all").title = `Planned to end at ${mark(planned)}; target ${mark(target)}`;
 
     // The bar: fixed, with room past the target end. Time spent fills it,
     // colored by how you stand against this slide's window.
+    this.target = target;
     const bar = $("talkbar");
     const scale = Math.max(target * 1.1, planned);
     const x = (t: number) => `${((Math.min(Math.max(t, 0), scale) / scale) * 100).toFixed(3)}%`;
@@ -724,7 +750,7 @@ class Presenter {
     }
     const spent = bar.querySelector<HTMLElement>(".spent")!;
     spent.style.width = x(at);
-    spent.className = `spent t-${where?.tone ?? "on"}`;
+    spent.className = `spent t-${level}`;
   }
 
   private renderStatus(): void {

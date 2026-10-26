@@ -100,17 +100,17 @@
             <h3>Pace</h3>
             <dl>
               <dt>This slide</dt>
-              <dd>Time left in its planned window; past it, how far <span class="t-late">over</span>; before it, how <span class="t-early">early</span>.</dd>
+              <dd>Time left in its planned window; past it, how far <span class="t-late">over</span>; before it, how early.</dd>
               <dt>All slides</dt>
-              <dd>Where you'll finish at this pace, against the target end: <span class="t-early">early</span> or <span class="t-late">late</span>.</dd>
+              <dd>Where you'll finish at this pace, against the target end: early or <span class="t-late">late</span>. The levels can be changed in Settings.</dd>
               <dt><i class="sw this"></i><i class="sw next"></i></dt>
               <dd>The bar's top row: the slides as planned, this one yellow. Under it, time spent:</dd>
               <dt><i class="sw on"></i></dt>
-              <dd>on time: it ends under the yellow block;</dd>
-              <dt><i class="sw late"></i></dt>
-              <dd>behind: it has run past the yellow block;</dd>
+              <dd>on time: it ends under the yellow block (or a little short of it);</dd>
+              <dt><i class="sw late"></i><i class="sw serious"></i><i class="sw severe"></i></dt>
+              <dd>behind: it has run past the yellow block; deeper as it gets serious and very serious (by default 3% and 6% of the talk; see Settings);</dd>
               <dt><i class="sw early"></i></dt>
-              <dd>ahead: it hasn't reached the yellow block yet.</dd>
+              <dd>well ahead: by default more than 5% of the talk short of the yellow block.</dd>
               <dt><i class="sw target"></i></dt>
               <dd>Red line: the target end, <code>duration</code>, else where the plan ends.</dd>
             </dl>
@@ -141,6 +141,23 @@
           <output for="set-laser"></output>
           <kbd>+ −</kbd>
         </label>
+        <h3>Pace colors</h3>
+        <label class="setting">
+          <span>Early is fine up to</span>
+          <input id="set-early" type="range" min="0" max="20" step="1" />
+          <output for="set-early"></output>
+        </label>
+        <label class="setting">
+          <span>Late is serious from</span>
+          <input id="set-serious" type="range" min="1" max="30" step="1" />
+          <output for="set-serious"></output>
+        </label>
+        <label class="setting">
+          <span>Very serious from</span>
+          <input id="set-severe" type="range" min="1" max="30" step="1" />
+          <output for="set-severe"></output>
+        </label>
+        <p class="settings-foot">Shares of the talk's length (its <code>duration</code>, else the planned total). Late always shows, in <span class="t-late">orange</span>, <span class="t-serious">deep orange</span> and <span class="t-severe">red</span>; early only past its share, in <span class="t-early">blue</span>.</p>
         <p class="settings-foot">Saved in this browser. While the laser is on, <kbd>+</kbd> and <kbd>−</kbd> size its dot instead of the notes.</p>
         <div class="settings-actions">
           <button id="set-defaults" type="button">Restore defaults</button>

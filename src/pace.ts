@@ -53,3 +53,24 @@ export function mark(seconds: number): string {
   const s = Math.round(Math.max(0, seconds));
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
+
+/**
+ * How far off is too far, as shares of the talk's target length: being early
+ * by up to `early` passes without a color; being late always shows, `serious`
+ * and `severe` mark the next two levels.
+ */
+export interface Slack {
+  early: number;
+  serious: number;
+  severe: number;
+}
+
+export const SLACK: Slack = { early: 0.05, serious: 0.03, severe: 0.06 };
+
+export type Grade = "early" | "on" | "late" | "serious" | "severe";
+
+/** Grades `offset` seconds off plan (positive: late) in a talk of `target` seconds. */
+export function grade(offset: number, target: number, slack: Slack): Grade {
+  if (offset > 0) return offset >= slack.severe * target ? "severe" : offset >= slack.serious * target ? "serious" : "late";
+  return -offset > slack.early * target ? "early" : "on";
+}

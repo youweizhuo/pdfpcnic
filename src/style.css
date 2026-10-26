@@ -73,8 +73,14 @@ kbd {
   font-weight: 250;
   letter-spacing: -0.035em;
 }
+.say {
+  margin: 2px 0 0;
+  color: #636366;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
 .tagline {
-  margin: 6px 0 32px;
+  margin: 14px 0 32px;
   color: var(--dim);
   font-size: 18px;
 }

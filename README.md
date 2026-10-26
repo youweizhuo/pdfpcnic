@@ -4,8 +4,11 @@
 [![MIT License](https://img.shields.io/github/license/youweizhuo/pdfpcnic?color=ffd60a&labelColor=1c1c1e)](LICENSE)
 [![Open the presenter](https://img.shields.io/badge/open-the%20presenter-ffd60a?labelColor=1c1c1e)](https://youweizhuo.github.io/pdfpcnic/)
 
-A [pdfpc](https://github.com/pdfpc/pdfpc)-style presenter for PDF slides that runs in the browser. Use it from the
-website, carry it as **one HTML file** for machines with no network, or host it yourself. Its layout follows
+**pdfpcnic** is pronounced "PDF picnic": [pdfpc](https://github.com/pdfpc/pdfpc)'s presenter, packed light to take
+anywhere.
+
+It's a pdfpc-style presenter for PDF slides that runs in the browser. Use it from the website, carry it as **one HTML
+file** for machines with no network, or host it yourself. Its layout follows
 [Présentation.app](https://iihm.imag.fr/blanch/software/osx-presentation/): black and frameless, with the current
 slide and its notes on the left, the next slide beside them, and thumbnails down the edge. All the time sits under the
 next slide: the clock and one bar for the whole talk.

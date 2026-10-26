@@ -1,5 +1,5 @@
 // pdfpc's default key bindings, plus `o` to open the audience window, `[` `]`
-// to size the current slide and `t` for pace details.
+// to size the current slide and `,` for settings.
 
 export type Action =
   | "next"
@@ -35,7 +35,7 @@ export type Action =
   | "openAudience"
   | "slideSmaller"
   | "slideBigger"
-  | "paceDetail";
+  | "settings";
 
 const BINDINGS: Record<string, Action> = {
   ArrowRight: "next",
@@ -81,7 +81,7 @@ const BINDINGS: Record<string, Action> = {
   o: "openAudience",
   "[": "slideSmaller",
   "]": "slideBigger",
-  t: "paceDetail",
+  ",": "settings",
 };
 
 /** Normalizes a key event to the names above, e.g. "Shift+PageDown", "Ctrl+t", "?". */
@@ -132,10 +132,10 @@ export const HELP: Array<[string, Array<[string, string]>]> = [
     [
       ["s / p", "start / pause timer (or click the clock)"],
       ["Ctrl+T or Shift+R", "reset timer to zero (pause it first)"],
-      ["t", "more or less pace detail (or click the bars)"],
       ["Ctrl+E", "mark the end slide"],
       ["+ / −", "notes size (laser size in laser mode)"],
       ["[ / ]", "current slide smaller / bigger, for room for notes"],
+      [",", "settings: slide, notes and laser sizes"],
       ["w", "presenter fullscreen"],
       ["?", "this help"],
     ],

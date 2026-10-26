@@ -4,7 +4,7 @@ A [pdfpc](https://github.com/pdfpc/pdfpc)-style presenter for PDF slides that ru
 website, or carry it as **one HTML file** for machines with no network. Its layout follows
 [Présentation.app](https://iihm.imag.fr/blanch/software/osx-presentation/): black and frameless, with the current
 slide and its notes on the left, the next slide beside them, and thumbnails down the edge. All the time sits under the
-next slide: the clock, the time of day and, if your notes carry planned times, a bar per slide and one for the talk.
+next slide: the clock, the time of day, and pace bars for this slide and for the whole talk.
 
 **Open it:** <https://youweizhuo.github.io/pdfpcnic/> · **Offline copy:** `pdfpcnic.html` from the
 [latest release](https://github.com/youweizhuo/pdfpcnic/releases/latest)
@@ -29,7 +29,7 @@ warns you when it sees only one screen. With one screen, `Shift+W` presents in t
 
 ## Keys
 
-The same keys as pdfpc, plus `o` for the audience window. Press `?` for the full list.
+The same keys as pdfpc, plus `o` for the audience window. Press `?` (or **Help**) for the full list.
 
 | Key | |
 | --- | --- |
@@ -45,7 +45,7 @@ The same keys as pdfpc, plus `o` for the audience window. Press `?` for the full
 | `Esc` | leave black, freeze and laser |
 | `s` / `p`, click the clock | start / pause the timer |
 | `Ctrl+T` or `Shift+R`, or **Reset** | reset the timer to zero; only while paused |
-| `t`, click the pace bars | more or less pace detail |
+| `,` | settings: current slide, notes and laser sizes |
 | `+` / `-` | notes text size |
 | `[` / `]` | current slide smaller / bigger, trading room with the notes |
 | `w` / `Shift+W` | presenter / audience fullscreen |
@@ -92,18 +92,17 @@ pdfpcnic takes that line off the note and draws it instead. It has to be the not
 may be `->`, minutes may pass 59, and the `· 36 s` is optional. `**01:22**` alone plans a slide that takes no time.
 Reveal steps repeat their slide's line.
 
-Two bars, and words only when you're off plan:
+Each bar has a label on the left and one number on the right:
 
-- **This slide**: a bar that fills across the window. Anywhere inside it is on time. Past its end the bar turns orange
-  and counts the time over; reach the slide before its start and it says how early you are, in blue.
-- **Talk**: a segment per slide, this one in yellow, with a white mark for now and a red one at the set length
-  (`duration` or `endTime`).
+- **Slide**, with its window (`02:06–02:58`). The bar fills across the window, and the number is the time left in it.
+  Anywhere inside the window is on time. Past its end, the bar turns orange and the number says how far over you are;
+  reach the slide before its start and it says how early you are, in blue.
+- **Talk**, with its length (`duration` or `endTime`, else the planned total), and the time left of it, in red once
+  you're past it. The bar has a segment per slide, this one in yellow, a white mark for now and a red one at the set
+  length. When you're off plan, an orange (or blue) stretch at the end shows where the talk now looks set to end.
 
-Press `t` or click the bars for the details: the slide's window and time left, the talk's time left (or planned
-total), and the expected finish, which is the planned total moved by how far you are off this slide's window.
-
-Without planned windows, the talk bar fills with the time spent, and pdfpc's rule says when you're ahead or behind an
-even pace through the slides, with a minute's leeway.
+Without timing lines, the talk's length is split evenly over the slides (pdfpc's even pace), and the bars work
+the same way.
 
 ## Browsers
 

@@ -62,16 +62,6 @@ export function untilStart(talk: Talk, now: number): number {
   return talk.startTime ? Math.max(0, clockTime(talk.startTime, now) - now) : 0;
 }
 
-/**
- * pdfpc's pace rule, for decks without planned times: ms behind an even pace
- * through the slides (negative when ahead).
- */
-export function drift(t: TimerState, talk: Talk, now: number): number {
-  const length = talkLength(t, talk, now);
-  const expected = (length * (Math.min(talk.slide, talk.endSlide) + 0.5)) / (talk.endSlide + 1);
-  return elapsed(t, now) - expected;
-}
-
 /** "H:MM:SS". */
 export function format(ms: number): string {
   const s = Math.floor(Math.abs(ms) / 1000);

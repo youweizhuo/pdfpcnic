@@ -225,34 +225,26 @@ try {
   });
 
   await check("a note's timing line becomes the pace panel", async () => {
-    // Slide 5 of the demo plans 06:30 → 08:30, of 09:30 in all.
-    assert.equal(await text("#pace-window"), "06:30 – 08:30");
+    // Slide 5 of the demo plans 06:30 → 08:30, of a 10 minute talk planned to 09:30.
+    assert.equal(await text("#pace-window"), "06:30–08:30");
+    assert.equal(await text("#pace-budget"), "10:00");
     assert.match(await page.$eval("#notes > :first-child", (e) => e.textContent), /^各位老师好/);
     const at = (s) => page.evaluate((s) => (window.pdfpcnic.state.timer = { startedAt: Date.now() - s * 1000, pausedAt: null, pausedFor: 0 }), s);
-    const shown = (sel) => page.$eval(sel, (e) => e.checkVisibility());
-    // Bars only, and words just for being off plan.
     await at(540);
     await new Promise((r) => setTimeout(r, 400));
     assert.match(await text("#pace-slide-text"), /^3\d s over$/);
     assert.match(await page.$eval("#pace-fill", (e) => e.className), /t-late/);
-    assert.equal(await text("#pace-talk-text"), "");
-    assert.equal(await shown("#pace-window"), false);
+    assert.match(await text("#pace-left"), /^(1:00|59 s) left$/);
+    // The plan's end moves out by the time over, toward the 10 minute mark.
+    const shift = await page.$eval("#talkbar .shift", (e) => ({ hidden: e.hidden, late: e.classList.contains("t-late"), w: e.offsetWidth }));
+    assert.deepEqual([shift.hidden, shift.late, shift.w > 0], [false, true, true]);
     await page.screenshot({ path: `${out}/pace-late.png` });
     await at(420);
     await new Promise((r) => setTimeout(r, 400));
-    assert.equal(await text("#pace-slide-text"), "");
-    await page.screenshot({ path: `${out}/pace.png` });
-    // t (or a click on the bars) adds the details.
-    await press("t");
-    assert.equal(await shown("#pace-window"), true);
     assert.match(await text("#pace-slide-text"), /^1:[23]\d left$/);
-    assert.match(await text("#pace-talk-text"), /^ends ≈ 09:30$/);
-    await at(540);
-    await new Promise((r) => setTimeout(r, 400));
-    assert.match(await text("#pace-talk-text"), /^ends ≈ 10:0\d$/);
-    await page.screenshot({ path: `${out}/pace-detail.png` });
-    await page.click("#pace");
-    assert.equal(await shown("#pace-window"), false);
+    assert.match(await text("#pace-left"), /^3:0\d left$/);
+    assert.equal(await page.$eval("#talkbar .shift", (e) => e.hidden), true);
+    await page.screenshot({ path: `${out}/pace.png` });
   });
 
   await check("clicking the clock pauses and resumes the timer", async () => {
@@ -283,10 +275,32 @@ try {
     const [before, room] = [await box(), await notes()];
     await press("[");
     assert.ok((await box()) < before && (await notes()) > room, "[ didn't shrink the slide");
-    await press("]", "]");
-    assert.ok((await box()) > before, "] didn't grow the slide");
-    await press("[");
+    await press("]");
     assert.equal(await box(), before);
+  });
+
+  await check("settings: slide and notes sizes, and back to defaults", async () => {
+    await page.click('.toolbar [data-action="settings"]');
+    assert.equal(await page.$eval("#settings", (e) => e.open), true);
+    assert.equal(await page.$eval("#set-stage + output", (e) => e.textContent), "100%");
+    const width = () => page.$eval("#current", (e) => e.getBoundingClientRect().width);
+    const before = await width();
+    const set = (id, v) =>
+      page.$eval(id, (e, v) => {
+        e.value = v;
+        e.dispatchEvent(new Event("input"));
+      }, v);
+    await set("#set-stage", 70);
+    await set("#set-notes", 30);
+    assert.ok(Math.abs((await width()) / before - 0.7) < 0.02, "slide didn't shrink to 70%");
+    assert.equal(await page.$eval("#notes", (e) => getComputedStyle(e).fontSize), "30px");
+    // Keys belong to the dialog while it's open.
+    await press("ArrowRight");
+    assert.equal((await state()).page, 6);
+    await page.click("#set-defaults");
+    assert.equal(await width(), before);
+    await press("Escape");
+    assert.equal(await page.$eval("#settings", (e) => e.open), false);
   });
 
   await check("help sheet", async () => {

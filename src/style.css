@@ -367,42 +367,31 @@ kbd {
   border-color: var(--dim);
 }
 
-/* Pace: this slide's planned window and the talk's, as bars. Words only
-   when off plan, unless the details are on (t). One grid for both rows, so
-   the bars line up. */
+/* Pace: a row for this slide and one for the talk, each a label with one
+   number over a bar. */
 .pace {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px 14px;
-  margin-top: 14px;
-  cursor: pointer;
-}
-.pace-row {
-  display: contents;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 16px;
 }
 .pace-head {
-  grid-column: 1 / -1;
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-top: 6px;
-  font-size: clamp(15px, 1.25vw, 22px);
+  gap: 12px;
+  margin-bottom: 7px;
+  white-space: nowrap;
 }
-.pace:not(.detail) .pace-head {
-  display: none;
-}
-.pace-head > :first-child {
+.pace-label {
   color: var(--dim);
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: clamp(13px, 1vw, 17px);
 }
-/* Wide enough for "1:20 early", so the bars keep their length as it comes and goes. */
-.pace-text {
-  min-width: 5.2em;
-  font-size: clamp(15px, 1.25vw, 22px);
-  text-align: right;
+.pace-label span {
+  margin-left: 6px;
+}
+.pace-num {
+  font-size: clamp(17px, 1.5vw, 28px);
 }
 .bar {
   position: relative;
@@ -429,11 +418,16 @@ kbd {
 .talkbar .seg.done {
   background: #636366;
 }
-#talk-spent {
-  left: 0;
-}
 .talkbar .seg.current {
   background: var(--accent);
+}
+/* From the planned end to where the talk now looks set to end. */
+.talkbar .shift {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  background: currentColor;
+  opacity: 0.85;
 }
 .talkbar .now,
 .talkbar .budget {
@@ -447,6 +441,9 @@ kbd {
 .talkbar .budget {
   background: var(--over);
   opacity: 0.8;
+}
+.t-idle {
+  color: var(--dim);
 }
 .t-early {
   color: var(--ahead);
@@ -662,6 +659,62 @@ kbd {
   margin: 18px 0 0;
   color: var(--dim);
   font-size: 13px;
+}
+
+.settings {
+  width: min(520px, calc(100vw - 32px));
+  padding: 22px 26px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--fg);
+}
+.settings::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+.settings h2 {
+  margin: 0 0 16px;
+  font-weight: 500;
+}
+.setting {
+  display: grid;
+  grid-template-columns: 8.5em minmax(0, 1fr) 4em auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.setting input {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.setting output {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.settings-foot {
+  margin: 14px 0 0;
+  color: var(--dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.settings-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+}
+.settings-actions button {
+  padding: 7px 14px;
+  border: 1px solid #3a3a3c;
+  border-radius: 9px;
+  background: #2c2c2e;
+  cursor: pointer;
+}
+.settings-actions .primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #000;
+  font-weight: 600;
 }
 
 .goto {

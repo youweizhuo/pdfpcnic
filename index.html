@@ -54,16 +54,20 @@
             <span id="timer-mode"></span>
             <button id="timer-reset" type="button" hidden>Reset to 0:00:00</button>
           </p>
-          <div id="pace" class="pace" title="Click for more or less detail (t)">
-            <div id="pace-slide" class="pace-row">
-              <div class="pace-head"><span>This slide</span><span id="pace-window"></span></div>
+          <div id="pace" class="pace">
+            <div id="pace-slide">
+              <div class="pace-head">
+                <span class="pace-label">Slide <span id="pace-window"></span></span>
+                <span id="pace-slide-text" class="pace-num"></span>
+              </div>
               <div class="bar"><div id="pace-fill" class="fill"></div></div>
-              <span id="pace-slide-text" class="pace-text"></span>
             </div>
-            <div id="pace-talk" class="pace-row">
-              <div class="pace-head"><span>Talk</span><span id="pace-left"></span></div>
+            <div id="pace-talk">
+              <div class="pace-head">
+                <span class="pace-label">Talk <span id="pace-budget"></span></span>
+                <span id="pace-left" class="pace-num"></span>
+              </div>
               <div id="talkbar" class="bar talkbar"></div>
-              <span id="pace-talk-text" class="pace-text"></span>
             </div>
           </div>
         </section>
@@ -76,7 +80,8 @@
           <button type="button" data-action="freeze">Freeze <kbd>f</kbd></button>
           <button type="button" data-action="overview">Overview <kbd>Tab</kbd></button>
           <button type="button" data-action="fullscreen">Fullscreen <kbd>w</kbd></button>
-          <button type="button" data-action="help">Keys <kbd>?</kbd></button>
+          <button type="button" data-action="settings">Settings <kbd>,</kbd></button>
+          <button type="button" data-action="help">Help <kbd>?</kbd></button>
           <button type="button" id="open-files">Open…</button>
         </nav>
       </aside>
@@ -92,11 +97,40 @@
 
     <section id="help" class="help" hidden>
       <div class="help-card">
-        <h2>Keys</h2>
+        <h2>Help</h2>
         <div id="help-grid" class="help-grid"></div>
         <p class="help-foot">Same keys as pdfpc. Click or right-click the audience window to step; double-click it for fullscreen.</p>
       </div>
     </section>
+
+    <dialog id="settings" class="settings">
+      <form method="dialog">
+        <h2>Settings</h2>
+        <label class="setting">
+          <span>Current slide</span>
+          <input id="set-stage" type="range" min="50" max="100" step="5" />
+          <output for="set-stage"></output>
+          <kbd>[ ]</kbd>
+        </label>
+        <label class="setting">
+          <span>Notes text</span>
+          <input id="set-notes" type="range" min="12" max="72" step="2" />
+          <output for="set-notes"></output>
+          <kbd>+ −</kbd>
+        </label>
+        <label class="setting">
+          <span>Laser dot</span>
+          <input id="set-laser" type="range" min="1" max="20" step="0.5" />
+          <output for="set-laser"></output>
+          <kbd>+ −</kbd>
+        </label>
+        <p class="settings-foot">Saved in this browser. While the laser is on, <kbd>+</kbd> and <kbd>−</kbd> size its dot instead of the notes.</p>
+        <div class="settings-actions">
+          <button id="set-defaults" type="button">Restore defaults</button>
+          <button class="primary" autofocus>Done</button>
+        </div>
+      </form>
+    </dialog>
 
     <dialog id="goto" class="goto">
       <form method="dialog">

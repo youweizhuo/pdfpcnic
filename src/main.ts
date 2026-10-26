@@ -86,7 +86,6 @@ class Presenter {
   private stripSlide = -1;
   private laserSize = store.pref("laserSize", 0.035);
   private notesSize: number;
-  private paceDetail = store.pref("paceDetail", false);
 
   constructor(
     readonly deck: Deck,
@@ -114,7 +113,7 @@ class Presenter {
       help: false,
       solo: false,
     };
-    this.notesSize = store.pref<number | null>("notesSize", null) ?? (deck.noteFontSize ? Math.round((deck.noteFontSize * 4) / 3) : 24);
+    this.notesSize = store.pref<number | null>("notesSize", null) ?? this.deckNotesSize;
 
     const first = deck.pages[0];
     document.documentElement.style.setProperty("--aspect", `${first.width} / ${first.height}`);
@@ -129,8 +128,7 @@ class Presenter {
     $("start").hidden = true;
     $("presenter").hidden = false;
     this.applySplit(store.pref("split", 0.62));
-    this.applyStage(store.pref("stage", 0.85));
-    $("pace").classList.toggle("detail", this.paceDetail);
+    this.applyStage(store.pref("stage", 1));
     this.current.start();
     this.next.start();
     this.buildStrip();
@@ -255,14 +253,8 @@ class Presenter {
       case "bigger":
       case "smaller": {
         const f = action === "bigger" ? 1 : -1;
-        if (s.laser) {
-          this.laserSize = Math.min(0.2, Math.max(0.01, this.laserSize * (f > 0 ? 1.2 : 1 / 1.2)));
-          store.setPref("laserSize", this.laserSize);
-        } else {
-          this.notesSize = Math.min(72, Math.max(12, this.notesSize + 2 * f));
-          document.documentElement.style.setProperty("--notes", `${this.notesSize}px`);
-          store.setPref("notesSize", this.notesSize);
-        }
+        if (s.laser) this.setLaserSize(this.laserSize * (f > 0 ? 1.2 : 1 / 1.2));
+        else this.setNotesSize(this.notesSize + 2 * f);
         break;
       }
       case "freeze":
@@ -321,15 +313,13 @@ class Presenter {
         return;
       case "slideSmaller":
       case "slideBigger":
-        this.applyStage(this.stage + (action === "slideBigger" ? 0.05 : -0.05));
-        store.setPref("stage", this.stage);
+        this.setStage(this.stage + (action === "slideBigger" ? 0.05 : -0.05));
         toast(`Current slide at ${Math.round(this.stage * 100)}% of its column.`, "info", 1500);
         return;
-      case "paceDetail":
-        this.paceDetail = !this.paceDetail;
-        store.setPref("paceDetail", this.paceDetail);
-        $("pace").classList.toggle("detail", this.paceDetail);
-        return this.renderTimer();
+      case "settings":
+        this.syncSettings();
+        $<HTMLDialogElement>("settings").showModal();
+        return;
     }
     this.render();
   }
@@ -337,7 +327,8 @@ class Presenter {
   // Input
 
   onKey(e: KeyboardEvent): void {
-    if (e.target instanceof HTMLInputElement) return;
+    // Dialogs (go to, settings) keep their keys.
+    if (e.target instanceof HTMLInputElement || document.querySelector("dialog[open]")) return;
     if (this.state.overview && this.overviewKey(e)) {
       e.preventDefault();
       return;
@@ -374,7 +365,6 @@ class Presenter {
     $("next").addEventListener("click", () => this.act("nextSlide"), { signal });
     $("timer").addEventListener("click", () => this.act("timerPause"), { signal });
     $("timer-reset").addEventListener("click", () => this.act("timerReset"), { signal });
-    $("pace").addEventListener("click", () => this.act("paceDetail"), { signal });
 
     for (const b of document.querySelectorAll<HTMLButtonElement>(".toolbar [data-action]")) {
       b.addEventListener(
@@ -387,6 +377,34 @@ class Presenter {
       );
     }
     $("help").addEventListener("click", () => this.act("help"), { signal });
+
+    const settings = $<HTMLDialogElement>("settings");
+    settings.addEventListener("click", (e) => e.target === settings && settings.close(), { signal });
+    const range = (id: string, set: (value: number) => void) =>
+      $<HTMLInputElement>(id).addEventListener(
+        "input",
+        (e) => {
+          set(Number((e.target as HTMLInputElement).value));
+          this.syncSettings();
+        },
+        { signal },
+      );
+    range("set-stage", (v) => this.setStage(v / 100));
+    range("set-notes", (v) => this.setNotesSize(v));
+    range("set-laser", (v) => this.setLaserSize(v / 100));
+    $("set-defaults").addEventListener(
+      "click",
+      () => {
+        this.setStage(1);
+        this.setNotesSize(this.deckNotesSize);
+        store.setPref("notesSize", null);
+        this.setLaserSize(0.035);
+        this.applySplit(0.62);
+        store.setPref("split", this.split);
+        this.syncSettings();
+      },
+      { signal },
+    );
 
     const split = $("split");
     split.addEventListener(
@@ -436,10 +454,42 @@ class Presenter {
   }
 
   /** Current slide width as a share of its column; what it gives up goes to the notes. */
-  private stage = 0.85;
+  private stage = 1;
   private applyStage(f: number): void {
     this.stage = Math.min(1, Math.max(0.5, Math.round(f * 20) / 20));
     document.documentElement.style.setProperty("--stage", String(this.stage));
+  }
+  private setStage(f: number): void {
+    this.applyStage(f);
+    store.setPref("stage", this.stage);
+  }
+
+  /** Notes size the .pdfpc file asks for, in px. */
+  private get deckNotesSize(): number {
+    return this.deck.noteFontSize ? Math.round((this.deck.noteFontSize * 4) / 3) : 24;
+  }
+  private setNotesSize(px: number): void {
+    this.notesSize = Math.min(72, Math.max(12, px));
+    document.documentElement.style.setProperty("--notes", `${this.notesSize}px`);
+    store.setPref("notesSize", this.notesSize);
+  }
+
+  /** Laser dot size, as a share of the slide's height. */
+  private setLaserSize(f: number): void {
+    this.laserSize = Math.min(0.2, Math.max(0.01, f));
+    store.setPref("laserSize", this.laserSize);
+  }
+
+  private syncSettings(): void {
+    const show = (id: string, value: number, text: string) => {
+      const input = $<HTMLInputElement>(id);
+      input.value = String(value);
+      input.nextElementSibling!.textContent = text;
+    };
+    show("set-stage", Math.round(this.stage * 100), `${Math.round(this.stage * 100)}%`);
+    show("set-notes", this.notesSize, `${this.notesSize} px`);
+    const laser = Math.round(this.laserSize * 200) / 2;
+    show("set-laser", laser, `${laser}%`);
   }
 
   // Rendering
@@ -581,100 +631,100 @@ class Presenter {
 
   /** Each slide's planned window, from its first page that has one. */
   private plans: Array<Plan | null> = [];
-  /** Planned length of the talk proper in seconds, 0 when nothing is planned. */
+  /** Whether any note has a timing line. */
+  private timed = false;
+  /** Planned length of the talk proper in seconds, from the timing lines. */
   private planned = 0;
   private segs: HTMLElement[] = [];
   private barScale = 0;
 
-  /** The talk bar: one segment per planned slide, as long as its window. */
+  /** The talk bar: one segment per slide with a planned window. */
   private buildTalkbar(): void {
     const d = this.deck;
     this.plans = d.slides.map((pages) => pages.map((p) => d.pages[p].plan).find((p) => p !== null) ?? null);
+    this.timed = this.plans.some(Boolean);
     const main = this.plans.slice(0, this.state.endSlide + 1);
     this.planned = Math.max(0, ...main.map((p) => p?.end ?? 0));
     this.segs = [];
     main.forEach((p, slide) => {
-      if (p && p.end > p.start) this.segs[slide] = el("div", "seg");
+      if (!this.timed || (p && p.end > p.start)) this.segs[slide] = el("div", "seg");
     });
-    // Without a plan, the bar fills with the time spent.
-    const spent = el("div", "seg done");
-    spent.id = "talk-spent";
-    spent.hidden = this.planned > 0;
-    $("talkbar").replaceChildren(...this.segs.filter(Boolean), spent, el("div", "budget"), el("div", "now"));
+    $("talkbar").replaceChildren(...this.segs.filter(Boolean), el("div", "shift"), el("div", "budget"), el("div", "now"));
     this.barScale = 0;
+  }
+
+  /** A slide's planned window. Without timing lines, the talk's length is split evenly over the slides. */
+  private planOf(slide: number, length: number): Plan | null {
+    const n = this.state.endSlide + 1;
+    if (slide >= n) return null;
+    if (this.timed) return this.plans[slide];
+    return length ? { start: (slide * length) / n, end: ((slide + 1) * length) / n } : null;
   }
 
   private renderPace(now: number): void {
     const s = this.state;
     const slide = this.deck.pages[s.page].slide;
-    const talk = this.talk();
-    const length = Math.round(T.talkLength(s.timer, talk, now) / 1000);
+    const length = Math.round(T.talkLength(s.timer, this.talk(), now) / 1000);
     const at = T.elapsed(s.timer, now) / 1000;
     const started = s.timer.startedAt !== null;
-    const planned = this.planned > 0;
-    // Without details, words only for being off plan.
-    const detail = this.paceDetail;
-    $("pace").hidden = !planned && !length;
+    const planned = this.timed ? this.planned : length;
+    $("pace").hidden = !planned;
+    if (!planned) return;
 
-    // This slide: its window, how much of it has gone, and how far off it you are.
-    const plan = slide <= s.endSlide ? this.plans[slide] : null;
+    // This slide: a bar across its window, and the time left in it or how far off it you are.
+    const plan = this.planOf(slide, length);
     $("pace-slide").hidden = !plan;
     const where = plan && started ? against(plan, at) : null;
     if (plan) {
       const tone = where?.tone ?? "on";
-      $("pace-window").textContent = plan.end > plan.start ? `${mark(plan.start)} – ${mark(plan.end)}` : `at ${mark(plan.start)}`;
+      $("pace-window").textContent = plan.end > plan.start ? `${mark(plan.start)}–${mark(plan.end)}` : `at ${mark(plan.start)}`;
       const fill = $("pace-fill");
       fill.style.width = `${(where?.fill ?? 0) * 100}%`;
       fill.className = `fill t-${tone}`;
       const text = $("pace-slide-text");
-      text.className = `pace-text t-${tone}`;
+      text.className = `pace-num t-${where ? tone : "idle"}`;
       text.textContent = !where
-        ? detail
-          ? `${span(plan.end - plan.start)} planned`
-          : ""
+        ? span(plan.end - plan.start)
         : tone === "late"
           ? `${span(where.offset)} over`
           : tone === "early"
             ? `${span(where.offset)} early`
-            : detail
-              ? `${span(plan.end - at)} left`
-              : "";
+            : `${span(plan.end - at)} left`;
     }
 
-    // The talk: time left, and where you stand on the bar.
+    // The talk: time left of its length (or of the plan).
+    const budget = length || planned;
+    $("pace-budget").textContent = mark(budget);
     const left = $("pace-left");
-    left.textContent = !length ? `${span(this.planned)} planned` : at <= length ? `${span(length - at)} left` : `${span(at - length)} over`;
-    left.className = length && at > length ? "t-over" : "";
-    const text = $("pace-talk-text");
-    if (planned) {
-      // The rest of the talk as planned, shifted by how far off this slide you are.
-      const offset = where?.offset ?? 0;
-      text.textContent = !detail ? "" : plan ? `ends ≈ ${mark(this.planned + offset)}` : slide > s.endSlide ? "backup" : "";
-      text.className = `pace-text ${offset > 0 ? "t-late" : offset < 0 ? "t-early" : ""}`;
-    } else {
-      // pdfpc's rule: against an even pace through the slides, a minute's leeway.
-      const drift = T.drift(s.timer, talk, now) / 1000;
-      const off = started && Math.abs(drift) >= 60;
-      text.textContent = !started ? "" : off ? `${span(drift)} ${drift > 0 ? "behind" : "ahead"}` : detail ? "on pace" : "";
-      text.className = `pace-text ${off ? (drift > 0 ? "t-late" : "t-early") : ""}`;
-    }
+    left.textContent = at <= budget ? `${span(budget - at)} left` : `${span(at - budget)} over`;
+    left.className = `pace-num ${at > budget ? "t-over" : started ? "" : "t-idle"}`;
 
     const bar = $("talkbar");
-    const scale = Math.max(this.planned, length) || 1;
+    // Some room past the end, for the plan's end to move into.
+    const scale = Math.max(Math.max(planned, length) * 1.06, at);
+    const x = (t: number) => Math.min(1, Math.max(0, t / scale)) * 100;
     if (scale !== this.barScale) {
       this.barScale = scale;
-      const pct = (x: number) => `${(Math.min(1, x / scale) * 100).toFixed(3)}%`;
       this.segs.forEach((seg, i) => {
-        const p = this.plans[i]!;
-        seg.style.left = pct(p.start);
-        seg.style.width = pct(p.end - p.start);
+        const p = this.planOf(i, length)!;
+        seg.style.left = `${x(p.start)}%`;
+        seg.style.width = `${x(p.end) - x(p.start)}%`;
       });
-      const budget = bar.querySelector<HTMLElement>(".budget")!;
-      budget.hidden = !(planned && length);
-      budget.style.left = pct(length);
+      const tick = bar.querySelector<HTMLElement>(".budget")!;
+      tick.hidden = !length || length === planned;
+      tick.style.left = `${x(length)}%`;
     }
-    bar.querySelector<HTMLElement>(".now")!.style.left = `${Math.min(1, at / scale) * 100}%`;
-    if (!planned) $("talk-spent").style.width = `${Math.min(1, at / scale) * 100}%`;
+    bar.querySelector<HTMLElement>(".now")!.style.left = `${x(at)}%`;
+    // Where the plan now ends: moved by how far you are off this slide.
+    const offset = where?.offset ?? 0;
+    const shift = bar.querySelector<HTMLElement>(".shift")!;
+    shift.hidden = !offset;
+    if (offset) {
+      const [from, to] = [x(Math.min(planned, planned + offset)), x(Math.max(planned, planned + offset))];
+      shift.className = `shift ${offset > 0 ? "t-late" : "t-early"}`;
+      shift.style.left = `${from}%`;
+      shift.style.width = `${to - from}%`;
+    }
   }
 
   private renderStatus(): void {

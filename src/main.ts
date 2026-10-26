@@ -96,7 +96,7 @@ class Presenter {
   private overviewItems: HTMLElement[] = [];
   private observers = new Map<HTMLElement, IntersectionObserver>();
   private abort = new AbortController();
-  private tick = 0;
+  private stopTicking = () => {};
   private saveTimer = 0;
   private notesPage = -1;
   private stripSlide = -1;
@@ -154,13 +154,13 @@ class Presenter {
     this.buildStrip();
     this.buildTalkbar();
     this.wire();
-    this.tick = window.setInterval(() => this.renderTimer(), 250);
+    this.stopTicking = ticker(250, () => this.renderTimer());
     this.render();
   }
 
   dispose(): void {
     this.abort.abort();
-    clearInterval(this.tick);
+    this.stopTicking();
     clearTimeout(this.saveTimer);
     this.observers.forEach((o) => o.disconnect());
     this.observers.clear();
@@ -1040,6 +1040,28 @@ class Presenter {
         savedAt: Date.now(),
       });
     }, 300);
+  }
+}
+
+/**
+ * Calls `tick` every `ms`. The beat comes from a worker: a window the browser
+ * takes for hidden (on a Mac, the presenter while the audience is fullscreen
+ * on the other screen, say) has its timers slowed to once a second, then once
+ * a minute, but not its messages.
+ */
+function ticker(ms: number, tick: () => void): () => void {
+  try {
+    const src = `setInterval(() => postMessage(0), ${ms});`;
+    const url =
+      location.protocol === "file:"
+        ? `data:text/javascript,${encodeURIComponent(src)}`
+        : URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
+    const worker = new Worker(url);
+    worker.onmessage = tick;
+    return () => worker.terminate();
+  } catch {
+    const id = window.setInterval(tick, ms);
+    return () => clearInterval(id);
   }
 }
 

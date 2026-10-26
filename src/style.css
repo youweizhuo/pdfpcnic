@@ -183,7 +183,7 @@ kbd {
 .slidebar-track {
   height: 6px;
   border-radius: 0 0 3px 3px;
-  background: var(--panel);
+  background: #3a3a3c;
 }
 .slide-fill {
   height: 100%;

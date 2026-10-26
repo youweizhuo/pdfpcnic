@@ -281,41 +281,39 @@ kbd {
   min-height: 0;
   overflow: hidden;
 }
-/* What the audience isn't seeing as it is, over the corner of the current
-   slide (laid over it in the same grid area, as wide). */
-.badges {
+/* When the audience isn't seeing your current slide: a card over its middle. */
+.audience-state {
   grid-area: current;
   justify-self: center;
-  align-self: start;
+  align-self: center;
   z-index: 1;
   display: flex;
-  justify-content: flex-end;
-  gap: 6px;
-  width: calc(var(--stage) * 100%);
-  padding: 10px;
-  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  max-width: 90%;
+  padding: 16px 28px;
+  border: 2px solid var(--fg);
+  border-radius: 16px;
+  background: rgb(0 0 0 / 0.9);
+  box-shadow: 0 10px 40px rgb(0 0 0 / 0.6);
+  backdrop-filter: blur(6px);
+  text-align: center;
   pointer-events: none;
 }
-.badge {
-  padding: 4px 8px;
-  box-shadow: 0 2px 10px rgb(0 0 0 / 0.5);
-  border-radius: 6px;
-  background: var(--line);
-  color: var(--fg);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+.audience-state strong {
+  font-size: clamp(20px, 2.2vw, 38px);
+  font-weight: 600;
 }
-.badge.b-black {
-  background: #f5f5f7;
-  color: #000;
+.audience-state span {
+  color: var(--dim);
+  font-size: clamp(14px, 1.1vw, 18px);
 }
-.badge.b-frozen {
-  background: var(--ahead);
-  color: #000;
+.audience-state.frozen {
+  border-color: var(--ahead);
 }
-.badge.b-laser {
-  background: var(--laser);
+.audience-state.frozen strong {
+  color: var(--ahead);
 }
 
 /* All of the time in one place: the clock, then the pace bars. */
@@ -342,10 +340,6 @@ kbd {
 }
 .timer.idle {
   color: var(--dim);
-}
-#wallclock {
-  font-size: clamp(17px, 1.5vw, 28px);
-  font-weight: 300;
 }
 .counter {
   display: flex;
@@ -385,10 +379,10 @@ kbd {
   border-color: var(--dim);
 }
 
-/* Pace: a line for this slide and one for the talk, then the talk as one bar. */
+/* Pace: a line for this slide and one for all of them, over the talk bar. */
 .pace {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: baseline;
   gap: 4px 10px;
   margin-top: 16px;
@@ -397,20 +391,21 @@ kbd {
 .pace-row {
   display: contents;
 }
-.pace-label,
-.pace-plan {
+.pace-label {
   color: var(--dim);
-  font-size: clamp(13px, 1vw, 17px);
+  font-size: clamp(14px, 1.1vw, 18px);
 }
 .pace-num {
   font-size: clamp(17px, 1.5vw, 28px);
   text-align: right;
 }
+/* Two rows against the same clock: the slides as planned on top, time spent
+   under them in the color of the pace, and the target end as a red line. */
 .talkbar {
   grid-column: 1 / -1;
   position: relative;
-  height: 16px;
-  margin-top: 10px;
+  height: 22px;
+  margin-top: 12px;
   border-radius: 3px;
   background: var(--panel);
 }
@@ -419,30 +414,39 @@ kbd {
   top: 0;
   bottom: 0;
 }
-.talkbar .spent {
-  left: 0;
-  border-radius: 3px 0 0 3px;
-  background: #8e8e93;
+.talkbar .past {
+  right: 0;
+  border-radius: 0 3px 3px 0;
+  background: rgb(255 69 58 / 0.12);
 }
 .talkbar .seg {
+  bottom: auto;
+  height: 12px;
   background: #48484a;
   box-shadow: inset -1px 0 0 #000;
 }
 .talkbar .seg.current {
-  min-width: 5px;
   background: var(--accent);
 }
-/* Past the talk's length: laid over the slides that won't fit. */
-.talkbar .overrun {
-  right: 0;
-  background: rgb(255 69 58 / 0.55);
+.talkbar .spent {
+  top: auto;
+  left: 0;
+  height: 8px;
+  border-radius: 0 0 0 3px;
+  background: #d1d1d6;
 }
-.talkbar .now {
+.talkbar .spent.t-late {
+  background: var(--behind);
+}
+.talkbar .spent.t-early {
+  background: var(--ahead);
+}
+.talkbar .target {
   top: -5px;
   bottom: -5px;
   width: 2px;
   margin-left: -1px;
-  background: var(--fg);
+  background: var(--over);
 }
 .t-idle {
   color: var(--dim);
@@ -459,7 +463,7 @@ kbd {
 .hintline {
   margin: 0;
   color: var(--dim);
-  font-size: 13px;
+  font-size: clamp(15px, 1.1vw, 18px);
   line-height: 1.4;
 }
 .hintline:empty {
@@ -470,34 +474,40 @@ kbd {
 }
 .toolbar {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: auto -8px 0;
-  transition: opacity 0.4s;
-}
-.presenter.quiet .toolbar:not(:hover, :focus-within) {
-  opacity: 0;
-}
-.tools {
-  display: flex;
   flex-wrap: wrap;
-  gap: 2px;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
 }
 .toolbar button {
-  padding: 5px 8px;
-  border: 0;
-  border-radius: 7px;
-  background: none;
-  color: var(--dim);
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel);
+  color: #c7c7cc;
+  font-size: 15px;
   cursor: pointer;
 }
 .toolbar button:hover {
-  background: var(--panel);
+  border-color: var(--faint);
   color: var(--fg);
 }
 .toolbar button.on {
+  border-color: var(--accent);
   color: var(--accent);
+}
+.toolbar kbd {
+  font-size: 12px;
+}
+.wallclock {
+  margin-left: auto;
+  color: var(--dim);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
 }
 
 .strip {
@@ -537,6 +547,24 @@ kbd {
 }
 .strip li.current .num {
   color: var(--accent);
+}
+.strip li {
+  position: relative;
+}
+.strip li.frozen canvas {
+  outline: 3px solid var(--ahead);
+}
+.strip li.frozen::after {
+  content: "audience";
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--ahead);
+  color: #000;
+  font-size: 11px;
+  font-weight: 600;
 }
 .strip li.hidden canvas,
 .overview-grid li.hidden canvas {
@@ -611,7 +639,8 @@ kbd {
   background: rgb(0 0 0 / 0.8);
 }
 .help-card {
-  max-width: 1120px;
+  box-sizing: border-box;
+  width: min(1180px, 100%);
   max-height: 90dvh;
   padding: 24px 28px;
   overflow: auto;
@@ -679,22 +708,26 @@ kbd {
   height: 12px;
   border-radius: 2px;
 }
-.sw.spent {
-  background: #8e8e93;
-  box-shadow: inset -2px 0 0 var(--fg);
-}
 .sw.this {
   background: var(--accent);
 }
 .sw.next {
   background: #48484a;
 }
-.sw.spare {
-  background: var(--panel);
-  outline: 1px solid var(--line);
+.sw.target {
+  width: 2px;
+  height: 18px;
+  margin-left: 0.6em;
+  background: var(--over);
 }
-.sw.over {
-  background: rgb(255 69 58 / 0.55);
+.sw.on {
+  background: #d1d1d6;
+}
+.sw.late {
+  background: var(--behind);
+}
+.sw.early {
+  background: var(--ahead);
 }
 .help-foot {
   margin: 18px 0 0;

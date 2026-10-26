@@ -138,7 +138,7 @@ try {
     assert.match(await text("#counter-sub"), /step 1\/3/);
     // Each step here has a window of its own; the talk bar spans all three.
     await press("ArrowRight");
-    assert.equal(await text("#pace-window"), "03:30–04:10");
+    assert.equal(await page.$eval("#pace-slide", (e) => e.title), "Planned 03:30–04:10");
     await press("ArrowLeft");
     await press("Shift+PageDown");
     assert.equal((await state()).page, 5);
@@ -186,6 +186,9 @@ try {
     const s = await state();
     assert.equal(s.frozen, 6);
     assert.equal(s.page, 8);
+    // Said over the current slide, and marked in the strip.
+    assert.equal(await text("#audience-state strong"), "Audience frozen on slide 5");
+    assert.equal(await page.$eval("#strip li.frozen .num", (e) => e.textContent), "5");
     await press("f");
     assert.equal((await state()).frozen, null);
   });
@@ -193,9 +196,10 @@ try {
   await check("black screen covers the audience", async () => {
     await press("b");
     assert.equal(await audience.$eval("#black", (e) => e.hidden), false);
-    assert.equal(await text("#badges"), "BLACK");
+    assert.equal(await text("#audience-state strong"), "Audience screen is black");
     await press("b");
     assert.equal(await audience.$eval("#black", (e) => e.hidden), true);
+    assert.equal(await page.$eval("#audience-state", (e) => e.hidden), true);
   });
 
   await check("laser follows the mouse onto the audience", async () => {
@@ -232,31 +236,36 @@ try {
 
   await check("a note's timing line becomes the pace panel", async () => {
     // Slide 5 of the demo plans 06:30 → 08:30, of a 10 minute talk planned to 09:30.
-    assert.equal(await text("#pace-window"), "06:30–08:30");
-    assert.equal(await text("#pace-budget"), "10:00");
+    assert.equal(await page.$eval("#pace-slide", (e) => e.title), "Planned 06:30–08:30");
+    assert.equal(await page.$eval("#pace-all", (e) => e.title), "Planned to end at 09:30; target 10:00");
     assert.match(await page.$eval("#notes > :first-child", (e) => e.textContent), /^各位老师好/);
     const at = (s) => page.evaluate((s) => (window.pdfpcnic.state.timer = { startedAt: Date.now() - s * 1000, pausedAt: null, pausedFor: 0 }), s);
-    const overrun = () => page.$eval("#talkbar .overrun", (e) => e.hidden);
-    // A minute late: the slide to come no longer fits before 10:00.
+    const fill = () => page.$eval("#talkbar .spent", (e) => e.className);
+    // A minute behind on this slide: the talk ends 30 s past 10:00.
     await at(570);
     await new Promise((r) => setTimeout(r, 400));
     assert.match(await text("#pace-slide-text"), /^1:0\d over$/);
     assert.match(await page.$eval("#pace-slide-text", (e) => e.className), /t-late/);
-    assert.match(await text("#pace-left"), /^(30|29) s left$/);
-    assert.equal(await overrun(), false);
+    assert.match(await text("#pace-all-text"), /^3\d s late$/);
+    assert.match(await fill(), /t-late/);
     await page.screenshot({ path: `${out}/pace-late.png` });
-    // On time: the last slide sits where it's planned, 08:30–09:30 of 10:00.
+    // On time: the plan's 30 s of spare time stands.
     await at(420);
     await new Promise((r) => setTimeout(r, 400));
     assert.match(await text("#pace-slide-text"), /^1:[23]\d left$/);
-    assert.match(await text("#pace-left"), /^3:0\d left$/);
-    assert.equal(await overrun(), true);
-    const last = await page.$$eval("#talkbar .seg:not([hidden])", (els) => {
-      const bar = els[0].parentElement.getBoundingClientRect();
-      const r = els.at(-1).getBoundingClientRect();
-      return [(r.left - bar.left) / bar.width, (r.right - bar.left) / bar.width];
+    assert.equal(await text("#pace-all-text"), "30 s early");
+    assert.match(await fill(), /t-on/);
+    // Fixed scale: 10:00 plus 10% room, so the target sits at 1/1.1 and the
+    // last slide (08:30–09:30) where planned.
+    const where = await page.$eval("#talkbar", (bar) => {
+      const b = bar.getBoundingClientRect();
+      const f = (e) => [(e.getBoundingClientRect().left - b.left) / b.width, (e.getBoundingClientRect().right - b.left) / b.width];
+      const segs = [...bar.querySelectorAll(".seg")];
+      return { target: f(bar.querySelector(".target")), last: f(segs.at(-1)) };
     });
-    assert.ok(Math.abs(last[0] - 0.85) < 0.01 && Math.abs(last[1] - 0.95) < 0.01, `last block at ${last}`);
+    const near = (a, b) => Math.abs(a - b) < 0.01;
+    assert.ok(near(where.target[0], 0.909), `target at ${where.target}`);
+    assert.ok(near(where.last[0], 510 / 660) && near(where.last[1], 570 / 660), `last slide at ${where.last}`);
     await page.screenshot({ path: `${out}/pace.png` });
   });
 
@@ -280,17 +289,6 @@ try {
     assert.match(await text("#timer-mode"), /next move/);
     await press("ArrowRight", "ArrowLeft");
     assert.ok((await state()).timer.startedAt > 0);
-  });
-
-  await check("the toolbar steps aside while the talk runs, until the mouse moves", async () => {
-    const quiet = () => page.$eval("#presenter", (e) => e.classList.contains("quiet"));
-    await page.mouse.move(900, 700);
-    await new Promise((r) => setTimeout(r, 300));
-    assert.equal(await quiet(), false);
-    await new Promise((r) => setTimeout(r, 3300));
-    assert.equal(await quiet(), true);
-    await page.mouse.move(920, 680);
-    assert.equal(await quiet(), false);
   });
 
   await check("[ and ] trade current-slide size for room for notes", async () => {

@@ -365,15 +365,6 @@ class Presenter {
     $("next").addEventListener("click", () => this.act("nextSlide"), { signal });
     $("timer").addEventListener("click", () => this.act("timerPause"), { signal });
     $("timer-reset").addEventListener("click", () => this.act("timerReset"), { signal });
-    document.addEventListener(
-      "pointermove",
-      () => {
-        if (this.state.laser) return;
-        this.moved = Date.now();
-        $("presenter").classList.remove("quiet");
-      },
-      { signal },
-    );
 
     for (const b of document.querySelectorAll<HTMLButtonElement>(".toolbar [data-action]")) {
       b.addEventListener(
@@ -552,11 +543,17 @@ class Presenter {
     }
     this.segs.forEach((seg, i) => seg.classList.toggle("current", i === here.slide));
 
-    const badges: Array<[string, string]> = [];
-    if (s.black) badges.push(["b-black", "BLACK"]);
-    if (s.frozen !== null) badges.push(["b-frozen", "FROZEN"]);
-    if (s.laser) badges.push(["b-laser", "LASER"]);
-    $("badges").replaceChildren(...badges.map(([c, t]) => el("span", `badge ${c}`, t)));
+    // When the audience isn't seeing your current slide, say so over it, and
+    // mark in the strip the slide it is frozen on.
+    const frozen = s.frozen === null ? null : d.pages[s.frozen].slide;
+    this.stripItems.forEach((li, i) => li.classList.toggle("frozen", i === frozen));
+    const card = $("audience-state");
+    card.hidden = !s.black && frozen === null;
+    card.className = `audience-state ${s.black ? "black" : "frozen"}`;
+    card.querySelector("strong")!.textContent = s.black ? "Audience screen is black" : `Audience frozen on slide ${frozen! + 1}`;
+    card.querySelector("span")!.textContent = s.black
+      ? `Press b to show slide ${(frozen ?? here.slide) + 1}${frozen === null ? "" : " (frozen)"}`
+      : `Press f to move it to slide ${here.slide + 1}`;
     this.renderStatus();
 
     const on: Partial<Record<Action, boolean>> = {
@@ -608,13 +605,7 @@ class Presenter {
     const now = Date.now();
     this.renderClock(now);
     this.renderPace(now);
-    const t = this.state.timer;
-    const running = t.startedAt !== null && t.pausedAt === null;
-    $("presenter").classList.toggle("quiet", running && now - this.moved > 3000);
   }
-
-  /** Last mouse move, other than pointing the laser: it brings back the toolbar. */
-  private moved = Date.now();
 
   /** Présentation.app's clock: time since the start, and the time of day. */
   private renderClock(now: number): void {
@@ -649,8 +640,9 @@ class Presenter {
   /** Planned length of the talk proper in seconds, from the timing lines. */
   private planned = 0;
   private segs: HTMLElement[] = [];
+  private barScale = 0;
 
-  /** The talk bar: one segment per slide with a planned window. */
+  /** The talk bar: one block per slide with a planned window. */
   private buildTalkbar(): void {
     const d = this.deck;
     this.plans = d.slides.map((pages) => {
@@ -664,7 +656,8 @@ class Presenter {
     main.forEach((p, slide) => {
       if (!this.timed || (p && p.end > p.start)) this.segs[slide] = el("div", "seg");
     });
-    $("talkbar").replaceChildren(el("div", "spent"), ...this.segs.filter(Boolean), el("div", "overrun"), el("div", "now"));
+    $("talkbar").replaceChildren(el("div", "past"), ...this.segs.filter(Boolean), el("div", "spent"), el("div", "target"));
+    this.barScale = 0;
   }
 
   /** A slide's planned window. Without timing lines, the talk's length is split evenly over the slides. */
@@ -684,15 +677,15 @@ class Presenter {
     const planned = this.timed ? this.planned : length;
     $("pace").hidden = !planned;
     if (!planned) return;
+    const target = length || planned;
 
-    // This slide: its window, and the time left in it or how far off it you are.
+    // This slide: the time left in its window, or how far off it you are.
     // A step with a window of its own (a forced overlay, say) goes by that.
-    const here = this.deck.pages[s.page].plan;
-    const plan = slide > s.endSlide ? null : (this.timed && here) || this.planOf(slide, length);
+    const own = this.deck.pages[s.page].plan;
+    const plan = slide > s.endSlide ? null : (this.timed && own) || this.planOf(slide, length);
     $("pace-slide").hidden = !plan;
     const where = plan && started ? against(plan, at) : null;
     if (plan) {
-      $("pace-window").textContent = plan.end > plan.start ? `${mark(plan.start)}–${mark(plan.end)}` : `at ${mark(plan.start)}`;
       const text = $("pace-slide-text");
       text.className = `pace-num t-${where?.tone ?? "idle"}`;
       text.textContent = !where
@@ -702,41 +695,36 @@ class Presenter {
           : where.tone === "early"
             ? `${span(where.offset)} early`
             : `${span(plan.end - at)} left`;
+      $("pace-slide").title = plan.end > plan.start ? `Planned ${mark(plan.start)}–${mark(plan.end)}` : `Planned at ${mark(plan.start)}`;
     }
 
-    // The talk: time left of its length (or of the plan).
-    const slot = length || planned;
-    $("pace-budget").textContent = mark(slot);
-    const left = $("pace-left");
-    left.textContent = at <= slot ? `${span(slot - at)} left` : `${span(at - slot)} over`;
-    left.className = `pace-num ${at > slot ? "t-over" : started ? "" : "t-idle"}`;
+    // All slides: where the talk ends at this pace (the plan, moved by how
+    // far you are off this slide), against the target end.
+    const finish = slide > s.endSlide && started ? at : planned + (where?.offset ?? 0);
+    const diff = Math.round(finish - target);
+    const all = $("pace-all-text");
+    all.textContent = diff < 0 ? `${span(diff)} early` : diff > 0 ? `${span(diff)} late` : "on time";
+    all.className = `pace-num ${!started ? "t-idle" : diff < 0 ? "t-early" : diff > 0 ? "t-late" : ""}`;
+    $("pace-all").title = `Planned to end at ${mark(planned)}; target ${mark(target)}`;
 
-    // The bar is the whole talk: time spent up to now, then what's left of the
-    // plan, moved by how far you are off this slide, so the last block ends
-    // where the talk will. Whatever runs past the talk's length is on red.
-    const offset = where?.offset ?? 0;
-    const blocks = this.segs.map((_, i) => {
-      if (i < slide) return null;
-      const p = this.planOf(i, length)!;
-      const end = p.end + offset;
-      return end > at || i === slide ? { from: Math.max(at, p.start + offset), to: Math.max(at, end) } : null;
-    });
-    const finish = blocks.reduce((m, b) => Math.max(m, b?.to ?? 0), at);
-    const scale = Math.max(slot, finish) || 1;
-    const x = (t: number) => `${((Math.min(t, scale) / scale) * 100).toFixed(3)}%`;
+    // The bar: fixed, with room past the target end. Time spent fills it,
+    // colored by how you stand against this slide's window.
     const bar = $("talkbar");
-    this.segs.forEach((seg, i) => {
-      const b = blocks[i];
-      seg.hidden = !b;
-      if (!b) return;
-      seg.style.left = x(b.from);
-      seg.style.width = `calc(${x(b.to)} - ${x(b.from)})`;
-    });
-    bar.querySelector<HTMLElement>(".spent")!.style.width = x(at);
-    bar.querySelector<HTMLElement>(".now")!.style.left = x(at);
-    const overrun = bar.querySelector<HTMLElement>(".overrun")!;
-    overrun.hidden = scale <= slot;
-    overrun.style.left = x(slot);
+    const scale = Math.max(target * 1.1, planned);
+    const x = (t: number) => `${((Math.min(Math.max(t, 0), scale) / scale) * 100).toFixed(3)}%`;
+    if (scale !== this.barScale) {
+      this.barScale = scale;
+      this.segs.forEach((seg, i) => {
+        const p = this.planOf(i, length)!;
+        seg.style.left = x(p.start);
+        seg.style.width = `calc(${x(p.end)} - ${x(p.start)})`;
+      });
+      bar.querySelector<HTMLElement>(".target")!.style.left = x(target);
+      bar.querySelector<HTMLElement>(".past")!.style.left = x(target);
+    }
+    const spent = bar.querySelector<HTMLElement>(".spent")!;
+    spent.style.width = x(at);
+    spent.className = `spent t-${where?.tone ?? "on"}`;
   }
 
   private renderStatus(): void {

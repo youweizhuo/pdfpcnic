@@ -148,8 +148,8 @@ kbd {
   color: inherit;
 }
 
-/* Presenter: Présentation.app's layout. Big clock over the current slide,
-   notes under it, the next slide beside it with the pace panel below,
+/* Presenter: Présentation.app's layout. The current slide with its notes
+   under it, the next slide beside it with the clock and pace below, and
    thumbnails down the right edge. */
 
 .presenter {
@@ -158,70 +158,10 @@ kbd {
   display: grid;
   padding: 18px 0 18px 28px;
   grid-template-columns: minmax(0, 62fr) 28px minmax(0, 38fr) clamp(120px, 12vw, 220px);
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas:
-    "head split sidehead strip"
     "current split side strip"
     "notes split side strip";
-}
-/* As wide as the current slide, so the counter sits over its corner. */
-.head {
-  grid-area: head;
-  display: flex;
-  align-items: flex-end;
-  gap: 18px;
-  width: calc(var(--stage) * 100%);
-  min-width: max-content;
-  padding-bottom: 12px;
-}
-.timer {
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  font-size: clamp(40px, 5.2vw, 100px);
-  font-weight: 300;
-  line-height: 0.9;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-}
-.timer.idle {
-  color: var(--dim);
-}
-.timer-sub {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  white-space: nowrap;
-}
-#wallclock {
-  font-size: clamp(20px, 2.1vw, 40px);
-  font-weight: 300;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-#timer-mode {
-  color: var(--dim);
-  font-size: 14px;
-}
-#timer-mode.warn {
-  color: var(--behind);
-}
-.counter {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  white-space: nowrap;
-}
-#counter {
-  font-size: clamp(22px, 2.3vw, 42px);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-#counter-sub {
-  margin-top: 4px;
-  color: var(--dim);
-  font-size: 14px;
 }
 
 .slide-view {
@@ -240,6 +180,7 @@ kbd {
 }
 #current {
   grid-area: current;
+  justify-self: center;
   width: calc(var(--stage) * 100%);
   max-height: 64dvh;
   aspect-ratio: var(--aspect);
@@ -267,13 +208,6 @@ kbd {
 .split:hover::after,
 .split.dragging::after {
   background: var(--line);
-}
-.side-head {
-  grid-area: sidehead;
-  align-self: end;
-  padding-bottom: 12px;
-  color: var(--dim);
-  font-size: 14px;
 }
 #next {
   flex: none;
@@ -331,17 +265,25 @@ kbd {
   min-height: 0;
   overflow: hidden;
 }
+.next-cap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  color: var(--dim);
+  font-size: 14px;
+}
 .badges {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin-left: auto;
-  align-self: center;
 }
 .badge {
   padding: 4px 8px;
   border-radius: 6px;
   background: var(--line);
+  color: var(--fg);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -358,15 +300,83 @@ kbd {
   background: var(--laser);
 }
 
-/* Pace panel: the planned window of this slide and of the talk, as bars.
-   One grid for both rows, so the bars line up. */
+/* All of the time in one place: the clock, then the pace bars. */
+.time {
+  margin: 14px 0 10px;
+  font-variant-numeric: tabular-nums;
+}
+.clock {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  white-space: nowrap;
+}
+.timer {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: clamp(28px, 3vw, 60px);
+  font-weight: 300;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.timer.idle {
+  color: var(--dim);
+}
+#wallclock {
+  font-size: clamp(17px, 1.5vw, 28px);
+  font-weight: 300;
+}
+.counter {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-left: auto;
+}
+#counter {
+  font-size: clamp(17px, 1.5vw, 28px);
+}
+#counter-sub {
+  color: var(--dim);
+  font-size: 13px;
+}
+.timer-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 6px 0 0;
+  color: var(--dim);
+  font-size: 14px;
+}
+.timer-line.warn {
+  color: var(--behind);
+}
+#timer-reset {
+  padding: 3px 9px;
+  border: 1px solid var(--faint);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--fg);
+  font-size: 13px;
+  cursor: pointer;
+}
+#timer-reset:hover {
+  border-color: var(--dim);
+}
+
+/* Pace: this slide's planned window and the talk's, as bars. Words only
+   when off plan, unless the details are on (t). One grid for both rows, so
+   the bars line up. */
 .pace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px 16px;
-  margin: 16px 0 12px;
-  font-variant-numeric: tabular-nums;
+  gap: 10px 14px;
+  margin-top: 14px;
+  cursor: pointer;
 }
 .pace-row {
   display: contents;
@@ -376,8 +386,11 @@ kbd {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-top: 8px;
-  font-size: clamp(17px, 1.5vw, 26px);
+  margin-top: 6px;
+  font-size: clamp(15px, 1.25vw, 22px);
+}
+.pace:not(.detail) .pace-head {
+  display: none;
 }
 .pace-head > :first-child {
   color: var(--dim);
@@ -385,8 +398,10 @@ kbd {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+/* Wide enough for "1:20 early", so the bars keep their length as it comes and goes. */
 .pace-text {
-  font-size: clamp(17px, 1.5vw, 26px);
+  min-width: 5.2em;
+  font-size: clamp(15px, 1.25vw, 22px);
   text-align: right;
 }
 .bar {
@@ -693,17 +708,14 @@ kbd {
   .presenter {
     padding: 12px 16px;
     grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
-    grid-template-areas: "head" "current" "notes" "side";
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas: "current" "notes" "side";
   }
-  .head,
   #current {
     width: 100%;
-    min-width: 0;
   }
   .split,
-  .strip,
-  .side-head {
+  .strip {
     display: none;
   }
   #next {

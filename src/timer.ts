@@ -1,5 +1,6 @@
 // The talk timer, with pdfpc's rules: it starts when you first leave the
-// first page, and pauses, resumes and resets on request. It always counts up
+// first page (or at the first move after a reset), and pauses, resumes and
+// resets on request. It always counts up
 // from zero; pace is the pace panel's business (see pace.ts).
 
 export interface TimerState {

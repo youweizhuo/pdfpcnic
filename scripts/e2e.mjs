@@ -229,17 +229,30 @@ try {
     assert.equal(await text("#pace-window"), "06:30 – 08:30");
     assert.match(await page.$eval("#notes > :first-child", (e) => e.textContent), /^各位老师好/);
     const at = (s) => page.evaluate((s) => (window.pdfpcnic.state.timer = { startedAt: Date.now() - s * 1000, pausedAt: null, pausedFor: 0 }), s);
+    const shown = (sel) => page.$eval(sel, (e) => e.checkVisibility());
+    // Bars only, and words just for being off plan.
     await at(540);
     await new Promise((r) => setTimeout(r, 400));
     assert.match(await text("#pace-slide-text"), /^3\d s over$/);
     assert.match(await page.$eval("#pace-fill", (e) => e.className), /t-late/);
-    assert.match(await text("#pace-talk-text"), /^ends ≈ 10:0\d$/);
+    assert.equal(await text("#pace-talk-text"), "");
+    assert.equal(await shown("#pace-window"), false);
     await page.screenshot({ path: `${out}/pace-late.png` });
     await at(420);
     await new Promise((r) => setTimeout(r, 400));
+    assert.equal(await text("#pace-slide-text"), "");
+    await page.screenshot({ path: `${out}/pace.png` });
+    // t (or a click on the bars) adds the details.
+    await press("t");
+    assert.equal(await shown("#pace-window"), true);
     assert.match(await text("#pace-slide-text"), /^1:[23]\d left$/);
     assert.match(await text("#pace-talk-text"), /^ends ≈ 09:30$/);
-    await page.screenshot({ path: `${out}/pace.png` });
+    await at(540);
+    await new Promise((r) => setTimeout(r, 400));
+    assert.match(await text("#pace-talk-text"), /^ends ≈ 10:0\d$/);
+    await page.screenshot({ path: `${out}/pace-detail.png` });
+    await page.click("#pace");
+    assert.equal(await shown("#pace-window"), false);
   });
 
   await check("clicking the clock pauses and resumes the timer", async () => {
@@ -248,6 +261,20 @@ try {
     assert.match(await text("#timer-mode"), /paused/);
     await page.click("#timer");
     assert.equal((await state()).timer.pausedAt, null);
+  });
+
+  await check("the timer resets only while paused", async () => {
+    const running = (await state()).timer.startedAt;
+    await press("Shift+R");
+    assert.equal((await state()).timer.startedAt, running);
+    assert.equal(await page.$eval("#timer-reset", (e) => e.hidden), true);
+    await press("p");
+    await page.click("#timer-reset");
+    assert.equal((await state()).timer.startedAt, null);
+    assert.equal(await text("#timer"), "0:00:00");
+    assert.match(await text("#timer-mode"), /next move/);
+    await press("ArrowRight", "ArrowLeft");
+    assert.ok((await state()).timer.startedAt > 0);
   });
 
   await check("[ and ] trade current-slide size for room for notes", async () => {

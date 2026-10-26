@@ -2,9 +2,9 @@
 
 A [pdfpc](https://github.com/pdfpc/pdfpc)-style presenter for PDF slides that runs in the browser. Use it from the
 website, or carry it as **one HTML file** for machines with no network. Its layout follows
-[Présentation.app](https://iihm.imag.fr/blanch/software/osx-presentation/): black and frameless, with a big clock,
-the current slide with notes under it, the next slide beside it, and thumbnails down the edge. Under the next slide,
-a pace panel draws the planned time of each slide, if your notes carry one.
+[Présentation.app](https://iihm.imag.fr/blanch/software/osx-presentation/): black and frameless, with the current
+slide and its notes on the left, the next slide beside them, and thumbnails down the edge. All the time sits under the
+next slide: the clock, the time of day and, if your notes carry planned times, a bar per slide and one for the talk.
 
 **Open it:** <https://youweizhuo.github.io/pdfpcnic/> · **Offline copy:** `pdfpcnic.html` from the
 [latest release](https://github.com/youweizhuo/pdfpcnic/releases/latest)
@@ -44,7 +44,8 @@ The same keys as pdfpc, plus `o` for the audience window. Press `?` for the full
 | `2` / `1` | laser pointer on / off (`+` `-` change its size) |
 | `Esc` | leave black, freeze and laser |
 | `s` / `p`, click the clock | start / pause the timer |
-| `Ctrl+T` or `Shift+R` | reset the timer |
+| `Ctrl+T` or `Shift+R`, or **Reset** | reset the timer to zero; only while paused |
+| `t`, click the pace bars | more or less pace detail |
 | `+` / `-` | notes text size |
 | `[` / `]` | current slide smaller / bigger, trading room with the notes |
 | `w` / `Shift+W` | presenter / audience fullscreen |
@@ -76,8 +77,10 @@ the `.pdfpc` file.
 
 ## Pace
 
-The clock counts up from zero, beside the time of day, as in Présentation.app. It never changes color; pace has a
-panel of its own under the next slide.
+The clock counts up from zero, beside the time of day, as in Présentation.app. It never changes color; the pace bars
+under it do that job. Click the clock to pause. While it is paused, a **Reset to 0:00:00** button appears; the reset keys
+work only then too, so a stray key can't wipe the timer mid-talk. After a reset the clock starts again at your next
+move.
 
 A note can start with the slide's planned window, in minutes and seconds from the start of the talk:
 
@@ -89,14 +92,18 @@ pdfpcnic takes that line off the note and draws it instead. It has to be the not
 may be `->`, minutes may pass 59, and the `· 36 s` is optional. `**01:22**` alone plans a slide that takes no time.
 Reveal steps repeat their slide's line.
 
-- **This slide**: the window, and a bar that fills across it. Anywhere inside the window is on time. Past its end the
-  bar turns orange and counts the time over; reach the slide before its start and it says how early you are, in blue.
-- **Talk**: the time left (of `duration` or `endTime`, else the planned total), a bar with a segment per slide, this
-  one in yellow, with a white mark for now and a red one at the set length, and the expected finish: the planned total,
-  moved by how far you are off this slide's window.
+Two bars, and words only when you're off plan:
 
-Without planned windows, the panel uses pdfpc's rule: ahead or behind an even pace through the slides, with a
-minute's leeway.
+- **This slide**: a bar that fills across the window. Anywhere inside it is on time. Past its end the bar turns orange
+  and counts the time over; reach the slide before its start and it says how early you are, in blue.
+- **Talk**: a segment per slide, this one in yellow, with a white mark for now and a red one at the set length
+  (`duration` or `endTime`).
+
+Press `t` or click the bars for the details: the slide's window and time left, the talk's time left (or planned
+total), and the expected finish, which is the planned total moved by how far you are off this slide's window.
+
+Without planned windows, the talk bar fills with the time spent, and pdfpc's rule says when you're ahead or behind an
+even pace through the slides, with a minute's leeway.
 
 ## Browsers
 

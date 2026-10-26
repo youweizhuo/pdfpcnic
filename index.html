@@ -36,31 +36,35 @@
     </section>
 
     <main id="presenter" class="presenter" hidden>
-      <header class="head">
-        <button id="timer" class="timer idle" type="button" title="Click to pause or resume (p)">0:00:00</button>
-        <div class="timer-sub"><span id="wallclock"></span><span id="timer-mode"></span></div>
-        <div id="badges" class="badges"></div>
-        <div class="counter"><span id="counter"></span><span id="counter-sub"></span></div>
-      </header>
-
       <div id="current"></div>
       <div id="split" class="split" role="separator" aria-orientation="vertical" title="Drag to resize"></div>
-
-      <div class="side-head"><span id="next-label"></span></div>
       <article id="notes" class="notes"></article>
 
       <aside class="side">
         <div id="next"></div>
-        <section id="pace" class="pace">
-          <div id="pace-slide" class="pace-row">
-            <div class="pace-head"><span>This slide</span><span id="pace-window"></span></div>
-            <div class="bar"><div id="pace-fill" class="fill"></div></div>
-            <span id="pace-slide-text" class="pace-text"></span>
+        <div class="next-cap"><span id="next-label"></span><span id="badges" class="badges"></span></div>
+
+        <section class="time">
+          <div class="clock">
+            <button id="timer" class="timer idle" type="button" title="Click to pause or resume (p)">0:00:00</button>
+            <span id="wallclock"></span>
+            <span class="counter"><span id="counter"></span><span id="counter-sub"></span></span>
           </div>
-          <div id="pace-talk" class="pace-row">
-            <div class="pace-head"><span>Talk</span><span id="pace-left"></span></div>
-            <div id="talkbar" class="bar talkbar"></div>
-            <span id="pace-talk-text" class="pace-text"></span>
+          <p id="timer-line" class="timer-line">
+            <span id="timer-mode"></span>
+            <button id="timer-reset" type="button" hidden>Reset to 0:00:00</button>
+          </p>
+          <div id="pace" class="pace" title="Click for more or less detail (t)">
+            <div id="pace-slide" class="pace-row">
+              <div class="pace-head"><span>This slide</span><span id="pace-window"></span></div>
+              <div class="bar"><div id="pace-fill" class="fill"></div></div>
+              <span id="pace-slide-text" class="pace-text"></span>
+            </div>
+            <div id="pace-talk" class="pace-row">
+              <div class="pace-head"><span>Talk</span><span id="pace-left"></span></div>
+              <div id="talkbar" class="bar talkbar"></div>
+              <span id="pace-talk-text" class="pace-text"></span>
+            </div>
           </div>
         </section>
         <p id="audience-status" class="hintline"></p>

@@ -86,6 +86,7 @@ class Presenter {
   private stripSlide = -1;
   private laserSize = store.pref("laserSize", 0.035);
   private notesSize: number;
+  private paceDetail = store.pref("paceDetail", false);
 
   constructor(
     readonly deck: Deck,
@@ -120,7 +121,7 @@ class Presenter {
     document.documentElement.style.setProperty("--notes", `${this.notesSize}px`);
     document.title = `${deck.name} · pdfpcnic`;
 
-    this.current = new SlideView($("current"), deck, this.cache, 1, "start");
+    this.current = new SlideView($("current"), deck, this.cache, 1);
     this.next = new SlideView($("next"), deck, this.cache, 2, "start");
     this.cache.onRender((page) => this.thumbs.get(page)?.forEach((t) => t.draw()));
     audience.bind(deck, this.cache);
@@ -129,6 +130,7 @@ class Presenter {
     $("presenter").hidden = false;
     this.applySplit(store.pref("split", 0.62));
     this.applyStage(store.pref("stage", 0.85));
+    $("pace").classList.toggle("detail", this.paceDetail);
     this.current.start();
     this.next.start();
     this.buildStrip();
@@ -179,8 +181,9 @@ class Presenter {
       s.back.push(s.page);
       s.forward = [];
     }
-    // As in pdfpc, the clock starts when the talk leaves its title page.
-    if (s.timer.startedAt === null && s.page === 0) s.timer = T.start(s.timer, Date.now());
+    // As in pdfpc, the clock starts when the talk leaves its title page, or
+    // at the first move after a reset.
+    if (s.timer.startedAt === null) s.timer = T.start(s.timer, Date.now());
     s.page = page;
     this.render();
   }
@@ -293,8 +296,14 @@ class Presenter {
         s.timer = T.togglePause(s.timer, now);
         break;
       case "timerReset":
+        // Never mid-talk by a stray key: the clock has to be paused first.
+        if (s.timer.startedAt === null) return;
+        if (s.timer.pausedAt === null) {
+          toast("The timer is running. Pause it first (p, or click the clock), then reset.");
+          return;
+        }
         s.timer = T.freshTimer();
-        toast("Timer reset. It starts again when you leave the first slide, or press s.");
+        toast("Timer at 0:00:00. It starts at your next move, or press s.");
         break;
       case "endSlide":
         s.endSlide = slide;
@@ -316,6 +325,11 @@ class Presenter {
         store.setPref("stage", this.stage);
         toast(`Current slide at ${Math.round(this.stage * 100)}% of its column.`, "info", 1500);
         return;
+      case "paceDetail":
+        this.paceDetail = !this.paceDetail;
+        store.setPref("paceDetail", this.paceDetail);
+        $("pace").classList.toggle("detail", this.paceDetail);
+        return this.renderTimer();
     }
     this.render();
   }
@@ -359,6 +373,8 @@ class Presenter {
     cur.addEventListener("wheel", wheelStepper((d) => this.act(d > 0 ? "next" : "prev")), { signal, passive: true });
     $("next").addEventListener("click", () => this.act("nextSlide"), { signal });
     $("timer").addEventListener("click", () => this.act("timerPause"), { signal });
+    $("timer-reset").addEventListener("click", () => this.act("timerReset"), { signal });
+    $("pace").addEventListener("click", () => this.act("paceDetail"), { signal });
 
     for (const b of document.querySelectorAll<HTMLButtonElement>(".toolbar [data-action]")) {
       b.addEventListener(
@@ -546,18 +562,21 @@ class Presenter {
     timer.classList.toggle("idle", t.startedAt === null || t.pausedAt !== null);
     $("wallclock").textContent = T.formatClock(now);
     const until = T.untilStart(this.talk(), now);
-    const mode = $("timer-mode");
-    mode.textContent =
+    const mode =
       t.pausedAt !== null
-        ? "paused · click to resume"
+        ? "paused · click the clock to resume"
         : t.startedAt !== null
           ? ""
           : until
             ? `talk starts at ${this.deck.startTime}, in ${T.format(until)}`
             : s.page === 0
               ? "starts when you leave slide 1"
-              : "press s to start";
-    mode.classList.toggle("warn", t.pausedAt !== null);
+              : "starts at your next move, or press s";
+    $("timer-mode").textContent = mode;
+    const line = $("timer-line");
+    line.hidden = !mode;
+    line.classList.toggle("warn", t.pausedAt !== null);
+    $("timer-reset").hidden = t.pausedAt === null;
   }
 
   /** Each slide's planned window, from its first page that has one. */
@@ -593,6 +612,8 @@ class Presenter {
     const at = T.elapsed(s.timer, now) / 1000;
     const started = s.timer.startedAt !== null;
     const planned = this.planned > 0;
+    // Without details, words only for being off plan.
+    const detail = this.paceDetail;
     $("pace").hidden = !planned && !length;
 
     // This slide: its window, how much of it has gone, and how far off it you are.
@@ -608,12 +629,16 @@ class Presenter {
       const text = $("pace-slide-text");
       text.className = `pace-text t-${tone}`;
       text.textContent = !where
-        ? `${span(plan.end - plan.start)} planned`
+        ? detail
+          ? `${span(plan.end - plan.start)} planned`
+          : ""
         : tone === "late"
           ? `${span(where.offset)} over`
           : tone === "early"
             ? `${span(where.offset)} early`
-            : `${span(plan.end - at)} left`;
+            : detail
+              ? `${span(plan.end - at)} left`
+              : "";
     }
 
     // The talk: time left, and where you stand on the bar.
@@ -624,13 +649,13 @@ class Presenter {
     if (planned) {
       // The rest of the talk as planned, shifted by how far off this slide you are.
       const offset = where?.offset ?? 0;
-      text.textContent = plan ? `ends ≈ ${mark(this.planned + offset)}` : slide > s.endSlide ? "backup" : "";
+      text.textContent = !detail ? "" : plan ? `ends ≈ ${mark(this.planned + offset)}` : slide > s.endSlide ? "backup" : "";
       text.className = `pace-text ${offset > 0 ? "t-late" : offset < 0 ? "t-early" : ""}`;
     } else {
       // pdfpc's rule: against an even pace through the slides, a minute's leeway.
       const drift = T.drift(s.timer, talk, now) / 1000;
       const off = started && Math.abs(drift) >= 60;
-      text.textContent = !started ? "" : off ? `${span(drift)} ${drift > 0 ? "behind" : "ahead"}` : "on pace";
+      text.textContent = !started ? "" : off ? `${span(drift)} ${drift > 0 ? "behind" : "ahead"}` : detail ? "on pace" : "";
       text.className = `pace-text ${off ? (drift > 0 ? "t-late" : "t-early") : ""}`;
     }
 

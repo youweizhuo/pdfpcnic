@@ -1,7 +1,7 @@
 import css from "./audience.css?inline";
 import type { Deck } from "./deck";
 import type { PageCache } from "./render";
-import { SlideView, type Point } from "./view";
+import { SlideView, type FollowLink, type Point } from "./view";
 
 // Window Management API (Chromium); absent elsewhere, which is fine.
 interface ScreenDetailed extends Screen {
@@ -58,6 +58,8 @@ export interface AudienceEvents {
   key(e: KeyboardEvent): void;
   step(delta: 1 | -1): void;
   pointer(at: Point | null): void;
+  /** A link on the slide was clicked. */
+  follow: FollowLink;
   change(): void;
   /** The browser refused fullscreen asked for from the presenter window. */
   refused(): void;
@@ -116,9 +118,18 @@ export class Audience {
       ? { left: target.availLeft, top: target.availTop, width: target.availWidth, height: target.availHeight }
       : centered();
     const features = `popup,left=${rect.left},top=${rect.top},width=${rect.width},height=${rect.height}`;
-    const win = window.open("", NAME, target ? `${features},fullscreen` : features);
+    let win = window.open("", NAME, target ? `${features},fullscreen` : features);
     if (!win) return false;
-    this.attach(win);
+    try {
+      this.attach(win);
+    } catch {
+      // The offline file gets a new origin each time it loads, so the window it
+      // opened before a reload is out of reach. Replace it.
+      win.close();
+      win = window.open("", `${NAME}-${Date.now()}`, target ? `${features},fullscreen` : features);
+      if (!win) return false;
+      this.attach(win);
+    }
     if (target) {
       this.screen = target.label || "second screen";
       // Browsers may size a new popup to fit the presenter's screen; fit the projector instead.
@@ -258,7 +269,7 @@ export class Audience {
     const doc = this.win!.document;
     this.view?.dispose();
     doc.title = `${this.deck!.name} · audience`;
-    this.view = new SlideView(doc.getElementById("stage")!, this.deck!, this.cache!, 0);
+    this.view = new SlideView(doc.getElementById("stage")!, this.deck!, this.cache!, 0, { follow: (to) => this.events.follow(to) });
     this.view.start();
   }
 

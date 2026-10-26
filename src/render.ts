@@ -131,6 +131,8 @@ export class PageCache {
         try {
           bmp = await this.render(job.page, job.width);
         } catch (err) {
+          // A deck closed mid-render (another one opened) isn't a failure.
+          if (this.disposed) return;
           console.error(`pdfpcnic: rendering page ${job.page + 1} failed`, err);
           continue;
         }

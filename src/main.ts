@@ -1,6 +1,4 @@
 import "./style.css";
-import demoPdfUrl from "../demo/demo.pdf?inline";
-import demoPdfpc from "../demo/demo.pdfpc?raw";
 import { Audience } from "./audience";
 import { openDeck, type Deck } from "./deck";
 import { actionFor, HELP, type Action } from "./keys";
@@ -11,7 +9,8 @@ import { PageCache } from "./render";
 import { Spoken } from "./spoken";
 import * as store from "./store";
 import * as T from "./timer";
-import { SlideView, Thumb, type Point } from "./view";
+import { SlideView, Thumb, type FollowLink, type Point } from "./view";
+import { demoDeck } from "variant";
 
 const $ = <E extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as E;
 
@@ -65,6 +64,7 @@ const audience = new Audience({
   key: (e) => presenter?.onKey(e),
   step: (d) => presenter?.act(d > 0 ? "next" : "prev"),
   pointer: (at) => presenter?.pointAt(at, "audience"),
+  follow: (to) => presenter?.follow(to),
   change: () => presenter?.render(),
   refused: () => toast("The browser didn't let this window make the audience fullscreen. Double-click the audience window instead.", "error", 8000),
 });
@@ -140,9 +140,9 @@ class Presenter {
     document.documentElement.style.setProperty("--notes", `${this.notesSize}px`);
     document.title = `${deck.name} · pdfpcnic`;
 
-    this.current = new SlideView($("current"), deck, this.cache, 1);
+    this.current = new SlideView($("current"), deck, this.cache, 1, { follow: this.follow, marked: true });
     this.current.onLayout = () => this.fitSlidebar();
-    this.next = new SlideView($("next"), deck, this.cache, 2, "start");
+    this.next = new SlideView($("next"), deck, this.cache, 2, { align: "start" });
     this.cache.onRender((page) => this.thumbs.get(page)?.forEach((t) => t.draw()));
     audience.bind(deck, this.cache);
 
@@ -193,6 +193,18 @@ class Presenter {
     }
     return null;
   }
+
+  /** Follows a link on the slide: a jump, so back (Shift+Backspace) returns. */
+  readonly follow: FollowLink = (to) => {
+    if ("page" in to) return this.go(to.page, true);
+    // The named actions PDF viewers know, as pdf.js's viewer reads them.
+    if (to.action === "NextPage") this.go(this.state.page + 1);
+    else if (to.action === "PrevPage") this.go(this.state.page - 1);
+    else if (to.action === "FirstPage") this.go(0, true);
+    else if (to.action === "LastPage") this.go(this.deck.pages.length - 1, true);
+    else if (to.action === "GoBack") this.act("back");
+    else if (to.action === "GoForward") this.act("forward");
+  };
 
   go(page: number, jump = false): void {
     const s = this.state;
@@ -1075,7 +1087,7 @@ class Presenter {
     const host = $("solo");
     host.hidden = !on;
     if (on) {
-      this.solo = new SlideView(host, this.deck, this.cache, 0);
+      this.solo = new SlideView(host, this.deck, this.cache, 0, { follow: this.follow });
       this.solo.start();
       host.onpointermove = (e) => this.pointAt(this.solo?.toPage(e.clientX, e.clientY) ?? null, "presenter");
       host.onclick = () => this.act("next");
@@ -1281,15 +1293,10 @@ async function openFiles(files: Iterable<File>): Promise<void> {
   }
 }
 
-function decodeDataUrl(url: string): ArrayBuffer {
-  const bin = atob(url.slice(url.indexOf(",") + 1));
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes.buffer;
-}
-
 async function boot(): Promise<void> {
-  $("version").innerHTML = `v${__VERSION__} · <a href="https://github.com/youweizhuo/pdfpcnic" target="_blank" rel="noopener">source</a>`;
+  $("version").innerHTML =
+    `v${__VERSION__} · <a href="https://github.com/youweizhuo/pdfpcnic" target="_blank" rel="noopener">source</a>` +
+    (__SINGLE_FILE__ ? "" : ` · <a href="./licenses.txt" target="_blank">licenses</a>`);
   $("offline-note").innerHTML = __SINGLE_FILE__
     ? "This is the offline copy: it needs no network."
     : `<a href="./pdfpcnic.html" download>Download the offline copy</a> (one HTML file).`;
@@ -1309,12 +1316,20 @@ async function boot(): Promise<void> {
     input.value = "";
   });
   $("open-files").addEventListener("click", () => input.click());
-  $("demo").addEventListener("click", () => {
-    void openSource(
-      { pdf: { name: "demo.pdf", data: decodeDataUrl(demoPdfUrl) }, pdfpc: { name: "demo.pdfpc", text: demoPdfpc } },
-      { keep: false, track: false },
-    );
-  });
+  const demo = $("demo");
+  if (demoDeck) {
+    const load = demoDeck;
+    demo.addEventListener("click", () => {
+      void load()
+        .then(({ pdf, pdfpc }) =>
+          openSource({ pdf: { name: "demo.pdf", data: pdf }, pdfpc: { name: "demo.pdfpc", text: pdfpc } }, { keep: false, track: false }),
+        )
+        .catch((err) => {
+          $("start-error").hidden = false;
+          $("start-error").textContent = err instanceof Error ? err.message : String(err);
+        });
+    });
+  } else demo.remove();
 
   const drop = $("drop");
   let depth = 0;
@@ -1347,6 +1362,14 @@ async function boot(): Promise<void> {
     resume.textContent = recent ? `Resume ${deck.pdfName} at page ${session.page + 1}` : `Reopen ${deck.pdfName}`;
     resume.hidden = false;
     resume.focus();
+    const forget = $<HTMLButtonElement>("forget");
+    forget.hidden = false;
+    forget.addEventListener("click", () => {
+      resume.remove();
+      forget.remove();
+      void store.forget();
+      toast(`Removed ${deck.pdfName} from this browser.`);
+    });
     resume.addEventListener("click", () => {
       const source: Source = {
         pdf: { name: deck.pdfName, data: deck.pdf },

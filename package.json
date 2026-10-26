@@ -1,10 +1,32 @@
 {
   "name": "pdfpcnic",
-  "version": "0.9.9",
+  "version": "0.9.10",
   "description": "pdfpc-style PDF presenter that runs in the browser, also as a single offline HTML file",
+  "keywords": [
+    "pdfpc",
+    "presenter",
+    "presentation",
+    "pdf",
+    "slides",
+    "speaker-notes",
+    "pdfjs",
+    "typst",
+    "touying",
+    "beamer"
+  ],
+  "homepage": "https://youweizhuo.github.io/pdfpcnic/",
+  "bugs": "https://github.com/youweizhuo/pdfpcnic/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/youweizhuo/pdfpcnic.git"
+  },
+  "author": "Youwei Zhuo",
   "license": "MIT",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build && vite build --mode single && node scripts/copy-single.mjs",
@@ -12,7 +34,8 @@
     "build:single": "vite build --mode single",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "e2e": "node scripts/e2e.mjs"
+    "e2e": "node scripts/e2e.mjs",
+    "e2e:firefox": "node scripts/e2e-firefox.mjs"
   },
   "devDependencies": {
     "puppeteer-core": "^25.16.0",

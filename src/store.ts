@@ -61,6 +61,8 @@ export const loadDeck = () => quiet(() => run<SavedDeck | undefined>("readonly",
 export const saveSession = (x: SavedSession) => quiet(() => run("readwrite", (s) => s.put(x, "session")));
 export const loadSession = () => quiet(() => run<SavedSession | undefined>("readonly", (s) => s.get("session")));
 export const clearSession = () => quiet(() => run("readwrite", (s) => s.delete("session")));
+/** Drops the kept deck and session, as when leaving a shared computer. */
+export const forget = () => quiet(() => run("readwrite", (s) => s.clear()));
 
 /** Small per-browser preferences. */
 export function pref<T>(key: string, fallback: T): T {

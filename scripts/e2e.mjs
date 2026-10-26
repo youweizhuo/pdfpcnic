@@ -7,7 +7,7 @@
 //   CHROME_PATH=/path/to/chrome npm run e2e -- https://youweizhuo.github.io/pdfpcnic/
 
 import assert from "node:assert/strict";
-import { createReadStream, existsSync, mkdirSync, statSync } from "node:fs";
+import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -28,7 +28,7 @@ let url = remote;
 if (remote) {
   // tested as deployed
 } else if (mode === "site") {
-  const types = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css" };
+  const types = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".wasm": "application/wasm" };
   server = createServer((req, res) => {
     const path = join(resolve("dist"), decodeURIComponent(new URL(req.url, "http://x").pathname));
     const file = existsSync(path) && statSync(path).isDirectory() ? join(path, "index.html") : path;
@@ -102,8 +102,22 @@ try {
     });
 
   const input = await page.$("#files");
+
+  await check(mode === "site" ? "the demo deck loads when asked for" : "the offline copy leaves the demo out", async () => {
+    if (mode !== "site") {
+      assert.equal(await page.$("#demo"), null);
+      return;
+    }
+    const pdfs = [];
+    page.on("request", (r) => r.url().endsWith(".pdf") && pdfs.push(r.url()));
+    await page.click("#demo");
+    await page.waitForFunction(() => window.pdfpcnic.deck?.pages.length === 10, { timeout: 20000 });
+    assert.equal(pdfs.length, 1, "the demo PDF wasn't fetched once, on the click");
+  });
+
+  await page.evaluate(() => (window.shown = window.pdfpcnic.deck));
   await input.uploadFile(resolve("demo/demo.pdf"), resolve("demo/demo.pdfpc"));
-  await page.waitForFunction(() => window.pdfpcnic.state, { timeout: 20000 });
+  await page.waitForFunction(() => window.pdfpcnic.deck && window.pdfpcnic.deck !== window.shown, { timeout: 20000 });
 
   await check("deck loads with pdfpc metadata", async () => {
     const d = await page.evaluate(() => ({
@@ -497,6 +511,82 @@ try {
     assert.equal(after.timer.startedAt, before.timer.startedAt);
   });
 
+  await check("links on the slide: outlined for the presenter, jump in either window, back returns", async () => {
+    writeFileSync(`${out}/links.pdf`, pdfWithLinks());
+    await (await page.$("#files")).uploadFile(`${out}/links.pdf`);
+    await page.waitForFunction(() => window.pdfpcnic.deck?.name === "links.pdf", { timeout: 20000 });
+    const links = "#current .slide-links a";
+    await page.waitForFunction((sel) => document.querySelectorAll(sel).length === 3, { timeout: 5000 }, links);
+    const box = await (await page.$("#current canvas")).boundingBox();
+    const first = await (await page.$(links)).boundingBox();
+    // The first link covers x 50–250 of the 800 pt wide page.
+    assert.ok(Math.abs(first.x - (box.x + box.width / 16)) < 2 && Math.abs(first.width - box.width / 4) < 2, "link box off the slide's");
+    const look = await page.$eval(links, (a) => ({ outline: getComputedStyle(a).outlineStyle, border: getComputedStyle(a.parentElement).borderTopWidth }));
+    assert.deepEqual(look, { outline: "solid", border: "0px" }, "the presenter's outline, without the PDF's red border");
+    const web = await page.$eval(`${links}[href^="https:"]`, (a) => ({ href: a.href, target: a.target }));
+    assert.deepEqual(web, { href: "https://example.com/", target: "_blank" });
+    await page.hover(links);
+    await page.screenshot({ path: `${out}/links.png` });
+    const clickLink = async (p, i) => {
+      await p.waitForFunction((i) => document.querySelectorAll(".slide-links a")[i], { timeout: 5000 }, i);
+      await (await p.$$(".slide-links a"))[i].click();
+      await new Promise((r) => setTimeout(r, 400));
+    };
+    await clickLink(page, 0);
+    let s = await state();
+    assert.equal(s.page, 2, "the link to page 3 didn't land there (or the click also stepped on)");
+    assert.deepEqual(s.back, [0]);
+    await press("Shift+Backspace");
+    assert.equal((await state()).page, 0);
+    await clickLink(page, 1);
+    assert.equal((await state()).page, 3, "the named destination didn't land on page 4");
+    await press("Home");
+    // The same in the audience window, unmarked. The presenter has reloaded since it opened the window: the
+    // site takes the window back, the offline file (a new origin each load) replaces it.
+    await press("o");
+    await new Promise((r) => setTimeout(r, 1000));
+    const popup = (await browser.pages()).filter((p) => p !== page).at(-1);
+    if (popup !== audience) watch(popup, "audience");
+    assert.equal(popup === audience, mode === "site", "the audience window wasn't taken back (site) or replaced (offline file)");
+    await popup.waitForFunction(() => document.querySelectorAll(".slide-links a").length === 3, { timeout: 10000 });
+    assert.equal(await popup.$eval(".slide-links a", (a) => getComputedStyle(a).outlineStyle), "none");
+    await clickLink(popup, 0);
+    s = await state();
+    assert.equal(s.page, 2, "a link clicked in the audience window didn't jump");
+  });
+
+  await check("Forget drops the kept deck", async () => {
+    await page.reload();
+    await page.waitForSelector("#forget:not([hidden])");
+    await page.click("#forget");
+    assert.equal(await page.$("#resume"), null);
+    await new Promise((r) => setTimeout(r, 300));
+    await page.reload();
+    await page.waitForSelector("#files");
+    await new Promise((r) => setTimeout(r, 500));
+    assert.equal(await page.$eval("#resume", (e) => e.hidden), true);
+  });
+
+  if (mode === "site") {
+    await check("a PDF without embedded fonts gets pdf.js's CMaps and fonts from the site", async () => {
+      const fetched = new Map();
+      page.on("response", (r) => r.url().includes("/pdfjs/") && fetched.set(r.url().split("/pdfjs/")[1], r.status()));
+      writeFileSync(`${out}/no-fonts.pdf`, pdfWithoutFonts());
+      await (await page.$("#files")).uploadFile(`${out}/no-fonts.pdf`);
+      await page.waitForFunction(() => window.pdfpcnic.deck?.name === "no-fonts.pdf", { timeout: 20000 });
+      await page.waitForFunction(() => document.querySelector("#current canvas")?.width > 0);
+      await new Promise((r) => setTimeout(r, 1000));
+      assert.equal(fetched.get("cmaps/UniGB-UCS2-H.bcmap"), 200, `fetched: ${JSON.stringify([...fetched])}`);
+      assert.ok(await painted(page, "#current canvas"), "the slide is blank");
+      await page.screenshot({ path: `${out}/no-fonts.png` });
+    });
+  } else {
+    await check("the offline copy carries the licenses", async () => {
+      const html = readFileSync("dist/pdfpcnic.html", "utf8");
+      for (const name of ["MIT License", "pdfjs-dist", "marked", "dompurify"]) assert.ok(html.includes(name), name);
+    });
+  }
+
   await check("no errors in either window", async () => {
     assert.deepEqual(errors, []);
   });
@@ -505,3 +595,63 @@ try {
   server?.close();
 }
 console.log(`${passed} checks passed (${mode}); screenshots in ${out}`);
+
+/**
+ * Four pages of colored boxes; the first links to page 3 (an explicit
+ * destination, with a hyperref-style red border), to page 4 (a named
+ * destination) and to a web page.
+ */
+function pdfWithLinks() {
+  const colors = ["0.2 0.4 0.8", "0.8 0.3 0.2", "0.2 0.7 0.3", "0.6 0.3 0.7"];
+  const pages = colors.map((_, i) => `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 800 450] /Contents ${7 + i} 0 R${i === 0 ? " /Annots [11 0 R 12 0 R 13 0 R]" : ""} >>`);
+  const contents = colors.map((c) => {
+    const ops = `${c} rg 0 0 800 450 re f 1 1 1 rg 50 300 200 100 re f 300 300 200 100 re f 550 300 200 100 re f`;
+    return `<< /Length ${ops.length} >>\nstream\n${ops}\nendstream`;
+  });
+  return pdfFrom([
+    "<< /Type /Catalog /Pages 2 0 R /Names << /Dests << /Names [(four) [6 0 R /Fit]] >> >> >>",
+    "<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R 6 0 R] /Count 4 >>",
+    ...pages,
+    ...contents,
+    "<< /Type /Annot /Subtype /Link /Rect [50 300 250 400] /Border [0 0 2] /C [1 0 0] /Dest [5 0 R /Fit] >>",
+    "<< /Type /Annot /Subtype /Link /Rect [300 300 500 400] /Border [0 0 0] /A << /S /GoTo /D (four) >> >>",
+    "<< /Type /Annot /Subtype /Link /Rect [550 300 750 400] /Border [0 0 0] /A << /S /URI /URI (https://example.com/) >> >>",
+  ]);
+}
+
+/** A PDF file of these objects, numbered from 1, the first being the catalog. */
+function pdfFrom(objects) {
+  let pdf = "%PDF-1.7\n";
+  const offsets = objects.map((body, i) => {
+    const at = pdf.length;
+    pdf += `${i + 1} 0 obj\n${body}\nendobj\n`;
+    return at;
+  });
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.map((o) => `${String(o).padStart(10, "0")} 00000 n \n`).join("")}`;
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return pdf;
+}
+
+/** A one-page PDF whose text uses fonts it doesn't embed: Chinese in STSong-Light through a predefined CMap, and Helvetica. */
+function pdfWithoutFonts() {
+  const text = "BT /F1 40 Tf 80 300 Td <4F60597D002000500044004600200043004D00610070> Tj ET BT /F2 32 Tf 80 200 Td (Helvetica, not embedded) Tj ET";
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 800 450] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>",
+    `<< /Length ${text.length} >>\nstream\n${text}\nendstream`,
+    "<< /Type /Font /Subtype /Type0 /BaseFont /STSong-Light /Encoding /UniGB-UCS2-H /DescendantFonts [<< /Type /Font /Subtype /CIDFontType0 /BaseFont /STSong-Light /CIDSystemInfo << /Registry (Adobe) /Ordering (GB1) /Supplement 4 >> /FontDescriptor << /Type /FontDescriptor /FontName /STSong-Light /Flags 6 /FontBBox [0 -200 1000 900] /ItalicAngle 0 /Ascent 880 /Descent -120 /CapHeight 880 /StemV 93 >> >>] >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+  ];
+  let pdf = "%PDF-1.7\n";
+  const offsets = objects.map((body, i) => {
+    const at = pdf.length;
+    pdf += `${i + 1} 0 obj\n${body}\nendobj\n`;
+    return at;
+  });
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.map((o) => `${String(o).padStart(10, "0")} 00000 n \n`).join("")}`;
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return pdf;
+}

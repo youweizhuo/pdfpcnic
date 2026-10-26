@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <title>pdfpcnic</title>
+    <meta name="description" content="A pdfpc-style presenter for PDF slides, in the browser: notes, the next slide, pace and an audience window. Also one HTML file that works offline." />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="pdfpcnic: present PDF slides from the browser" />
+    <meta property="og:description" content="A pdfpc-style presenter view: notes, the next slide, pace and an audience window. Nothing to install, nothing uploaded." />
+    <meta property="og:image" content="https://youweizhuo.github.io/pdfpcnic/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='6' width='28' height='18' rx='3' fill='%23111' stroke='%23ffd60a' stroke-width='2'/%3E%3Ccircle cx='21' cy='15' r='3' fill='%23ff453a'/%3E%3C/svg%3E" />
     <!-- pdfpcnic, MIT. Includes PDF.js (Apache-2.0), marked (MIT) and DOMPurify (Apache-2.0 or MPL-2.0). -->
   </head>
@@ -22,6 +28,7 @@
 
         <div class="start-actions">
           <button id="resume" class="primary" type="button" hidden></button>
+          <button id="forget" type="button" title="Remove the kept deck from this browser, as when leaving a shared computer" hidden>Forget it</button>
           <button id="demo" type="button">Try the demo deck</button>
         </div>
 

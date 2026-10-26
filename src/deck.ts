@@ -1,5 +1,5 @@
-import { getDocument, GlobalWorkerOptions, PDFWorker, type PDFDocumentProxy } from "pdfjs-dist";
-import { workerUrl } from "pdf-worker-source";
+import { AnnotationType, getDocument, GlobalWorkerOptions, PDFWorker, type PDFDocumentProxy } from "pdfjs-dist";
+import { resources, workerUrl } from "variant";
 import { splitPlan, type Plan } from "./pace";
 import type { PdfpcFile, PdfpcPage } from "./pdfpc";
 
@@ -17,6 +17,8 @@ export interface Page {
   plan: Plan | null;
   /** Seconds a slide off the talk's clock (a backup slide) takes, from the note's first line. */
   length: number | null;
+  /** The page's link annotations, as pdf.js reads them, for its annotation layer. */
+  links: object[];
   /** Size in PDF points, rotation applied. */
   width: number;
   height: number;
@@ -72,7 +74,7 @@ async function startWorker(): Promise<PDFWorker> {
 export async function openDeck(data: ArrayBuffer, name: string, meta: PdfpcFile | null): Promise<Deck> {
   worker ??= startWorker();
   // pdf.js transfers the buffer to its worker; keep the caller's copy usable.
-  const doc = await getDocument({ data: new Uint8Array(data.slice(0)), worker: await worker }).promise;
+  const doc = await getDocument({ data: new Uint8Array(data.slice(0)), worker: await worker, ...resources() }).promise;
   const n = doc.numPages;
 
   const [labels, info] = await Promise.all([
@@ -82,7 +84,9 @@ export async function openDeck(data: ArrayBuffer, name: string, meta: PdfpcFile 
         const page = await doc.getPage(i + 1);
         const { width, height } = page.getViewport({ scale: 1 });
         const annotations = await page.getAnnotations().catch(() => []);
-        return { width, height, note: annotationNote(annotations) };
+        // Links go where pdf.js puts them on an upright page; a turned page (rare in slides) gets none.
+        const links = page.rotate % 360 ? [] : annotations.filter((a) => a.annotationType === AnnotationType.LINK);
+        return { width, height, note: annotationNote(annotations), links };
       }),
     ),
   ]);
@@ -131,6 +135,7 @@ export async function openDeck(data: ArrayBuffer, name: string, meta: PdfpcFile 
       note,
       plan,
       length,
+      links: info[i].links,
       width: info[i].width,
       height: info[i].height,
     });
@@ -153,6 +158,16 @@ export async function openDeck(data: ArrayBuffer, name: string, meta: PdfpcFile 
     noteFontSize: meta?.noteFontSize,
     warnings,
   };
+}
+
+/** The page index a link's destination (named or explicit) points at, or null. */
+export async function destinationPage(doc: PDFDocumentProxy, dest: string | unknown[]): Promise<number | null> {
+  const explicit = typeof dest === "string" ? await doc.getDestination(dest).catch(() => null) : dest;
+  const ref = explicit?.[0];
+  // A page reference, or (from some generators) a page index.
+  if (Number.isInteger(ref)) return ref as number;
+  if (!ref || typeof ref !== "object") return null;
+  return doc.getPageIndex(ref as { num: number; gen: number }).catch(() => null);
 }
 
 /** Finds the page a .pdfpc entry describes, as pdfpc does: by index if the label agrees, else by label. */

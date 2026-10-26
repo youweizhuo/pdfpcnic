@@ -179,6 +179,30 @@ try {
     });
   }
 
+  await check("Shift+W makes the audience fullscreen, pressed in either window, and so does its button", async () => {
+    const exit = () => audience.evaluate(() => document.fullscreenElement && document.exitFullscreen());
+    const shiftW = async (p) => {
+      await p.keyboard.down("Shift");
+      await p.keyboard.press("W");
+      await p.keyboard.up("Shift");
+    };
+    const full = (on) => audience.waitForFunction((on) => !!document.fullscreenElement === on, { timeout: 3000 }, on);
+    await exit();
+    await audience.bringToFront();
+    await shiftW(audience);
+    await full(true);
+    await exit();
+    await page.bringToFront();
+    await shiftW(page);
+    await full(true);
+    assert.match(await text("#audience-button"), /^Audience fullscreen/);
+    await page.click("#audience-button");
+    await full(false);
+    await page.click("#audience-button");
+    await full(true);
+    await exit();
+  });
+
   await check("freeze holds the audience on its slide", async () => {
     await press("f", "ArrowRight");
     const s = await state();

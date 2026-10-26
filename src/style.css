@@ -917,6 +917,8 @@ kbd {
   color: var(--fg);
   font-size: 14px;
   transform: translateX(-50%);
+  /* A message, not in the way of the buttons under it. */
+  pointer-events: none;
 }
 .toast.error {
   background: #3a1210;

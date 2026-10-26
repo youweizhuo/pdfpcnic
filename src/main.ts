@@ -66,6 +66,7 @@ const audience = new Audience({
   step: (d) => presenter?.act(d > 0 ? "next" : "prev"),
   pointer: (at) => presenter?.pointAt(at, "audience"),
   change: () => presenter?.render(),
+  refused: () => toast("The browser didn't let this window make the audience fullscreen. Double-click the audience window instead.", "error", 8000),
 });
 
 let presenter: Presenter | null = null;
@@ -650,6 +651,11 @@ class Presenter {
       fullscreen: !!document.fullscreenElement,
       help: s.help,
     };
+    // Once the audience window is open, its button makes it fullscreen.
+    const ab = $("audience-button");
+    ab.dataset.action = audience.open ? "audienceFullscreen" : "openAudience";
+    ab.innerHTML = audience.open ? "Audience fullscreen <kbd>⇧W</kbd>" : "Audience <kbd>o</kbd>";
+    on.audienceFullscreen = audience.fullscreen;
     for (const b of document.querySelectorAll<HTMLElement>(".toolbar [data-action]")) {
       b.classList.toggle("on", !!on[b.dataset.action as Action]);
     }

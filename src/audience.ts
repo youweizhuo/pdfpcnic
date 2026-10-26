@@ -59,6 +59,8 @@ export interface AudienceEvents {
   step(delta: 1 | -1): void;
   pointer(at: Point | null): void;
   change(): void;
+  /** The browser refused fullscreen asked for from the presenter window. */
+  refused(): void;
 }
 
 /**
@@ -178,13 +180,18 @@ export class Audience {
   }
 
   private goFullscreen(): void {
-    // The presenter window holds the user's key press; capability
+    const win = this.win!;
+    // A key pressed (or a click) in the audience window itself: go fullscreen there.
+    if (win.navigator.userActivation?.isActive) {
+      win.document.documentElement.requestFullscreen().catch(() => this.events.refused());
+      return;
+    }
+    // Otherwise the presenter window holds the user's input; capability
     // delegation (Chromium) lends it to the audience window.
     try {
-      this.win!.postMessage(FULLSCREEN_MESSAGE, { targetOrigin: "/", delegate: "fullscreen" } as WindowPostMessageOptions);
-    } catch (err) {
-      // Unsupported: double-clicking the audience window still works.
-      console.warn("pdfpcnic: can't lend fullscreen to the audience window:", (err as Error).message);
+      win.postMessage(FULLSCREEN_MESSAGE, { targetOrigin: "/", delegate: "fullscreen" } as WindowPostMessageOptions);
+    } catch {
+      this.events.refused();
     }
   }
 
@@ -202,10 +209,14 @@ export class Audience {
     this.black = doc.getElementById("black")!;
     const hint = doc.getElementById("hint")!;
 
-    win.addEventListener("keydown", (e) => this.events.key(e));
+    win.addEventListener("keydown", (e) => {
+      // A window just placed on the projector goes fullscreen at the first key, here too.
+      this.claimFullscreen();
+      this.events.key(e);
+    });
     win.addEventListener("message", (e) => {
       if (e.data === FULLSCREEN_MESSAGE && !doc.fullscreenElement) {
-        doc.documentElement.requestFullscreen().catch((err) => console.warn("pdfpcnic: audience fullscreen refused:", err.message));
+        doc.documentElement.requestFullscreen().catch(() => this.events.refused());
       }
     });
     // A click steps forward, unless it turns out to be a double-click (fullscreen).

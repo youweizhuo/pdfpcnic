@@ -1,0 +1,16 @@
+name: An idea
+description: Something pdfpcnic could do, or do better.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What you're trying to do
+      description: The situation in a talk, or in preparing one, where pdfpcnic falls short.
+    validations:
+      required: true
+  - type: textarea
+    id: how
+    attributes:
+      label: How it could work
+      description: Optional. How pdfpc, Présentation.app or another presenter handles it, if one does.

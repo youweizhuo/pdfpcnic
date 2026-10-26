@@ -1,0 +1,48 @@
+name: Something went wrong
+description: A deck that doesn't load or look right, a key or window that misbehaves, a clock that's off.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you saw instead. Screenshots help.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: pdfpcnic version
+      description: At the foot of the start page, such as v1.0.0.
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Opened from
+      options:
+        - The website (youweizhuo.github.io/pdfpcnic)
+        - The offline file (pdfpcnic.html)
+        - A self-hosted copy
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and system
+      placeholder: Chrome 141 on macOS 26
+    validations:
+      required: true
+  - type: input
+    id: displays
+    attributes:
+      label: Displays
+      description: For audience window problems.
+      placeholder: Laptop plus a projector, extended
+  - type: textarea
+    id: files
+    attributes:
+      label: The deck
+      description: >-
+        Attach the PDF and .pdfpc file if you can share them, or a cut-down copy that still shows the problem.
+        Otherwise, say what made them (Typst with Touying, Beamer, PowerPoint, ...).

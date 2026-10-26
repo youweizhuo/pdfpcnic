@@ -1,15 +1,29 @@
 # pdfpcnic
 
+[![Latest release](https://img.shields.io/github/v/release/youweizhuo/pdfpcnic?color=ffd60a&labelColor=1c1c1e)](https://github.com/youweizhuo/pdfpcnic/releases/latest)
+[![MIT License](https://img.shields.io/github/license/youweizhuo/pdfpcnic?color=ffd60a&labelColor=1c1c1e)](LICENSE)
+[![Open the presenter](https://img.shields.io/badge/open-the%20presenter-ffd60a?labelColor=1c1c1e)](https://youweizhuo.github.io/pdfpcnic/)
+
 A [pdfpc](https://github.com/pdfpc/pdfpc)-style presenter for PDF slides that runs in the browser. Use it from the
-website, or carry it as **one HTML file** for machines with no network. Its layout follows
+website, carry it as **one HTML file** for machines with no network, or host it yourself. Its layout follows
 [Présentation.app](https://iihm.imag.fr/blanch/software/osx-presentation/): black and frameless, with the current
 slide and its notes on the left, the next slide beside them, and thumbnails down the edge. All the time sits under the
 next slide: the clock and one bar for the whole talk.
 
 **Open it:** <https://youweizhuo.github.io/pdfpcnic/> · **Offline copy:** `pdfpcnic.html` from the
-[latest release](https://github.com/youweizhuo/pdfpcnic/releases/latest)
+[latest release](https://github.com/youweizhuo/pdfpcnic/releases/latest) · **Self-host:**
+[docs/self-hosting.md](docs/self-hosting.md)
 
-![Presenter view](docs/presenter.png)
+![The presenter view: the current slide with its speaker notes, the next slide, the clock and the talk's pace, and thumbnails](docs/presenter.png)
+
+- **Nothing to install.** Open the page, drop in the PDF and its `.pdfpc` file, press `o`. In Chrome and Edge the
+  audience window moves to the projector and goes fullscreen.
+- **pdfpc's keys and files**: Markdown notes, reveal steps, hidden slides, the end slide, the talk's length.
+- **Pace for timed talks.** Notes can carry each slide's planned window; pdfpcnic shows how this slide and the whole
+  talk are going, and colors only what needs your attention.
+- **Made for unfamiliar machines.** The offline file needs no network, a reload resumes mid-talk with the timer
+  running, and the slides render at the screen's pixel size with the next ones ready ahead.
+- **Private.** Files stay on the computer. There are no accounts, no analytics and no uploads.
 
 ## Presenting
 
@@ -21,11 +35,11 @@ next slide: the clock and one bar for the whole talk.
    - **Other browsers**: drag the window to the projector and double-click it (or press `Shift+W`) for fullscreen.
 3. Press `w` to make the presenter fullscreen too, and `→` to start. The timer starts when you leave the first slide.
 
-Files never leave the computer. If the page reloads mid-talk, **Resume** brings back the deck at the same page, with the
-timer still running.
+If the page reloads mid-talk, **Resume** brings back the deck at the same page, with the timer still running.
 
 On an unfamiliar machine, check that the displays are set to **Extend**, not mirror (`Win+P` on Windows). The presenter
-warns you when it sees only one screen. With one screen, `Shift+W` presents in the same window.
+warns you when it sees only one screen. With one screen, `Shift+W` presents in the same window. When you leave a
+shared computer, open the page again and press **Forget** beside **Resume**, or present from a private window.
 
 ## Keys
 
@@ -71,6 +85,9 @@ As in pdfpc:
 - Pages that share a PDF page label count as one slide.
 - Note annotations in the PDF (sticky notes and highlights) become notes and are left off the slides.
 
+Links in the PDF work: click one to jump to its page (`Shift+Backspace` comes back), or to open a web page in a new
+tab. The presenter outlines them so you can see what's clickable; the audience sees the slide as designed.
+
 Not supported: Beamer notes on half pages, transitions, movies, drawing tools and spotlight. Changes made while
 presenting (`Ctrl+E` for the end slide, `m` for the bookmark) stay in the browser rather than being written back to
 the `.pdfpc` file.
@@ -91,8 +108,8 @@ A note can start with the slide's planned window, in minutes and seconds from th
 pdfpcnic takes that line off the note and draws it instead. It has to be the note's first line, on its own. The arrow
 may be `->`, minutes may pass 59, and the `· 36 s` is optional. `**01:22**` alone plans a slide that takes no time.
 Reveal steps repeat their slide's line, or carry windows of their own; then each step goes by its own. A backup slide
-(after `endSlide`) can say just how long it takes, `**45 s**`; TokenSlides writes that for the slides after
-`#show: appendix`, and marks them backup.
+(after `endSlide`) can say just how long it takes, `**45 s**`. TokenSlides, a Typst theme built on Touying, writes
+these lines from the speaker notes, and marks the slides after `#show: appendix` as backup.
 
 Along the foot of the current slide, a line fills as you spend its planned time, then turns the late colors; once
 you're seriously over, it says by how much. A slide keeps its time over your visits: come back to it and the line
@@ -117,30 +134,45 @@ resize them, and the left edge of the thumbnails to resize them; double-click th
 Without timing lines, the talk's length is split evenly over the slides (pdfpc's even pace). **Help** (`?`) has a key
 to the colors.
 
+## Privacy
+
+The browser reads your PDF and `.pdfpc` file; nothing is uploaded, and there are no accounts, cookies or analytics. On
+the website, a Content Security Policy lets the page load scripts and connect only to its own site, so nothing in a PDF
+or a note can send anything elsewhere.
+
+To resume after a reload, the browser keeps the last deck you opened, with your place and timer, in its own storage on
+this computer. **Forget** on the start page removes it. Settings such as sizes and pace colors are kept too.
+
 ## Browsers
 
-Tested in Chrome, from the website and from the offline file. Window placement and automatic fullscreen need a
-Chromium browser (Chrome, Edge, Brave and others). Firefox and Safari haven't been tested yet. If you try them, prefer
-the website over the offline file, and place the audience window by hand.
+Tested in Chrome and Firefox, from the website and from the offline file. Window placement and automatic fullscreen
+need a Chromium browser (Chrome, Edge, Brave and others) and a secure page: the website, `localhost`, or your own copy
+over HTTPS. In Firefox, drag the audience window to the projector and double-click it for fullscreen. Safari hasn't
+been tested yet.
 
-## Development
+The website also renders PDFs that don't embed their fonts, and scanned images (JBIG2 and JPEG 2000), by fetching
+pdf.js's extra files when a PDF needs them. The offline file goes without; slides made with Typst, LaTeX, PowerPoint
+or Keynote rarely need them.
+
+## Self-hosting
+
+```sh
+podman build -t pdfpcnic https://github.com/youweizhuo/pdfpcnic.git#main
+podman run -d --name pdfpcnic -p 8080:8080 pdfpcnic
+```
+
+The image is nginx with the site, about 25 MB. [docs/self-hosting.md](docs/self-hosting.md) sets it up as a service
+that starts with the server, behind HTTPS.
+
+## Contributing
+
+Bug reports, ideas and pull requests are welcome; [CONTRIBUTING.md](CONTRIBUTING.md) explains the setup and the
+checks. To build it yourself:
 
 ```sh
 npm install
-npm run dev          # local server
 npm run build        # dist/ (the site) and dist/pdfpcnic.html (the offline file)
-CHROME_PATH=/path/to/chrome npm run e2e          # end-to-end checks on the offline file
-CHROME_PATH=/path/to/chrome npm run e2e -- site  # ... and on the site, with window placement
 ```
-
-The code is plain TypeScript with [PDF.js](https://mozilla.github.io/pdf.js/) for rendering:
-
-- `src/deck.ts` reads the PDF and `.pdfpc` file into slides.
-- `src/render.ts` renders pages at the screen's pixel size and keeps the neighbors ready.
-- `src/audience.ts` drives the audience window. It's an empty popup this window draws into, so nothing needs syncing.
-- `src/main.ts` holds the presenter.
-
-`demo/` has the demo deck (Typst source, PDF and `.pdfpc`).
 
 ## Credits
 
@@ -152,4 +184,4 @@ and file format come from [pdfpc](https://github.com/pdfpc/pdfpc), and the look 
 
 ## License
 
-MIT
+[MIT](LICENSE)

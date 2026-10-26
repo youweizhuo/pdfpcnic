@@ -793,7 +793,8 @@ class Presenter {
     const s = this.state;
     const slide = this.deck.pages[s.page].slide;
     const length = Math.round(T.talkLength(s.timer, this.talk(), now) / 1000);
-    const at = T.elapsed(s.timer, now) / 1000;
+    // Whole seconds, as the clock shows them, so every number here turns over with it.
+    const at = Math.floor(T.elapsed(s.timer, now) / 1000);
     const started = s.timer.startedAt !== null;
     const planned = this.timed ? this.planned : length;
     for (const id of ["pace-slide", "pace-all-text", "talkbar"]) $(id).hidden = !planned;

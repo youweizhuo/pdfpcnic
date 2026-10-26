@@ -1,6 +1,7 @@
 # pdfpcnic
 
 [![Latest release](https://img.shields.io/github/v/release/youweizhuo/pdfpcnic?color=ffd60a&labelColor=1c1c1e)](https://github.com/youweizhuo/pdfpcnic/releases/latest)
+[![Checks](https://github.com/youweizhuo/pdfpcnic/actions/workflows/pages.yml/badge.svg)](https://github.com/youweizhuo/pdfpcnic/actions/workflows/pages.yml)
 [![MIT License](https://img.shields.io/github/license/youweizhuo/pdfpcnic?color=ffd60a&labelColor=1c1c1e)](LICENSE)
 [![Open the presenter](https://img.shields.io/badge/open-the%20presenter-ffd60a?labelColor=1c1c1e)](https://youweizhuo.github.io/pdfpcnic/)
 

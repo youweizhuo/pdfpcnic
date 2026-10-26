@@ -3,6 +3,8 @@
 // browsers without it just don't dim.
 
 const NAME = "spoken";
+/** Shades the edge fades through, from not yet said to said: the dim part grows smoothly. */
+const SHADES = 6;
 const supported = typeof CSS !== "undefined" && "highlights" in CSS;
 
 /** A paragraph that opens with *ref* is a reference, not spoken (TokenSlides' convention). */
@@ -14,18 +16,22 @@ function isRef(block: Element): boolean {
 /** Characters that count: everything but whitespace. */
 const counted = (text: string) => text.replace(/\s/g, "").length;
 
-/** Offset in `text` just after its `k`-th counted character, carried on to the end of a Latin word. */
-function offsetAfter(text: string, k: number): number {
+/** Offset in `text` of its `k`-th counted character (from 0), or its length if it has fewer. */
+function offsetOf(text: string, k: number): number {
   let i = 0;
-  for (; i < text.length && k > 0; i++) if (!/\s/.test(text[i])) k--;
-  while (i < text.length && /\w/.test(text[i]) && /\w/.test(text[i - 1])) i++;
+  for (; i < text.length; i++) if (!/\s/.test(text[i]) && k-- <= 0) break;
   return i;
+}
+
+function paint(name: string, ranges: Range[]): void {
+  if (ranges.length) CSS.highlights.set(name, new Highlight(...ranges));
+  else CSS.highlights.delete(name);
 }
 
 export class Spoken {
   private nodes: Array<{ node: Text; count: number }> = [];
   private total = 0;
-  private shown = 0;
+  private shown = "";
 
   /** Indexes the spoken text of a freshly rendered note. */
   index(root: HTMLElement): void {
@@ -40,31 +46,47 @@ export class Spoken {
       this.nodes.push({ node, count });
       this.total += count;
     }
-    this.shown = -1;
+    this.shown = "";
     this.show(null);
   }
 
-  /** Dims the first `share` (0 to 1) of the spoken text, or none for null. */
-  show(share: number | null): void {
+  /**
+   * Dims the first `share` (0 to 1) of the spoken text, or none for null. The
+   * edge fades over about `soft` of the text, so it moves on a character at a
+   * time instead of in jumps; nothing is redrawn until a character's shade changes.
+   */
+  show(share: number | null, soft = 0): void {
     if (!supported) return;
-    const n = share === null ? 0 : Math.round(share * this.total);
-    if (n === this.shown) return;
-    this.shown = n;
-    if (!n) {
-      CSS.highlights.delete(NAME);
-      return;
-    }
-    const ranges: Range[] = [];
-    let left = n;
+    // Each shade covers whole characters, so the edge moves on all at once.
+    const step = Math.max(1, Math.round((soft * this.total) / SHADES));
+    const fade = step * SHADES;
+    // The edge runs on past the end by the fade, so it's all dim when the time is up.
+    const at = share === null ? 0 : share * (this.total + fade) - 0.5;
+    // Shade j (1 to SHADES - 1) is from cut(j) to cut(j - 1); fully dim is before cut(SHADES - 1).
+    const cuts = Array.from({ length: SHADES }, (_, j) => Math.min(this.total, Math.max(0, Math.ceil(at - j * step))));
+    const key = cuts.join();
+    if (key === this.shown) return;
+    this.shown = key;
+    paint(NAME, this.ranges(0, cuts[SHADES - 1]));
+    for (let j = 1; j < SHADES; j++) paint(`${NAME}-${j}`, this.ranges(cuts[j], cuts[j - 1]));
+  }
+
+  /** Ranges over the counted characters from `from` up to `to`. */
+  private ranges(from: number, to: number): Range[] {
+    const out: Range[] = [];
+    if (from >= to) return out;
+    let at = 0;
     for (const { node, count } of this.nodes) {
-      if (!left) break;
-      const r = new Range();
-      r.setStart(node, 0);
-      r.setEnd(node, count <= left ? node.length : offsetAfter(node.data, left));
-      left = Math.max(0, left - count);
-      ranges.push(r);
+      if (at >= to) break;
+      if (at + count > from) {
+        const r = new Range();
+        r.setStart(node, offsetOf(node.data, from - at));
+        r.setEnd(node, offsetOf(node.data, to - at));
+        out.push(r);
+      }
+      at += count;
     }
-    CSS.highlights.set(NAME, new Highlight(...ranges));
+    return out;
   }
 
   /** How dim the said part is: 0 for not at all, up to 1. */
@@ -75,6 +97,9 @@ export class Spoken {
       style.id = "spoken-style";
       document.head.append(style);
     }
-    style.textContent = `::highlight(${NAME}) { color: rgb(245 245 247 / ${(1 - dim).toFixed(2)}); }`;
+    style.textContent = Array.from({ length: SHADES }, (_, j) => {
+      const alpha = 1 - (dim * (j || SHADES)) / SHADES;
+      return `::highlight(${j ? `${NAME}-${j}` : NAME}) { color: rgb(245 245 247 / ${alpha.toFixed(3)}); }`;
+    }).join("\n");
   }
 }

@@ -298,19 +298,44 @@ try {
     assert.match(await text("#pace-all-text"), /^2:(29|30) early$/);
     assert.match(await cls("#pace-all-text"), /t-early/);
     assert.match(await fill(), /t-early/);
+    // The line of time spent sits right under the slides, and runs on paler to
+    // where the talk would end: 2:30 before the target, on a scale of 11:00.
+    const line = await page.$eval("#talkbar", (bar) => {
+      const b = bar.getBoundingClientRect();
+      const r = (sel) => bar.querySelector(sel).getBoundingClientRect();
+      return { gap: r(".spent").top - r(".seg").bottom, end: (r(".projected").right - b.left) / b.width };
+    });
+    assert.equal(line.gap, 0);
+    assert.ok(Math.abs(line.end - 450 / 660) < 0.01, `projected end at ${line.end}`);
+    assert.match(await cls("#talkbar .projected"), /t-early/);
     // A minute into its two: half the spoken characters dim, none of the *ref* paragraph.
     await at(450);
     await settle();
+    // The edge fades: fully dim, then spoken-5 to spoken-1, each a sixth less.
     const dim = () =>
       page.evaluate(() => {
-        const h = CSS.highlights.get("spoken");
-        if (!h) return null;
-        const said = [...h].map((r) => r.toString()).join("").replace(/\s/g, "");
+        const text = (name) => [...(CSS.highlights.get(name) ?? [])].map((r) => r.toString()).join("").replace(/\s/g, "");
+        const said = ["spoken", ...[5, 4, 3, 2, 1].map((j) => `spoken-${j}`)].map(text);
+        if (!said.join("")) return null;
         const first = document.querySelector("#notes-body p").textContent.replace(/\s/g, "");
-        return { share: said.length / first.length, inFirst: first.startsWith(said) };
+        const share = said.reduce((n, t, k) => n + (t.length * (6 - k)) / 6, 0) / first.length;
+        return { share, inFirst: first.startsWith(said.join("")) };
       });
     const half = await dim();
     assert.ok(half && Math.abs(half.share - 0.5) < 0.05 && half.inFirst, `notes dimmed: ${JSON.stringify(half)}`);
+    // This slide's line moves on several times a second, not once, and stops with the clock.
+    const widths = async () => {
+      const seen = new Set();
+      for (let i = 0; i < 10; i++) {
+        seen.add(await page.$eval("#slide-fill", (e) => e.getBoundingClientRect().width));
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      return seen.size;
+    };
+    assert.ok((await widths()) >= 4, "the line moves in steps of a second");
+    await press("p");
+    assert.equal(await widths(), 1);
+    await press("p");
     await press(",");
     await page.$eval("#set-dim", (e) => {
       e.value = 0;
@@ -320,10 +345,10 @@ try {
     await page.click("#set-defaults");
     await press("Escape");
     // Reached 1:30 into its window: moving on now ends a minute early, which
-    // is within the minute of slack, so on time.
+    // is within the minute of slack, so on time, which needs no words.
     await reach(480);
     assert.equal(await text("#pace-slide-text"), "");
-    assert.equal(await text("#pace-all-text"), "on time");
+    assert.equal(await text("#pace-all-text"), "");
     assert.match(await cls("#pace-all-text"), /t-on/);
     // 2:30 on it: the slide is 30 s over; the talk would end 1:30 late, serious
     // (the levels are 1 and 2 minutes).
@@ -378,7 +403,7 @@ try {
     assert.ok(near(where.last[0], 510 / 660) && near(where.last[1], 570 / 660), `last slide at ${where.last}`);
     // 50 s early: on time with a minute of slack, early with 5% (30 s here).
     await reach(490);
-    assert.equal(await text("#pace-all-text"), "on time");
+    assert.equal(await text("#pace-all-text"), "");
     await page.screenshot({ path: `${out}/pace.png` });
     await press(",");
     await page.click('#set-unit [data-unit="share"]');

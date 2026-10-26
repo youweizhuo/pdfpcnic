@@ -56,11 +56,23 @@ sudo loginctl enable-linger "$USER"
 
 ## Update
 
-The unit marks the image for Podman's auto-update, which pulls a newer `1` release and restarts the service:
+The unit marks the image for Podman's auto-update. Turn on its timer once, and each new 1.x release reaches your
+server by itself:
 
 ```sh
-podman auto-update                                    # now
-systemctl --user enable --now podman-auto-update.timer  # every day
+systemctl --user enable --now podman-auto-update.timer
+```
+
+Every day around midnight it checks whether the `1` tag has moved. If it has, it pulls the new image and restarts the
+service, and if the new version fails to start, it goes back to the one before. To update right after a release
+instead, run `podman auto-update`; `podman auto-update --dry-run` only says whether there is one. Old images stay
+behind until `podman image prune -f`. To check every hour,
+run `systemctl --user edit podman-auto-update.timer` and add:
+
+```ini
+[Timer]
+OnCalendar=
+OnCalendar=hourly
 ```
 
 For an image you built, build it again from the new release, run `systemctl --user restart pdfpcnic`, and clear out the

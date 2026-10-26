@@ -76,8 +76,8 @@ type SlackLevel = (typeof LEVELS)[number];
 
 /** Slider ranges for the pace levels: [min, max, step] in seconds, or in percent. */
 const SLACK_RANGE: Record<Slack["unit"], Record<SlackLevel, [number, number, number]>> = {
-  time: { early: [0, 300, 15], serious: [15, 600, 15], severe: [15, 900, 15] },
-  share: { early: [0, 20, 1], serious: [1, 30, 1], severe: [1, 40, 1] },
+  time: { early: [0, 180, 15], serious: [15, 300, 15], severe: [15, 300, 15] },
+  share: { early: [0, 10, 1], serious: [1, 15, 1], severe: [1, 20, 1] },
 };
 
 function loadSlack(): Slack {
@@ -156,7 +156,7 @@ class Presenter {
     this.buildStrip();
     this.buildTalkbar();
     this.wire();
-    this.stopTicking = ticker(250, () => this.tick());
+    this.stopTicking = ticker(() => this.tick());
     this.render();
   }
 
@@ -720,9 +720,16 @@ class Presenter {
   }
   private beat = "";
 
-  /** The ticker's beat: redraws once a shown number turns over, not on every beat. */
-  private tick(): void {
-    if (this.beatAt(Date.now()) !== this.beat) this.renderTimer();
+  /** The ticker's beat: redraws once a shown number turns over, not on every beat. Returns when to beat again. */
+  private tick(): number {
+    const now = Date.now();
+    if (this.beatAt(now) !== this.beat) this.renderTimer();
+    // In between, this slide's line and the notes move on, each redrawn only once it has changed.
+    else if (this.slideTime) {
+      this.renderFill(now);
+      this.renderNotesDim(now);
+    }
+    return this.beatMs;
   }
 
   private renderTimer(): void {
@@ -730,7 +737,7 @@ class Presenter {
     this.beat = this.beatAt(now);
     this.renderClock(now);
     this.renderPace(now);
-    this.renderNotesDim();
+    this.renderNotesDim(now);
   }
 
   /** Présentation.app's clock: time since the start, and the time of day. */
@@ -782,7 +789,7 @@ class Presenter {
     main.forEach((p, slide) => {
       if (!this.timed || (p && p.end > p.start)) this.segs[slide] = el("div", "seg");
     });
-    $("talkbar").replaceChildren(el("div", "past"), ...this.segs.filter(Boolean), el("div", "spent"), el("div", "target"));
+    $("talkbar").replaceChildren(el("div", "past"), ...this.segs.filter(Boolean), el("div", "projected"), el("div", "spent"), el("div", "target"));
     this.barScale = 0;
   }
 
@@ -818,15 +825,43 @@ class Presenter {
   private visit: { key: string; since: number } | null = null;
   /** The last planned window you were on. */
   private lastPlan: Plan | null = null;
-  /** Share of this slide's planned time used since reaching it, or null when it has none. */
-  private used: number | null = null;
+  /** Your time on this slide, the talk's seconds plus `base`, against its planned `budget`; null before the start or without a plan. */
+  private slideTime: { base: number; budget: number } | null = null;
+
+  /** Share of this slide's planned time used by `now`, or null when it has none. */
+  private usedAt(now: number): number | null {
+    const t = this.slideTime;
+    return t && Math.min(1, Math.max(0, (t.base + T.elapsed(this.state.timer, now) / 1000) / t.budget));
+  }
 
   private spoken = new Spoken();
 
-  /** Dims the part of the note you'd have said by now. */
-  private renderNotesDim(): void {
-    this.spoken.show(this.notesDim > 0 ? this.used : null);
+  /** Dims the part of the note you'd have said by now, its edge fading over a second and a half of the slide's time. */
+  private renderNotesDim(now = Date.now()): void {
+    const used = this.notesDim > 0 ? this.usedAt(now) : null;
+    this.spoken.show(used, used === null ? 0 : 1.5 / this.slideTime!.budget);
   }
+
+  /** This slide's line in device pixels, and how far along it is drawn. */
+  private fillPixels = 0;
+  private fillAt = -1;
+
+  /**
+   * This slide's line, redrawn only once it has moved on a whole pixel: as
+   * smooth as the screen can show, at a few frames a second. (A CSS animation
+   * would have the browser draw every frame the screen shows, 60 or more a
+   * second, for a line that moves a pixel every tenth of a second or so.)
+   */
+  private renderFill(now: number): void {
+    const width = Math.max(1, this.fillPixels);
+    const px = Math.round((this.usedAt(now) ?? 0) * width);
+    if (px === this.fillAt) return;
+    this.fillAt = px;
+    $("slide-fill").style.transform = `scaleX(${px / width})`;
+  }
+
+  /** How soon to look again: when the line is due to move a pixel, at most 25 times a second; 4 times otherwise. */
+  private beatMs = 250;
 
   /** Lays this slide's line exactly along the slide's foot: the slide is drawn in whole pixels, its box isn't. */
   private fitSlidebar(): void {
@@ -834,6 +869,8 @@ class Presenter {
     const bar = $("pace-slide");
     if (!c.width || bar.hidden) return;
     bar.style.width = `${c.width}px`;
+    this.fillPixels = c.width * devicePixelRatio;
+    this.fillAt = -1;
     bar.style.left = bar.style.top = "0px";
     const b = bar.getBoundingClientRect();
     bar.style.left = `${c.left - b.left}px`;
@@ -841,7 +878,7 @@ class Presenter {
   }
 
   private renderPace(now: number): void {
-    this.used = null;
+    this.slideTime = null;
     const s = this.state;
     const slide = this.deck.pages[s.page].slide;
     const length = Math.round(T.talkLength(s.timer, this.talk(), now) / 1000);
@@ -850,7 +887,10 @@ class Presenter {
     const started = s.timer.startedAt !== null;
     const planned = this.timed ? this.planned : length;
     for (const id of ["pace-slide", "pace-all-text", "talkbar"]) $(id).hidden = !planned;
-    if (!planned) return;
+    if (!planned) {
+      this.beatMs = 250;
+      return;
+    }
     const target = length || planned;
 
     // The planned window you're in (a step with a window of its own, a
@@ -869,7 +909,8 @@ class Presenter {
       }
       if (plan) this.lastPlan = plan;
     }
-    const here = this.visit ? (this.spent.get(this.visit.key) ?? 0) + at - this.visit.since : 0;
+    const base = this.visit ? (this.spent.get(this.visit.key) ?? 0) - this.visit.since : 0;
+    const here = this.visit ? base + at : 0;
 
     // This slide, in the bar under it: its planned time against your time
     // on it. Late always shows, in three levels. A slide planned to take no
@@ -882,14 +923,15 @@ class Presenter {
       // Words only once it's serious; the line says the rest.
       text.textContent = tone === "serious" || tone === "severe" ? `${span(over)} over` : "";
       text.className = `slidebar-text t-${tone}`;
-      const fill = $("slide-fill");
-      fill.style.width = `${(started ? Math.min(1, here / budget) : 0) * 100}%`;
-      fill.className = `slide-fill t-${tone}`;
+      $("slide-fill").className = `slide-fill t-${tone}`;
       $("pace-slide").title = plan
         ? `This slide: planned ${mark(plan.start)}–${mark(plan.end)}, ${span(budget)}`
         : `This slide: ${span(budget)}, off the talk's plan`;
-      this.used = started ? Math.min(1, here / budget) : null;
+      if (started) this.slideTime = { base, budget };
     }
+    this.renderFill(now);
+    const moving = this.slideTime && s.timer.pausedAt === null && (this.usedAt(now) ?? 1) < 1;
+    this.beatMs = moving ? Math.min(250, Math.max(40, (budget * 1000) / Math.max(1, this.fillPixels))) : 250;
 
     // All slides: where the talk would end if you moved on now, with the
     // slides after this one as planned, against the target end. A slide off
@@ -900,13 +942,14 @@ class Presenter {
     const diff = Math.round(finish - target);
     const all = $("pace-all-text");
     const level = started ? grade(diff, target, this.slack) : "idle";
-    // A little early is simply on time here.
-    all.textContent = diff > 0 ? `${span(diff)} late` : level === "early" ? `${span(diff)} early` : "on time";
+    // A little early is simply on time here, and on time needs no words.
+    all.textContent = diff > 0 ? `${span(diff)} late` : level === "early" ? `${span(diff)} early` : "";
     all.className = `pace-num t-${level}`;
     all.title = `Where the talk ends at this pace. Planned to end at ${mark(planned)}; target ${mark(target)}`;
 
     // The bar: fixed, with room past the target end. Time spent runs under
-    // it, colored like "All slides".
+    // it, colored like "All slides", and goes on lighter to where the talk
+    // would end.
     this.target = target;
     const bar = $("talkbar");
     const scale = Math.max(target * 1.1, planned);
@@ -921,9 +964,13 @@ class Presenter {
       bar.querySelector<HTMLElement>(".target")!.style.left = x(target);
       bar.querySelector<HTMLElement>(".past")!.style.left = x(target);
     }
+    const tone = `t-${started ? level : "on"}`;
     const spent = bar.querySelector<HTMLElement>(".spent")!;
     spent.style.width = x(at);
-    spent.className = `spent t-${started ? level : "on"}`;
+    spent.className = `spent ${tone}`;
+    const projected = bar.querySelector<HTMLElement>(".projected")!;
+    projected.style.width = x(finish);
+    projected.className = `projected ${tone}`;
   }
 
   private renderStatus(): void {
@@ -1123,36 +1170,49 @@ class Presenter {
 }
 
 /**
- * Calls `tick` every `ms`. The beat comes from a worker: a window the browser
- * takes for hidden (on a Mac, the presenter while the audience is fullscreen
- * on the other screen, say) has its timers slowed to once a second, then once
- * a minute, but not its messages.
+ * Calls `tick`, then again after the ms it returns. The beat comes from a
+ * worker: a window the browser takes for hidden (on a Mac, the presenter while
+ * the audience is fullscreen on the other screen, say) has its timers slowed
+ * to once a second, then once a minute, but not its messages.
  */
-function ticker(ms: number, tick: () => void): () => void {
+function ticker(tick: () => number): () => void {
   let stop = () => {};
+  // Beats on even if a tick fails.
+  const beat = (after: (ms: number) => void) => {
+    let ms = 250;
+    try {
+      ms = tick();
+    } finally {
+      after(ms);
+    }
+  };
   // Without a worker, or if the browser turns it down later, plain timers.
   const fallback = () => {
-    const id = window.setInterval(tick, ms);
-    stop = () => clearInterval(id);
+    let id = 0;
+    const run = () => beat((ms) => (id = window.setTimeout(run, ms)));
+    run();
+    stop = () => clearTimeout(id);
   };
   try {
-    const src = `setInterval(() => postMessage(0), ${ms});`;
+    const src = "onmessage = (e) => setTimeout(() => postMessage(0), e.data);";
     const url =
       location.protocol === "file:"
         ? `data:text/javascript,${encodeURIComponent(src)}`
         : URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
     const worker = new Worker(url);
     const loaded = () => url.startsWith("blob:") && URL.revokeObjectURL(url);
+    const run = () => beat((ms) => worker.postMessage(ms));
     worker.onmessage = () => {
       loaded();
-      worker.onmessage = tick;
-      tick();
+      worker.onmessage = run;
+      run();
     };
     worker.onerror = () => {
       loaded();
       worker.terminate();
       fallback();
     };
+    worker.postMessage(0);
     stop = () => worker.terminate();
   } catch {
     fallback();

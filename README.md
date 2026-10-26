@@ -124,10 +124,12 @@ Next to the clock, the whole talk:
 
 - **Early or late**: where the talk would end if you moved on right now, with the slides after this one as planned,
   against the target end (`duration` or `endTime`, else where the plan ends). Reach a two-minute slide on time and it
-  starts at "2:00 early", comes to "on time" as you finish the slide, and turns late if you stay on. A backup slide
+  starts at "2:00 early", says nothing once you're within the minute of slack (on time needs no words), and turns
+  late if you stay on. A backup slide
   isn't on the plan, so there it counts from the last planned slide you were on: a detour shows as late.
 - **The bar** is fixed, with a red line at the target end and some room past it: the slides as planned, this one in
-  yellow, and under them a thin line of time spent, colored like the early or late beside the clock.
+  yellow, and right under them a thin line of time spent, colored like the early or late beside the clock. The line
+  goes on, paler, to where the talk would end, so you see how far it is from the red line.
 
 Late always shows: orange, deep orange from 1 minute (serious) and red from 2 minutes (very serious). Early shows, in
 blue, only past 1 minute. **Settings** (`,`) changes the three levels, in time or as shares of the talk, and how much the notes dim.

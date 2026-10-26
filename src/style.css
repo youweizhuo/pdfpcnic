@@ -19,6 +19,10 @@
   --aspect: 16 / 9;
   /* Current slide width, as a share of its column. */
   --stage: 0.85;
+  /* The talk bar's slides, and the time lines under them and under the slide:
+     sized with the window, like the clock, not with the column. */
+  --talk-row: clamp(14px, 1.25vw, 28px);
+  --time-line: clamp(5px, 0.42vw, 10px);
   font-family:
     system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei",
     "Noto Sans CJK SC", sans-serif;
@@ -188,11 +192,13 @@ kbd {
   visibility: hidden;
 }
 .slidebar-track {
-  height: 6px;
+  height: var(--time-line);
   background: #3a3a3c;
 }
 .slide-fill {
   height: 100%;
+  transform: scaleX(0);
+  transform-origin: left;
   background: #d1d1d6;
 }
 .slide-fill.t-late {
@@ -206,7 +212,7 @@ kbd {
 }
 .slidebar-text {
   position: absolute;
-  top: 9px;
+  top: calc(var(--time-line) + 3px);
   right: 0;
   pointer-events: none;
   font-size: clamp(13px, 1vw, 16px);
@@ -448,16 +454,17 @@ kbd {
 }
 
 .pace-num {
-  font-size: clamp(17px, 1.5vw, 28px);
+  font-size: clamp(22px, 2.1vw, 40px);
   text-align: right;
 }
 /* Against the same clock: the slides as planned, time spent as a thin line
-   under them in the color of the pace, and the target end as a red line. */
+   right under them in the color of the pace, running on lighter to where the
+   talk would end, and the target end as a red line. */
 .talkbar {
   position: relative;
-  height: 22px;
+  height: calc(var(--talk-row) + var(--time-line));
   margin-top: 14px;
-  background: linear-gradient(var(--panel), var(--panel)) top / 100% 14px no-repeat;
+  background: linear-gradient(var(--panel), var(--panel)) top / 100% var(--talk-row) no-repeat;
 }
 .talkbar > * {
   position: absolute;
@@ -466,35 +473,38 @@ kbd {
 }
 .talkbar .past {
   bottom: auto;
-  height: 14px;
+  height: var(--talk-row);
   right: 0;
   background: rgb(255 69 58 / 0.12);
 }
 .talkbar .seg {
   bottom: auto;
-  height: 14px;
+  height: var(--talk-row);
   background: #48484a;
   box-shadow: inset -1px 0 0 #000;
 }
 .talkbar .seg.current {
   background: var(--accent);
 }
-.talkbar .spent {
+.talkbar :is(.spent, .projected) {
   top: auto;
   left: 0;
-  height: 6px;
+  height: var(--time-line);
   background: #d1d1d6;
 }
-.talkbar .spent.t-late {
+.talkbar .projected {
+  opacity: 0.5;
+}
+.talkbar :is(.spent, .projected).t-late {
   background: var(--late);
 }
-.talkbar .spent.t-serious {
+.talkbar :is(.spent, .projected).t-serious {
   background: var(--serious);
 }
-.talkbar .spent.t-severe {
+.talkbar :is(.spent, .projected).t-severe {
   background: var(--severe);
 }
-.talkbar .spent.t-early {
+.talkbar :is(.spent, .projected).t-early {
   background: var(--ahead);
 }
 .talkbar .target {

@@ -3,6 +3,18 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.0.1 (2026-10-26)
+
+### Changed
+
+- **The talk bar shows where the talk would end.** The line of time spent goes on, paler, to the projected end, so
+  you see how far it is from the red line. The line sits right under the slides, and the bar is a little taller.
+- **This slide's line moves smoothly**, a pixel at a time, and the notes dim with a soft edge that fades a character
+  at a time, instead of both jumping once a second. Each is redrawn only when it has changed, a few times a second.
+- **Early and late beside the clock are bigger**, and on time shows nothing.
+- **The pace sliders in Settings are shorter** (up to 3 minutes early and 5 minutes late, or 10 to 20% of the talk),
+  so the useful values are easier to set.
+
 ## 1.0.0 (2026-10-26)
 
 The first stable release: the presenter, its pace display and the offline file are complete for talks given with

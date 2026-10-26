@@ -12,8 +12,11 @@ After=network-online.target
 
 [Container]
 ContainerName=pdfpcnic
-# Built with: podman build -t pdfpcnic https://github.com/youweizhuo/pdfpcnic.git#main
-Image=localhost/pdfpcnic:latest
+# The latest 1.x release, for amd64 or arm64. `podman auto-update` pulls a newer
+# one and restarts the service. For an image you built, use localhost/pdfpcnic
+# and drop AutoUpdate.
+Image=ghcr.io/youweizhuo/pdfpcnic:1
+AutoUpdate=registry
 # Behind a reverse proxy on this server, publish to it alone: 127.0.0.1:8080:8080
 PublishPort=8080:8080
 # nginx writes only to /tmp, which Podman mounts as tmpfs.

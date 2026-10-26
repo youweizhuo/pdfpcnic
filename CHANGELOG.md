@@ -11,7 +11,7 @@ pdfpc files, and the site can now be self-hosted.
 ### Added
 
 - **Self-hosting.** A container image (nginx, about 25 MB) and a Podman Quadlet unit that runs it as a service and
-  starts it with the server. See [docs/self-hosting.md](docs/self-hosting.md).
+  starts it with the server. See [docs/self-hosting.md](https://github.com/youweizhuo/pdfpcnic/blob/main/docs/self-hosting.md).
 - **Links in the PDF** work, in the presenter and the audience window: a jump to another page (back returns), a web
   link in a new tab, and PDF actions such as next page and back. The presenter outlines links; the PDF's own link
   borders stay hidden.

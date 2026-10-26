@@ -3,21 +3,21 @@
 pdfpcnic is a static site, so any web server can host it. The container image bundles the site with nginx, and Podman
 runs it as a service that starts again after the server reboots.
 
-## Build the image
+## The image
 
 ```sh
-podman build -t pdfpcnic https://github.com/youweizhuo/pdfpcnic.git#main
+podman run --rm -p 8080:8080 ghcr.io/youweizhuo/pdfpcnic:1
 ```
 
-Use a release tag such as `#v1.0.0` in place of `#main` to pin a version, or run `podman build -t pdfpcnic .` in a
-checkout. The image is about 25 MB: nginx with the site, serving port 8080 as an unprivileged user. Try it:
+Then open <http://localhost:8080>. The image is about 25 MB, for amd64 and arm64: nginx with the site, serving port
+8080 as an unprivileged user. The tag `1` follows the 1.x releases; `1.0.0` pins one. With Docker,
+`docker run -d --restart unless-stopped -p 8080:8080 ghcr.io/youweizhuo/pdfpcnic:1` keeps it running across reboots.
+
+To build it yourself instead, from a release or a checkout (`podman build -t pdfpcnic .`):
 
 ```sh
-podman run --rm -p 8080:8080 pdfpcnic
+podman build -t pdfpcnic https://github.com/youweizhuo/pdfpcnic.git#v1.0.0
 ```
-
-Then open <http://localhost:8080>. With Docker, the build is `docker build -f Containerfile -t pdfpcnic .`, and
-`docker run -d --restart unless-stopped -p 8080:8080 pdfpcnic` keeps it running across reboots.
 
 ## Run it as a service
 
@@ -33,18 +33,18 @@ systemctl --user start pdfpcnic
 sudo loginctl enable-linger "$USER"
 ```
 
-The last line starts your services at boot, before you log in, and keeps them running after you log out. You don't
-need `systemctl enable`: the unit's `[Install]` section takes care of starting it at boot, and `Restart=always`
-restarts it if nginx ever exits. To check on it, run `systemctl --user status pdfpcnic` and
-`journalctl --user -u pdfpcnic`.
+The first start pulls the image. The last line starts your services at boot, before you log in, and keeps them
+running after you log out. You don't need `systemctl enable`: the unit's `[Install]` section takes care of starting it
+at boot, and `Restart=always` restarts it if nginx ever exits. To check on it, run `systemctl --user status pdfpcnic`
+and `journalctl --user -u pdfpcnic`.
 
-To run it as root instead, build the image with `sudo podman build …`, put the file in `/etc/containers/systemd/`, and
-use `sudo systemctl` without `--user`. Root needs no linger.
+To run it as root instead, put the file in `/etc/containers/systemd/` and use `sudo systemctl` without `--user`. Root
+needs no linger. For an image you built, set `Image=localhost/pdfpcnic` in the file and remove `AutoUpdate=registry`.
 
 Older Podman, such as the 4.3 in Debian 12, has no Quadlet. Have Podman write the unit instead:
 
 ```sh
-podman create --name pdfpcnic -p 8080:8080 --read-only pdfpcnic
+podman create --name pdfpcnic -p 8080:8080 --read-only ghcr.io/youweizhuo/pdfpcnic:1
 podman generate systemd --new --name pdfpcnic --restart-policy=always --files
 mkdir -p ~/.config/systemd/user
 mv container-pdfpcnic.service ~/.config/systemd/user/
@@ -56,13 +56,16 @@ sudo loginctl enable-linger "$USER"
 
 ## Update
 
+The unit marks the image for Podman's auto-update, which pulls a newer `1` release and restarts the service:
+
 ```sh
-podman build -t pdfpcnic https://github.com/youweizhuo/pdfpcnic.git#main
-systemctl --user restart pdfpcnic
-podman image prune -f
+podman auto-update                                    # now
+systemctl --user enable --now podman-auto-update.timer  # every day
 ```
 
-A talk in progress carries on with the version it loaded, and the new version arrives the next time the page loads.
+For an image you built, build it again from the new release, run `systemctl --user restart pdfpcnic`, and clear out the
+old one with `podman image prune -f`. Either way, a talk in progress carries on with the version it loaded, and the new
+version arrives the next time the page loads.
 
 ## HTTPS
 

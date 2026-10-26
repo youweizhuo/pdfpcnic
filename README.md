@@ -161,12 +161,11 @@ or Keynote rarely need them.
 ## Self-hosting
 
 ```sh
-podman build -t pdfpcnic https://github.com/youweizhuo/pdfpcnic.git#main
-podman run -d --name pdfpcnic -p 8080:8080 pdfpcnic
+podman run -d --name pdfpcnic -p 8080:8080 ghcr.io/youweizhuo/pdfpcnic:1
 ```
 
-The image is nginx with the site, about 25 MB. [docs/self-hosting.md](docs/self-hosting.md) sets it up as a service
-that starts with the server, behind HTTPS.
+The image is nginx with the site, about 25 MB, for amd64 and arm64. [docs/self-hosting.md](docs/self-hosting.md) sets
+it up as a service that starts with the server and keeps itself up to date, behind HTTPS.
 
 ## Contributing
 

@@ -17,6 +17,8 @@ export class SlideView {
   private page: number | null = null;
   private unsubscribe: () => void;
   private observer: ResizeObserver;
+  /** Called after the page is placed in its box. */
+  onLayout: () => void = () => {};
 
   constructor(
     host: HTMLElement,
@@ -111,6 +113,7 @@ export class SlideView {
     }
     this.cache.want(this.page, w, this.priority);
     this.draw();
+    this.onLayout();
   }
 
   private draw(): void {

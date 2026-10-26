@@ -1,6 +1,6 @@
 {
   "name": "pdfpcnic",
-  "version": "0.9.6",
+  "version": "0.9.7",
   "description": "pdfpc-style PDF presenter that runs in the browser, also as a single offline HTML file",
   "license": "MIT",
   "private": true,

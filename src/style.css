@@ -170,7 +170,8 @@ kbd {
     "notes split side ssplit strip";
 }
 /* This slide's time: a line along the foot of the slide, as wide, as thick
-   as the time line of the talk bar. */
+   as the time line of the talk bar. The script lines it up with the slide as
+   drawn, which is whole pixels inside its box. */
 .slidebar {
   grid-area: slidebar;
   justify-self: center;
@@ -182,12 +183,10 @@ kbd {
 }
 .slidebar-track {
   height: 6px;
-  border-radius: 0 0 3px 3px;
   background: #3a3a3c;
 }
 .slide-fill {
   height: 100%;
-  border-radius: inherit;
   background: #d1d1d6;
 }
 .slide-fill.t-late {
@@ -452,7 +451,6 @@ kbd {
   position: relative;
   height: 22px;
   margin-top: 14px;
-  border-radius: 3px;
   background: linear-gradient(var(--panel), var(--panel)) top / 100% 14px no-repeat;
 }
 .talkbar > * {
@@ -464,7 +462,6 @@ kbd {
   bottom: auto;
   height: 14px;
   right: 0;
-  border-radius: 0 3px 3px 0;
   background: rgb(255 69 58 / 0.12);
 }
 .talkbar .seg {
@@ -480,7 +477,6 @@ kbd {
   top: auto;
   left: 0;
   height: 6px;
-  border-radius: 3px;
   background: #d1d1d6;
 }
 .talkbar .spent.t-late {
@@ -575,7 +571,7 @@ kbd {
   grid-area: strip;
   grid-row: 1 / -1;
   margin: 0;
-  padding: 0 14px 45vh 2px;
+  padding: 0 14px 45vh 0;
   list-style: none;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -583,16 +579,16 @@ kbd {
 }
 .strip li {
   display: grid;
-  grid-template-columns: 2em minmax(0, 1fr);
+  grid-template-columns: var(--digits, 2ch) minmax(0, 1fr);
   gap: 6px;
   align-items: start;
   margin-bottom: 12px;
+  font-size: 14px;
   cursor: pointer;
 }
 .strip .num {
   padding-top: 1px;
   color: var(--dim);
-  font-size: 14px;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -767,7 +763,6 @@ kbd {
 .sw {
   width: 1.4em;
   height: 12px;
-  border-radius: 2px;
 }
 .sw.this {
   background: var(--accent);

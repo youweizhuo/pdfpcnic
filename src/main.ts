@@ -140,6 +140,7 @@ class Presenter {
     document.title = `${deck.name} · pdfpcnic`;
 
     this.current = new SlideView($("current"), deck, this.cache, 1);
+    this.current.onLayout = () => this.fitSlidebar();
     this.next = new SlideView($("next"), deck, this.cache, 2, "start");
     this.cache.onRender((page) => this.thumbs.get(page)?.forEach((t) => t.draw()));
     audience.bind(deck, this.cache);
@@ -775,6 +776,18 @@ class Presenter {
     this.spoken.show(this.notesDim > 0 ? this.used : null);
   }
 
+  /** Lays this slide's line exactly along the slide's foot: the slide is drawn in whole pixels, its box isn't. */
+  private fitSlidebar(): void {
+    const c = this.current.canvas.getBoundingClientRect();
+    const bar = $("pace-slide");
+    if (!c.width || bar.hidden) return;
+    bar.style.width = `${c.width}px`;
+    bar.style.left = bar.style.top = "0px";
+    const b = bar.getBoundingClientRect();
+    bar.style.left = `${c.left - b.left}px`;
+    bar.style.top = `${c.bottom - b.top}px`;
+  }
+
   private renderPace(now: number): void {
     this.used = null;
     const s = this.state;
@@ -899,6 +912,7 @@ class Presenter {
   private buildStrip(): void {
     const d = this.deck;
     const strip = $("strip");
+    strip.style.setProperty("--digits", `${String(d.slides.length).length}ch`);
     const items: Array<[HTMLElement, Thumb]> = [];
     this.stripItems = [];
     this.stripSlide = -1;

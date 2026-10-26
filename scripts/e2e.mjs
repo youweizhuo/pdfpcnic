@@ -419,9 +419,20 @@ try {
       await page.mouse.up();
     };
     const height = () => page.$eval("#current", (e) => e.getBoundingClientRect().height);
+    // This slide's line lies along the slide's foot, edge to edge, at any size.
+    const flush = async () => {
+      await new Promise((r) => setTimeout(r, 100));
+      const [c, t] = await page.evaluate(() =>
+        ["#current canvas", ".slidebar-track"].map((s) => document.querySelector(s).getBoundingClientRect().toJSON()),
+      );
+      for (const k of ["left", "right"]) assert.equal(t[k], c[k], `the line's ${k} edge isn't the slide's`);
+      assert.equal(t.top, c.bottom, "the line doesn't touch the slide");
+    };
+    await flush();
     const before = await height();
     await drag("#stage-split", 0, -80);
     assert.ok((await height()) < before - 40, "the slide didn't shrink");
+    await flush();
     await drag("#stage-split", 0, 200);
     assert.equal(await height(), before);
     const strip = () => page.$eval("#strip", (e) => (e.hidden ? 0 : e.getBoundingClientRect().width));

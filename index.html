@@ -7,8 +7,8 @@
     <title>pdfpcnic</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='6' width='28' height='18' rx='3' fill='%23111' stroke='%23ffd60a' stroke-width='2'/%3E%3Ccircle cx='21' cy='15' r='3' fill='%23ff453a'/%3E%3C/svg%3E" />
     <!-- pdfpcnic, MIT. Includes PDF.js (Apache-2.0), marked (MIT) and DOMPurify (Apache-2.0 or MPL-2.0). -->
-    <script type="module" crossorigin src="./assets/index-UDAWl_q9.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-C9Oq0iId.css">
+    <script type="module" crossorigin src="./assets/index-C-3MhazR.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CylHAg86.css">
   </head>
   <body>
     <section id="start" class="start">
@@ -45,32 +45,32 @@
         <div class="slidebar-track"><div id="slide-fill" class="slide-fill"></div></div>
         <span id="pace-slide-text" class="slidebar-text"></span>
       </div>
-      <div id="split" class="split" role="separator" aria-orientation="vertical" title="Drag to resize"></div>
+      <div id="split" class="split" role="separator" aria-orientation="vertical" title="Drag to resize the columns"></div>
+      <div id="stage-split" class="hsplit" role="separator" aria-orientation="horizontal" title="Drag to trade slide size for notes"></div>
       <article id="notes" class="notes"><div id="notes-body" class="notes-body"></div></article>
 
-      <aside class="side">
+      <!-- The next slide, with the clock and the talk's pace level with the
+           foot of the current slide, and the two bars on one row. -->
+      <div class="glance">
         <div id="next"></div>
-
         <section class="time">
           <div class="clock">
             <button id="timer" class="timer idle" type="button" title="Click to pause or resume (p)">0:00:00</button>
-            <span class="counter"><span id="counter"></span><span id="counter-sub"></span></span>
+            <span id="pace-all-text" class="pace-num"></span>
           </div>
           <p id="timer-line" class="timer-line">
             <span id="timer-mode"></span>
             <button id="timer-reset" type="button" hidden>Reset to 0:00:00</button>
           </p>
-          <div id="pace" class="pace">
-            <div id="pace-all" class="pace-row">
-              <span class="pace-label">All slides</span><span id="pace-all-text" class="pace-num"></span>
-            </div>
-            <div
-              id="talkbar"
-              class="talkbar"
-              title="The slides as planned, this one yellow. The line under them: time spent, colored like All slides. Red line: the target end."
-            ></div>
-          </div>
         </section>
+      </div>
+      <div
+        id="talkbar"
+        class="talkbar"
+        title="The slides as planned, this one yellow. The line under them: time spent, colored like the early/late by the clock. Red line: the target end. Drag the columns' edges to resize."
+      ></div>
+
+      <aside class="side">
         <p id="audience-status" class="hintline"></p>
         <p id="screen-status" class="hintline"></p>
         <nav class="toolbar">
@@ -87,6 +87,13 @@
         </nav>
       </aside>
 
+      <div
+        id="strip-split"
+        class="split strip-split"
+        role="separator"
+        aria-orientation="vertical"
+        title="Drag to resize the thumbnails; double-click to hide or show them"
+      ></div>
       <ol id="strip" class="strip"></ol>
     </main>
 
@@ -105,10 +112,10 @@
             <dl>
               <dt>Under the slide</dt>
               <dd>This slide's planned time, filling as you spend it, with how much is left; once past it, how far <span class="t-late">over</span>, in the late colors.</dd>
-              <dt>All slides</dt>
-              <dd>Where you'll finish at this pace: this slide taking its planned time from when you reached it, the rest as planned. Against the target end: early or <span class="t-late">late</span>.</dd>
+              <dt>By the clock</dt>
+              <dd>Where the talk would end if you moved on now, the slides after this one as planned, against the target end: early or <span class="t-late">late</span>.</dd>
               <dt><i class="sw this"></i><i class="sw next"></i></dt>
-              <dd>The bar: the slides as planned, this one yellow. The line under it is time spent, colored like All slides:</dd>
+              <dd>The bar: the slides as planned, this one yellow. The line under it is time spent, colored like the early/late by the clock:</dd>
               <dt><i class="sw on"></i></dt>
               <dd>on time, or a little early;</dd>
               <dt><i class="sw late"></i><i class="sw serious"></i><i class="sw severe"></i></dt>
@@ -131,7 +138,7 @@
         <h2>Settings</h2>
         <label class="setting">
           <span>Current slide</span>
-          <input id="set-stage" type="range" min="50" max="100" step="5" />
+          <input id="set-stage" type="range" min="50" max="100" step="1" />
           <output for="set-stage"></output>
           <kbd>[ ]</kbd>
         </label>

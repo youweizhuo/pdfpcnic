@@ -16,8 +16,6 @@
   --severe: #ff453a;
   --laser: #ff3b30;
   --notes: 24px;
-  /* Opacity of the part of a note you'd have covered by now (see Settings). */
-  --notes-dim: 0.5;
   --aspect: 16 / 9;
   /* Current slide width, as a share of its column. */
   --stage: 0.85;
@@ -164,10 +162,51 @@ kbd {
   display: grid;
   padding: 18px 0 18px 28px;
   grid-template-columns: minmax(0, 62fr) 28px minmax(0, 38fr) clamp(120px, 12vw, 220px);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   grid-template-areas:
     "current split side strip"
+    "slidebar split side strip"
     "notes split side strip";
+}
+/* This slide's time, under it and as wide. */
+.slidebar {
+  grid-area: slidebar;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: calc(var(--stage) * 100%);
+  margin-top: 10px;
+}
+.slidebar.none {
+  visibility: hidden;
+}
+.slidebar-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--panel);
+}
+.slide-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #d1d1d6;
+}
+.slide-fill.t-late {
+  background: var(--late);
+}
+.slide-fill.t-serious {
+  background: var(--serious);
+}
+.slide-fill.t-severe {
+  background: var(--severe);
+}
+.slidebar-text {
+  min-width: 5.5em;
+  font-size: clamp(14px, 1.1vw, 18px);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .slide-view {
@@ -254,13 +293,6 @@ kbd {
 }
 .notes-body > :first-child {
   margin-top: 0;
-}
-/* The part of the note you'd have covered by now, dimmed, with a soft edge
-   that reaches the top at 0 and the bottom at 1. */
-.notes-body.pacing {
-  --edge: calc(var(--used) * (100% + 1.5em));
-  -webkit-mask-image: linear-gradient(rgb(0 0 0 / var(--notes-dim)) calc(var(--edge) - 1.5em), #000 var(--edge));
-  mask-image: linear-gradient(rgb(0 0 0 / var(--notes-dim)) calc(var(--edge) - 1.5em), #000 var(--edge));
 }
 .notes p,
 .notes ul,
@@ -894,8 +926,8 @@ kbd {
   .presenter {
     padding: 12px 16px;
     grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    grid-template-areas: "current" "notes" "side";
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas: "current" "slidebar" "notes" "side";
   }
   #current {
     width: 100%;

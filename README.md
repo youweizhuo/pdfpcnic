@@ -92,20 +92,21 @@ pdfpcnic takes that line off the note and draws it instead. It has to be the not
 may be `->`, minutes may pass 59, and the `· 36 s` is optional. `**01:22**` alone plans a slide that takes no time.
 Reveal steps repeat their slide's line, or carry windows of their own; then each step goes by its own.
 
-Under the clock:
+Under the current slide, a slim bar fills with your time on it against its planned time, with how much is left; once
+past it, it turns the late colors and says how far over you are. The notes dim along with it, character by
+character, so the dimmed part is roughly what you'd have said by now (paragraphs that open with *ref* don't count).
 
-- **This slide**: its planned time against your time on it: how much is left, or how far over you are.
+Under the clock, the whole talk:
+
 - **All slides**: where the talk will end at this pace, against the target end (`duration` or `endTime`, else where
   the plan ends). This slide is counted as taking its planned time from when you reached it, or longer while you stay,
   and the slides after it as planned. Reach a one-minute slide 50 seconds into its window and it already says you'll
   be late; a little early just says on time.
 - **The bar** is fixed, with a red line at the target end and some room past it: the slides as planned, this one in
   yellow, and under them a thin line of time spent, colored like All slides.
-- **The notes** dim from the top as this slide's planned time passes, so the dimmed part is roughly what you'd have
-  said by now. **Settings** sets how much (or turns it off).
 
 Late always shows: orange, deep orange from 1 minute (serious) and red from 2 minutes (very serious). Early shows, in
-blue, only past 1 minute. **Settings** (`,`) changes the three levels, in time or as shares of the talk.
+blue, only past 1 minute. **Settings** (`,`) changes the three levels, in time or as shares of the talk, and how much the notes dim.
 
 Without timing lines, the talk's length is split evenly over the slides (pdfpc's even pace). **Help** (`?`) has a key
 to the colors.

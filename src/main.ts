@@ -8,6 +8,7 @@ import { renderNote } from "./notes";
 import { grade, mark, SLACK, span, type Plan, type Slack } from "./pace";
 import { parsePdfpc, PdfpcError, type PdfpcFile } from "./pdfpc";
 import { PageCache } from "./render";
+import { Spoken } from "./spoken";
 import * as store from "./store";
 import * as T from "./timer";
 import { SlideView, Thumb, type Point } from "./view";
@@ -146,7 +147,7 @@ class Presenter {
     $("presenter").hidden = false;
     this.applySplit(store.pref("split", 0.62));
     this.applyStage(store.pref("stage", 1));
-    document.documentElement.style.setProperty("--notes-dim", String(1 - this.notesDim));
+    Spoken.setDim(this.notesDim);
     this.current.start();
     this.next.start();
     this.buildStrip();
@@ -562,7 +563,7 @@ class Presenter {
   private setNotesDim(f: number): void {
     this.notesDim = Math.min(0.8, Math.max(0, f));
     store.setPref("notesDim", this.notesDim);
-    document.documentElement.style.setProperty("--notes-dim", String(1 - this.notesDim));
+    Spoken.setDim(this.notesDim);
     this.renderNotesDim();
   }
 
@@ -612,6 +613,7 @@ class Presenter {
       if (here.note) renderNote(body, here.note, d.markdown);
       else body.replaceChildren(el("p", "empty", "No notes for this slide."));
       $("notes").scrollTop = 0;
+      this.spoken.index(body);
     }
 
     if (this.stripSlide !== here.slide) {
@@ -757,12 +759,11 @@ class Presenter {
   /** Share of this slide's planned time used since reaching it, or null when it has none. */
   private used: number | null = null;
 
-  /** Dims the part of the note you'd have covered by now, by its height. */
+  private spoken = new Spoken();
+
+  /** Dims the part of the note you'd have said by now. */
   private renderNotesDim(): void {
-    const body = $("notes-body");
-    const on = this.used !== null && this.notesDim > 0;
-    body.classList.toggle("pacing", on);
-    if (on) body.style.setProperty("--used", this.used!.toFixed(3));
+    this.spoken.show(this.notesDim > 0 ? this.used : null);
   }
 
   private renderPace(now: number): void {
@@ -774,6 +775,7 @@ class Presenter {
     const started = s.timer.startedAt !== null;
     const planned = this.timed ? this.planned : length;
     $("pace").hidden = !planned;
+    $("pace-slide").hidden = !planned;
     if (!planned) return;
     const target = length || planned;
 
@@ -791,15 +793,20 @@ class Presenter {
     }
     const here = at - this.enteredAt;
 
-    // This slide: its planned time against your time on it. Late always
-    // shows, in three levels; a slide planned to take no time has no line.
-    $("pace-slide").hidden = !budget;
+    // This slide, in the bar under it: its planned time against your time
+    // on it. Late always shows, in three levels. A slide planned to take no
+    // time has no bar (the row keeps its place, so the notes don't jump).
+    $("pace-slide").classList.toggle("none", !budget);
     if (plan && budget) {
       const text = $("pace-slide-text");
       const over = here - budget;
+      const tone = !started ? "idle" : over > 0 ? grade(over, target, this.slack) : "on";
       text.textContent = !started ? span(budget) : over > 0 ? `${span(over)} over` : `${span(-over)} left`;
-      text.className = `pace-num t-${!started ? "idle" : over > 0 ? grade(over, target, this.slack) : "on"}`;
-      $("pace-slide").title = `Planned ${mark(plan.start)}–${mark(plan.end)}, ${span(budget)}`;
+      text.className = `slidebar-text t-${tone}`;
+      const fill = $("slide-fill");
+      fill.style.width = `${(started ? Math.min(1, here / budget) : 0) * 100}%`;
+      fill.className = `slide-fill t-${tone}`;
+      $("pace-slide").title = `This slide: planned ${mark(plan.start)}–${mark(plan.end)}, ${span(budget)}`;
       this.used = started ? Math.min(1, here / budget) : null;
     }
 

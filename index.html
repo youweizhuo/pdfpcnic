@@ -38,6 +38,11 @@
     <main id="presenter" class="presenter" hidden>
       <div id="current"></div>
       <div id="audience-state" class="audience-state" hidden><strong></strong><span></span></div>
+      <!-- This slide's planned time, filling as you spend it. -->
+      <div id="pace-slide" class="slidebar">
+        <div class="slidebar-track"><div id="slide-fill" class="slide-fill"></div></div>
+        <span id="pace-slide-text" class="slidebar-text"></span>
+      </div>
       <div id="split" class="split" role="separator" aria-orientation="vertical" title="Drag to resize"></div>
       <article id="notes" class="notes"><div id="notes-body" class="notes-body"></div></article>
 
@@ -54,9 +59,6 @@
             <button id="timer-reset" type="button" hidden>Reset to 0:00:00</button>
           </p>
           <div id="pace" class="pace">
-            <div id="pace-slide" class="pace-row">
-              <span class="pace-label">This slide</span><span id="pace-slide-text" class="pace-num"></span>
-            </div>
             <div id="pace-all" class="pace-row">
               <span class="pace-label">All slides</span><span id="pace-all-text" class="pace-num"></span>
             </div>
@@ -99,8 +101,8 @@
           <section id="legend" class="legend">
             <h3>Pace</h3>
             <dl>
-              <dt>This slide</dt>
-              <dd>Its planned time against your time on it: how much is left, or how far <span class="t-late">over</span> you are.</dd>
+              <dt>Under the slide</dt>
+              <dd>This slide's planned time, filling as you spend it, with how much is left; once past it, how far <span class="t-late">over</span>, in the late colors.</dd>
               <dt>All slides</dt>
               <dd>Where you'll finish at this pace: this slide taking its planned time from when you reached it, the rest as planned. Against the target end: early or <span class="t-late">late</span>.</dd>
               <dt><i class="sw this"></i><i class="sw next"></i></dt>
@@ -112,7 +114,7 @@
               <dt><i class="sw early"></i></dt>
               <dd>well ahead: by default more than a minute early.</dd>
               <dt>Notes</dt>
-              <dd>The part you'd have covered by now, at this slide's planned pace, is dimmed (set how much in Settings).</dd>
+              <dd>What you'd have said by now, at this slide's planned pace, dims character by character; <em>ref</em> paragraphs don't count (set how much in Settings).</dd>
               <dt><i class="sw target"></i></dt>
               <dd>Red line: the target end, <code>duration</code>, else where the plan ends.</dd>
             </dl>

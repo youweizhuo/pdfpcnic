@@ -138,7 +138,7 @@ try {
     assert.match(await text("#counter-sub"), /step 1\/3/);
     // Each step here has a window of its own; the talk bar spans all three.
     await press("ArrowRight");
-    assert.equal(await page.$eval("#pace-slide", (e) => e.title), "Planned 03:30–04:10, 40 s");
+    assert.equal(await page.$eval("#pace-slide", (e) => e.title), "This slide: planned 03:30–04:10, 40 s");
     await press("ArrowLeft");
     await press("Shift+PageDown");
     assert.equal((await state()).page, 5);
@@ -236,7 +236,7 @@ try {
 
   await check("a note's timing line becomes the pace panel", async () => {
     // Slide 5 of the demo plans 06:30 → 08:30, of a 10 minute talk planned to 09:30.
-    assert.equal(await page.$eval("#pace-slide", (e) => e.title), "Planned 06:30–08:30, 2:00");
+    assert.equal(await page.$eval("#pace-slide", (e) => e.title), "This slide: planned 06:30–08:30, 2:00");
     assert.equal(await page.$eval("#pace-all", (e) => e.title), "Planned to end at 09:30; target 10:00");
     assert.match(await page.$eval("#notes > :first-child", (e) => e.textContent), /^各位老师好/);
     const at = (s) => page.evaluate((s) => (window.pdfpcnic.state.timer = { startedAt: Date.now() - s * 1000, pausedAt: null, pausedFor: 0 }), s);
@@ -259,8 +259,17 @@ try {
     // A minute into its two: the first half of the note is dimmed.
     await at(450);
     await settle();
-    const dim = () => page.$eval("#notes-body", (e) => (e.classList.contains("pacing") ? Number(e.style.getPropertyValue("--used")) : null));
-    assert.ok(Math.abs((await dim()) - 0.5) < 0.02, `notes dimmed to ${await dim()}`);
+    // Half the spoken characters, none of the *ref* paragraph.
+    const dim = () =>
+      page.evaluate(() => {
+        const h = CSS.highlights.get("spoken");
+        if (!h) return null;
+        const said = [...h].map((r) => r.toString()).join("").replace(/\s/g, "");
+        const first = document.querySelector("#notes-body p").textContent.replace(/\s/g, "");
+        return { share: said.length / first.length, inFirst: first.startsWith(said) };
+      });
+    const half = await dim();
+    assert.ok(half && Math.abs(half.share - 0.5) < 0.05 && half.inFirst, `notes dimmed: ${JSON.stringify(half)}`);
     await press(",");
     await page.$eval("#set-dim", (e) => {
       e.value = 0;

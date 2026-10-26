@@ -7,8 +7,8 @@
     <title>pdfpcnic</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='6' width='28' height='18' rx='3' fill='%23111' stroke='%23ffd60a' stroke-width='2'/%3E%3Ccircle cx='21' cy='15' r='3' fill='%23ff453a'/%3E%3C/svg%3E" />
     <!-- pdfpcnic, MIT. Includes PDF.js (Apache-2.0), marked (MIT) and DOMPurify (Apache-2.0 or MPL-2.0). -->
-    <script type="module" crossorigin src="./assets/index-S9fylooJ.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DwbJo4Px.css">
+    <script type="module" crossorigin src="./assets/index-DjS2-19_.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BYBlwQ0Q.css">
   </head>
   <body>
     <section id="start" class="start">
@@ -41,7 +41,7 @@
       <div id="current"></div>
       <div id="audience-state" class="audience-state" hidden><strong></strong><span></span></div>
       <div id="split" class="split" role="separator" aria-orientation="vertical" title="Drag to resize"></div>
-      <article id="notes" class="notes"></article>
+      <article id="notes" class="notes"><div id="notes-body" class="notes-body"></div></article>
 
       <aside class="side">
         <div id="next"></div>
@@ -65,7 +65,7 @@
             <div
               id="talkbar"
               class="talkbar"
-              title="The slides as planned, this one yellow. The line under them: time spent, white on time, orange behind, blue ahead. Red line: the target end."
+              title="The slides as planned, this one yellow. The line under them: time spent, colored like All slides. Red line: the target end."
             ></div>
           </div>
         </section>
@@ -102,17 +102,19 @@
             <h3>Pace</h3>
             <dl>
               <dt>This slide</dt>
-              <dd>Time left in its planned window; past it, how far <span class="t-late">over</span>; before it, how early.</dd>
+              <dd>Its planned time against your time on it: how much is left, or how far <span class="t-late">over</span> you are.</dd>
               <dt>All slides</dt>
               <dd>Where you'll finish at this pace: this slide taking its planned time from when you reached it, the rest as planned. Against the target end: early or <span class="t-late">late</span>.</dd>
               <dt><i class="sw this"></i><i class="sw next"></i></dt>
-              <dd>The bar: the slides as planned, this one yellow. The line under it is time spent:</dd>
+              <dd>The bar: the slides as planned, this one yellow. The line under it is time spent, colored like All slides:</dd>
               <dt><i class="sw on"></i></dt>
-              <dd>on time: it ends under the yellow block (or a little short of it);</dd>
+              <dd>on time, or a little early;</dd>
               <dt><i class="sw late"></i><i class="sw serious"></i><i class="sw severe"></i></dt>
-              <dd>behind: it has run past the yellow block; deeper as it gets serious and very serious (by default 1 and 2 minutes; see Settings);</dd>
+              <dd>late; deeper as it gets serious and very serious (by default 1 and 2 minutes; see Settings);</dd>
               <dt><i class="sw early"></i></dt>
-              <dd>well ahead: by default more than a minute short of the yellow block.</dd>
+              <dd>well ahead: by default more than a minute early.</dd>
+              <dt>Notes</dt>
+              <dd>The part you'd have covered by now, at this slide's planned pace, is dimmed (set how much in Settings).</dd>
               <dt><i class="sw target"></i></dt>
               <dd>Red line: the target end, <code>duration</code>, else where the plan ends.</dd>
             </dl>
@@ -165,6 +167,11 @@
           <span>Very serious from</span>
           <input id="set-severe" type="range" min="1" max="30" step="1" />
           <output for="set-severe"></output>
+        </label>
+        <label class="setting">
+          <span>Dim notes as time passes</span>
+          <input id="set-dim" type="range" min="0" max="80" step="10" />
+          <output for="set-dim"></output>
         </label>
         <p class="settings-foot">Late always shows, in <span class="t-late">orange</span>, <span class="t-serious">deep orange</span> and <span class="t-severe">red</span>; early only past its level, in <span class="t-early">blue</span>. Shares are of the talk's length (its <code>duration</code>, else the planned total).</p>
         <p class="settings-foot">Saved in this browser. While the laser is on, <kbd>+</kbd> and <kbd>−</kbd> size its dot instead of the notes.</p>

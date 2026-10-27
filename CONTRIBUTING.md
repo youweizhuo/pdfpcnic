@@ -44,6 +44,8 @@ deployed copy: `npm run e2e -- https://youweizhuo.github.io/pdfpcnic/`.
 - `src/platform.ts` lists what pdfpcnic needs from where it runs, and `src/web/` provides it in the browser: pdf.js,
   the audience popup, fullscreen and storage. `src/web/variant-*.ts` hold what differs between the site and the
   offline file.
+- `src/mac/` provides it in the Mac app, over a bridge to the app's native half in `mac/` (Swift: the windows, PDFKit,
+  updates). `sh mac/build.sh` builds the app on a Mac; CI builds it and runs its smoke test on every change.
 - `demo/` has the demo deck: Typst source, PDF and `.pdfpc`.
 - `deploy/` and `Containerfile` are for self-hosting.
 

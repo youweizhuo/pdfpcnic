@@ -49,29 +49,68 @@ function pdfjsResources(): Plugin {
   };
 }
 
-// Two builds from one source: the site (`dist/`, with files fetched as needed)
-// and `--mode single` (`dist-single/index.html`, everything inlined so it runs
-// from file:// with no network). `src/web/variant-*.ts` holds what differs.
+/**
+ * The calls between the Mac app and its presenter page. Bumped when either
+ * side's change; an installed app only takes downloaded pages built for its own.
+ */
+const MAC_BRIDGE = 1;
+
+/**
+ * Mac build: the page on the Mac platform (src/mac/), saying which bridge it
+ * speaks. Its policy keeps everything inside the app: the script and styles
+ * are inline, and the only fetches go to the app (pdfpcnic:) or data: URLs.
+ */
+function macPage(): Plugin {
+  const policy = [
+    "default-src 'none'",
+    "script-src 'unsafe-inline'",
+    "style-src 'unsafe-inline'",
+    "connect-src pdfpcnic: data:",
+    "img-src data: blob:",
+    "font-src data:",
+    "worker-src blob:",
+    "base-uri 'none'",
+  ].join("; ");
+  return {
+    name: "mac-page",
+    transformIndexHtml: {
+      order: "pre",
+      handler: (html) => ({
+        html: html.replace('src="./src/main.ts"', 'src="./src/mac/main.ts"'),
+        tags: [
+          { tag: "meta", attrs: { name: "pdfpcnic-bridge", content: String(MAC_BRIDGE) }, injectTo: "head-prepend" },
+          { tag: "meta", attrs: { "http-equiv": "Content-Security-Policy", content: policy }, injectTo: "head-prepend" },
+        ],
+      }),
+    },
+  };
+}
+
+// Three builds from one source: the site (`dist/`, with files fetched as
+// needed), `--mode single` (`dist-single/index.html`, everything inlined so it
+// runs from file:// with no network), and `--mode mac` (`dist-mac/index.html`,
+// the page inside the Mac app; mac/build.sh makes the app around it).
+// `src/web/variant-*.ts` holds what differs between the first two.
 export default defineConfig(({ mode }) => {
-  const single = mode === "single";
+  const build = mode === "single" || mode === "mac" ? mode : "site";
   return {
     base: "./",
     define: {
-      __SINGLE_FILE__: JSON.stringify(single),
+      __BUILD__: JSON.stringify(build),
       __VERSION__: JSON.stringify(pkg.version),
     },
     resolve: {
       alias: {
-        variant: resolve(single ? "src/web/variant-single.ts" : "src/web/variant-site.ts"),
+        variant: resolve(build === "site" ? "src/web/variant-site.ts" : "src/web/variant-single.ts"),
       },
     },
-    plugins: single ? [viteSingleFile()] : [contentSecurityPolicy(), pdfjsResources()],
+    plugins: { site: [contentSecurityPolicy(), pdfjsResources()], single: [viteSingleFile()], mac: [viteSingleFile(), macPage()] }[build],
     build: {
-      outDir: single ? "dist-single" : "dist",
+      outDir: { site: "dist", single: "dist-single", mac: "dist-mac" }[build],
       emptyOutDir: true,
       target: "es2022",
       chunkSizeWarningLimit: 4096,
-      // The bundled libraries' licenses: beside the site, inside the offline copy (scripts/copy-single.mjs).
+      // The bundled libraries' licenses: beside the site, inside the offline copy (scripts/copy-single.mjs) and the Mac app.
       license: { fileName: "licenses.txt" },
     },
   };

@@ -112,10 +112,12 @@ export async function start(platform: Platform): Promise<void> {
 
   $("version").innerHTML =
     `v${__VERSION__} · <a href="https://github.com/youweizhuo/pdfpcnic" target="_blank" rel="noopener">source</a>` +
-    (__SINGLE_FILE__ ? "" : ` · <a href="./licenses.txt" target="_blank">licenses</a>`);
-  $("offline-note").innerHTML = __SINGLE_FILE__
-    ? "This is the offline copy: it needs no network."
-    : `<a href="./pdfpcnic.html" download>Download the offline copy</a> (one HTML file).`;
+    (__BUILD__ === "site" ? ` · <a href="./licenses.txt" target="_blank">licenses</a>` : "");
+  $("offline-note").innerHTML = {
+    site: `<a href="./pdfpcnic.html" download>Download the offline copy</a> (one HTML file).`,
+    single: "This is the offline copy: it needs no network.",
+    mac: "The Mac app: it needs no network.",
+  }[__BUILD__];
 
   const grid = $("help-grid");
   for (const [title, rows] of HELP) {
@@ -180,6 +182,8 @@ export async function start(platform: Platform): Promise<void> {
       audience,
     },
   });
+
+  platform.files?.((files) => void openFiles(files));
 
   // Offer to pick up where an earlier visit left off (an accidental reload, say).
   const [deck, session] = await Promise.all([platform.store.loadDeck(), platform.store.loadSession()]);

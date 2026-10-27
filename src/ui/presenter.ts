@@ -78,7 +78,7 @@ export class Presenter {
     this.current.onLayout = () => this.fitSlidebar();
     this.next = new SlideView($("next"), deck, this.cache, 2, { align: "start" });
     this.cache.onRender((page) => this.thumbs.get(page)?.forEach((t) => t.draw()));
-    audience.bind(deck, this.cache);
+    audience.bind(deck, pdf, this.cache);
 
     $("start").hidden = true;
     $("presenter").hidden = false;

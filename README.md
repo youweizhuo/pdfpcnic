@@ -9,14 +9,14 @@
 anywhere.
 
 It's a pdfpc-style presenter for PDF slides that runs in the browser. Use it from the website, carry it as **one HTML
-file** for machines with no network, or host it yourself. Its layout follows
+file** for machines with no network, host it yourself, or install the **Mac app**. Its layout follows
 [Présentation.app](https://iihm.imag.fr/blanch/software/osx-presentation/): black and frameless, with the current
 slide and its notes on the left, the next slide beside them, and thumbnails down the edge. All the time sits under the
 next slide: the clock and one bar for the whole talk.
 
 **Open it:** <https://youweizhuo.github.io/pdfpcnic/> · **Offline copy:** `pdfpcnic.html` from the
-[latest release](https://github.com/youweizhuo/pdfpcnic/releases/latest) · **Self-host:**
-[docs/self-hosting.md](docs/self-hosting.md)
+[latest release](https://github.com/youweizhuo/pdfpcnic/releases/latest) · **Mac app:** `pdfpcnic-mac.zip`, same place
+([below](#mac-app)) · **Self-host:** [docs/self-hosting.md](docs/self-hosting.md)
 
 ![The presenter view: the current slide with its speaker notes, the next slide, the clock and the talk's pace, and thumbnails](docs/presenter.png)
 
@@ -47,6 +47,28 @@ If the page reloads mid-talk, **Resume** brings back the deck at the same page, 
 On an unfamiliar machine, check that the displays are set to **Extend**, not mirror (`Win+P` on Windows). The presenter
 warns you when it sees only one screen. With one screen, `Shift+W` presents in the same window. When you leave a
 shared computer, open the page again and press **Forget** beside **Resume**, or present from a private window.
+
+## Mac app
+
+The same presenter, in a Mac app of its own, with an audience window it places itself:
+
+- **`Shift+W` puts the audience fullscreen on the projector**, whatever the screens, with nothing to allow first.
+- **The audience window is frameless**, and macOS draws the slides, in both windows, with its own PDF engine, as
+  Preview does.
+- **Fullscreen is instant**, with no animation and no new Space, as in Présentation.app. Keys go on to the presenter
+  window.
+- **Open a deck from the Finder** (Open With › pdfpcnic), with File › Open, or by dropping it on the window.
+
+To install it, download `pdfpcnic-mac.zip` from the [latest release](https://github.com/youweizhuo/pdfpcnic/releases/latest),
+unzip it, and move pdfpcnic to Applications. The app isn't signed by an Apple developer account, so the first time,
+macOS stops it: open it once, then click **Open Anyway** in System Settings › Privacy & Security. That's needed only
+once.
+
+**Updates come by themselves.** Each release's presenter page downloads in the background and opens the next time you
+start the app, never mid-talk. When a release changes the app itself, the app says so once, with a link to the new
+download. **Check for Updates…** in the pdfpcnic menu looks right away.
+
+It needs macOS 12 or later, on Apple silicon or Intel.
 
 ## Keys
 
@@ -148,17 +170,18 @@ to the colors.
 
 The browser reads your PDF and `.pdfpc` file; nothing is uploaded, and there are no accounts, cookies or analytics. On
 the website, a Content Security Policy lets the page load scripts and connect only to its own site, so nothing in a PDF
-or a note can send anything elsewhere.
+or a note can send anything elsewhere. The Mac app's page is held to the same: it reaches only the app. The app itself
+connects only to GitHub, to look for updates, a few seconds after it starts.
 
 To resume after a reload, the browser keeps the last deck you opened, with your place and the clock, in its own storage
 on this computer. **Forget** on the start page removes it. Settings such as sizes and pace colors are kept too.
 
 ## Browsers
 
-Tested in Chrome and Firefox, from the website and from the offline file. Window placement and automatic fullscreen
-need a Chromium browser (Chrome, Edge, Brave and others) and a secure page: the website, `localhost`, or your own copy
-over HTTPS. In Firefox, drag the audience window to the projector and double-click it for fullscreen. Safari hasn't
-been tested yet.
+Tested in Chrome and Firefox, from the website and from the offline file, and the Mac app on macOS. In a browser,
+window placement and automatic fullscreen need a Chromium browser (Chrome, Edge, Brave and others) and a secure page:
+the website, `localhost`, or your own copy over HTTPS. In Firefox, drag the audience window to the projector and
+double-click it for fullscreen. Safari hasn't been tested yet; on a Mac, the app does all of it.
 
 The website also renders PDFs that don't embed their fonts, and scanned images (JBIG2 and JPEG 2000), by fetching
 pdf.js's extra files when a PDF needs them. The offline file goes without; slides made with Typst, LaTeX, PowerPoint

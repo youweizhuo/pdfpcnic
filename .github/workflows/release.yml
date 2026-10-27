@@ -1,5 +1,6 @@
-# On a version tag (v1.2.3): the GitHub release with the offline file and its
-# CHANGELOG section, and the container image on ghcr.io for amd64 and arm64.
+# On a version tag (v1.2.3): the GitHub release with the offline file, the Mac
+# app and its CHANGELOG section, and the container image on ghcr.io for amd64
+# and arm64.
 name: Release
 
 on:
@@ -11,7 +12,30 @@ permissions:
   packages: write
 
 jobs:
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: sh mac/build.sh
+      - name: Smoke test
+        timeout-minutes: 5
+        run: dist-mac/pdfpcnic.app/Contents/MacOS/pdfpcnic --smoke-test demo/demo.pdf demo/demo.pdfpc e2e-out/mac
+      # The app, the page installed apps update to, and what tells them about both.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mac-release
+          path: |
+            dist-mac/pdfpcnic-mac.zip
+            dist-mac/pdfpcnic-mac-page.html
+            dist-mac/pdfpcnic-mac.json
+
   release:
+    needs: mac
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -35,8 +59,14 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           awk -v v="$version" '$0 ~ "^## " v "( |$)" {on=1; next} /^## / {on=0} on' CHANGELOG.md > notes.md
           test -s notes.md || { echo "CHANGELOG.md has no section for $version"; exit 1; }
-      - name: GitHub release with the offline file
-        run: gh release create "$GITHUB_REF_NAME" dist/pdfpcnic.html --title "$GITHUB_REF_NAME" --notes-file notes.md
+      - uses: actions/download-artifact@v7
+        with:
+          name: mac-release
+          path: dist-mac
+      - name: GitHub release with the offline file and the Mac app
+        run: >-
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md
+          dist/pdfpcnic.html dist-mac/pdfpcnic-mac.zip dist-mac/pdfpcnic-mac-page.html dist-mac/pdfpcnic-mac.json
         env:
           GH_TOKEN: ${{ github.token }}
 

@@ -3,6 +3,24 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.2.0 (2026-10-27)
+
+### Added
+
+- **pdfpcnic for the Mac**: `pdfpcnic-mac.zip`, attached to each release from now on. It's the same presenter, in an
+  app of its own, for macOS 12 or later on Apple silicon or Intel.
+  - `Shift+W` puts the audience fullscreen on the projector, whatever the screens, with nothing to allow first.
+  - The audience window is frameless, and macOS draws the slides, in both windows, with its own PDF engine, as
+    Preview does.
+  - Fullscreen is instant, with no animation and no new Space, as in Présentation.app, and keys go on to the
+    presenter window.
+  - Decks open from the Finder (Open With › pdfpcnic), with File › Open, or by dropping them on the window.
+  - **Updates come by themselves.** The presenter page downloads from each release in the background and opens at the
+    next launch, never mid-talk. A release that changes the app itself is offered as a download, once.
+
+  The app isn't signed by an Apple developer account: the first time, open it, then click Open Anyway in System
+  Settings › Privacy & Security.
+
 ## 1.1.3 (2026-10-27)
 
 ### Changed

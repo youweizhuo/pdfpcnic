@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- mac/build.sh fills in the version and PdfpcnicNative, a hash of the app's own code: installed apps compare it with the latest release's to tell whether the app itself changed. -->
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>pdfpcnic</string>
+	<key>CFBundleDisplayName</key>
+	<string>pdfpcnic</string>
+	<key>CFBundleIdentifier</key>
+	<string>io.github.youweizhuo.pdfpcnic</string>
+	<key>CFBundleExecutable</key>
+	<string>pdfpcnic</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>@VERSION@</string>
+	<key>CFBundleVersion</key>
+	<string>@VERSION@</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>12.0</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>MIT License. Includes marked (MIT) and DOMPurify (Apache-2.0 or MPL-2.0).</string>
+	<key>PdfpcnicNative</key>
+	<string>@NATIVE@</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>PDF slides</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.adobe.pdf</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>pdfpc notes</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>pdfpc</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

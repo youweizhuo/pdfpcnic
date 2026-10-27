@@ -2,3 +2,5 @@ node_modules/
 dist/
 dist-single/
 e2e-out/
+dist-mac/
+mac/.build/

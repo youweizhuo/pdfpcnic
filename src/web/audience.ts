@@ -1,7 +1,7 @@
 import type { Deck } from "../core/deck.ts";
 import type { AudienceStatus } from "../core/guide.ts";
 import type { Point } from "../core/talk.ts";
-import type { Audience, AudienceEvents } from "../platform.ts";
+import type { Audience, AudienceEvents, Pdf } from "../platform.ts";
 import type { PageCache } from "../ui/page-cache.ts";
 import { SlideView } from "../ui/slide-view.ts";
 import css from "./audience.css?inline";
@@ -122,7 +122,7 @@ export class PopupAudience implements Audience {
   constructor(private events: AudienceEvents) {}
 
   /** Switches to another deck, keeping the window if it is open. */
-  bind(deck: Deck, cache: PageCache): void {
+  bind(deck: Deck, _pdf: Pdf, cache: PageCache): void {
     this.deck = deck;
     this.cache = cache;
     if (this.isOpen) this.mount();

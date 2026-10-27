@@ -18,9 +18,11 @@ export interface Platform {
   store: Store;
   /** The demo deck, where this build can get it. */
   demo: (() => Promise<{ pdf: ArrayBuffer; pdfpc: string }>) | null;
+  /** Hands over files the platform opens itself, such as a PDF double-clicked in the Finder. */
+  files?(open: (files: File[]) => void): void;
 }
 
-/** A PDF, opened: pdf.js in the browser. */
+/** A PDF, opened by the platform's engine: pdf.js in the browser, PDFKit on the Mac. */
 export interface Pdf {
   /** What each page holds: its size, label, note annotations and links. */
   readonly pages: PageInfo[];
@@ -47,8 +49,8 @@ export interface Audience {
   readonly status: AudienceStatus;
   /** Device pixels across the slide it shows, for drawing ahead at that size; 0 when it draws its own. */
   readonly pixelWidth: number;
-  /** Shows this deck, with the pictures the presenter has drawn of it. */
-  bind(deck: Deck, pages: PageCache): void;
+  /** Shows this deck: the window draws it from the PDF, or from the pictures the presenter has drawn of it. */
+  bind(deck: Deck, pdf: Pdf, pages: PageCache): void;
   /** Opens it on this screen, or brings it forward. Call from a key press or click. Throws, saying what to do, if it can't. */
   open(): void;
   /** Fullscreen on the projector, or back. Call from a key press or click. */

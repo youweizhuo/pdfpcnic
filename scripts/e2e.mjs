@@ -137,6 +137,8 @@ try {
     assert.ok(await painted(page, "#next canvas"), "next slide is blank");
   });
 
+  await page.screenshot({ path: `${out}/ready.png` });
+
   await check("timer starts on leaving the first slide", async () => {
     assert.equal((await state()).timer.startedAt, null);
     await press("ArrowRight");
@@ -186,7 +188,7 @@ try {
       const where = () => audience.evaluate(() => ({ x: screenX, w: outerWidth, full: !!document.fullscreenElement }));
       const full = (on) => audience.waitForFunction((on) => !!document.fullscreenElement === on, { timeout: 5000 }, on);
       assert.ok((await where()).x < 1440, "audience not on the presenter's screen");
-      await page.waitForFunction(() => /fullscreen on /.test(document.querySelector("#audience-status").textContent));
+      await page.waitForFunction(() => /^Audience fullscreen on /.test(document.querySelector("#audience-button").textContent));
       await page.screenshot({ path: `${out}/audience-open.png` });
       await press("Shift+W");
       await full(true);
@@ -221,7 +223,7 @@ try {
     await page.bringToFront();
     await shiftW(page);
     await full(true);
-    assert.match(await text("#audience-button"), /^Audience fullscreen/);
+    assert.match(await text("#audience-button"), /^Exit audience fullscreen/);
     await page.click("#audience-button");
     await full(false);
     await page.click("#audience-button");
@@ -431,26 +433,64 @@ try {
     await press("Escape");
   });
 
-  await check("clicking the clock pauses and resumes the timer", async () => {
+  await check("the clock, and the button under it, pause and resume the timer", async () => {
+    assert.match(await text("#timer-toggle"), /^Pause/);
     await page.click("#timer");
     assert.ok((await state()).timer.pausedAt > 0);
-    assert.match(await text("#timer-mode"), /paused/);
+    assert.match(await text("#timer-toggle"), /^Resume/);
+    assert.equal(await page.$eval("#timer-toggle", (e) => e.classList.contains("cta")), true);
+    await page.click("#timer-toggle");
+    assert.equal((await state()).timer.pausedAt, null);
+    await page.click("#timer-toggle");
+    assert.ok((await state()).timer.pausedAt > 0);
     await page.click("#timer");
     assert.equal((await state()).timer.pausedAt, null);
   });
 
-  await check("the timer resets only while paused", async () => {
+  const cta = (sel) => page.$eval(sel, (e) => e.classList.contains("cta"));
+  // Nothing under the clock comes and goes: the talk bar stays put whatever the clock does.
+  const barTop = () => page.$eval("#talkbar", (e) => e.getBoundingClientRect().top);
+  const runningTop = await barTop();
+
+  await check("reset: Shift+R only while paused, the button with a second click while running", async () => {
     const running = (await state()).timer.startedAt;
     await press("Shift+R");
     assert.equal((await state()).timer.startedAt, running);
-    assert.equal(await page.$eval("#timer-reset", (e) => e.hidden), true);
-    await press("p");
+    await page.click("#timer-reset");
+    assert.equal((await state()).timer.startedAt, running, "one click reset a running timer");
+    assert.match(await text("#timer-reset"), /^Click again/);
     await page.click("#timer-reset");
     assert.equal((await state()).timer.startedAt, null);
     assert.equal(await text("#timer"), "0:00:00");
-    assert.match(await text("#timer-mode"), /next move/);
+    assert.match(await text("#toast"), /next move/);
+    assert.match(await text("#timer-toggle"), /^Start/);
+    assert.equal(await cta("#timer-toggle"), true, "Start doesn't stand out before the talk");
+    assert.equal(await page.$eval("#timer-reset", (e) => e.disabled), true);
+    assert.equal(await barTop(), runningTop);
     await press("ArrowRight", "ArrowLeft");
     assert.ok((await state()).timer.startedAt > 0);
+    await press("p");
+    assert.equal(await barTop(), runningTop);
+    await page.screenshot({ path: `${out}/paused.png` });
+    await page.click("#timer-reset");
+    assert.equal((await state()).timer.startedAt, null, "one click didn't reset a paused timer");
+    await press("ArrowRight", "ArrowLeft");
+    assert.ok((await state()).timer.startedAt > 0);
+  });
+
+  await check("back on slide 1 with time on the clock, Reset is offered", async () => {
+    assert.equal(await cta("#timer-reset"), false);
+    await press("Home");
+    assert.match(await text("#toast"), /Reset it first/);
+    assert.equal(await cta("#timer-reset"), true);
+    assert.equal(await cta("#timer-toggle"), false);
+    assert.equal(await barTop(), runningTop);
+    await page.screenshot({ path: `${out}/stale-clock.png` });
+    await press("g");
+    await page.keyboard.type("5");
+    await press("Enter");
+    assert.equal((await state()).page, 6);
+    assert.equal(await cta("#timer-reset"), false);
   });
 
   await check("[ and ] trade current-slide size for room for notes", async () => {

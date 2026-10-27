@@ -33,7 +33,8 @@ next slide: the clock and one bar for the whole talk.
 
 1. Open the page (or `pdfpcnic.html` from a USB stick) and drop your PDF **and** its `.pdfpc` file on it, or choose
    both at once. The `.pdfpc` file is optional; it brings notes, timing, hidden slides and reveal steps.
-2. Press `o` to open the audience window, then `Shift+W` to make it fullscreen.
+2. Press `o` to open the audience window, then `Shift+W` to make it fullscreen. The yellow button under the clock does
+   the same, one step at a time.
    - **Chrome and Edge** ask once to manage windows. Allow it, and `Shift+W` puts the audience fullscreen on another
      screen than the presenter's: an external one over the laptop's own. If you dragged the audience window to a
      screen yourself, it goes fullscreen there.
@@ -62,8 +63,8 @@ The same keys as pdfpc, plus `o` for the audience window. Press `?` (or **Help**
 | `b` / `f` | black screen / freeze the audience on this slide while you move on (a card over your current slide says so) |
 | `2` / `1` | laser pointer on / off (`+` `-` change its size) |
 | `Esc` | leave black, freeze and laser |
-| `s` / `p`, click the clock | start / pause the timer |
-| `Ctrl+T` or `Shift+R`, or **Reset** | reset the timer to zero; only while paused |
+| `s` / `p`, click the clock, or **Start** / **Pause** | start / pause the timer |
+| `Ctrl+T` or `Shift+R`, or **Reset** | reset the timer to zero; the keys only while paused, the button with a second click while it runs |
 | `,` | settings: current slide, notes and laser sizes; pace colors |
 | `+` / `-` | notes text size |
 | `[` / `]` | current slide smaller / bigger, trading room with the notes |
@@ -80,7 +81,7 @@ or tinymist's "Export PDF + Pdfpc".
 | `pages[].note` | speaker notes, rendered as Markdown (unless `disableMarkdown`) |
 | `pages[].label`, `overlay`, `forcedOverlay` | reveal steps grouped into one slide, as pdfpc does |
 | `pages[].hidden` | skipped by normal navigation |
-| `duration`, `endTime`, `startTime` | countdown, and a countdown to the start |
+| `duration`, `endTime`, `startTime` | countdown, and a countdown to the start (in the Start button's tooltip) |
 | `endSlide` | the talk's last slide; later ones are backup |
 | `savedSlide` | bookmark (`Shift+M`) |
 | `noteFontSize` | notes size, until you change it with `+`/`-` |
@@ -100,9 +101,10 @@ the `.pdfpc` file.
 ## Pace
 
 The clock counts up from zero, beside the time of day, as in Présentation.app. It never changes color; the pace bars
-under it do that job. Click the clock to pause. While it is paused, a **Reset to 0:00:00** button appears; the reset keys
-work only then too, so a stray key can't wipe the timer mid-talk. After a reset the clock starts again at your next
-move.
+under it do that job. **Pause** and **Reset** sit right under it: if you looked through the slides before the talk,
+the clock has been running, so reset it before you start (back on slide 1, Reset turns yellow to remind you). While
+it runs, Reset takes a second click, and the reset keys work only while paused, so a stray click or key can't wipe
+the timer mid-talk. After a reset the clock starts again at your next move.
 
 A note can start with the slide's planned window, in minutes and seconds from the start of the talk:
 

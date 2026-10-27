@@ -11,6 +11,16 @@ fields read and the timing-line format are the interface. Each release attaches 
   your screen; `Shift+W` then makes it fullscreen on another screen (an external one over the laptop's own), or where
   you dragged it. Chrome picks the screen itself, so the window no longer has to be moved there first, which could
   leave it on the wrong display in Chrome on Windows. It no longer moves on its own when it opens.
+- **A yellow button under the clock gives the audience's next step**: open the audience window, then make it
+  fullscreen (naming the screen). It replaces the Audience button in the toolbar, and turns plain once the audience is
+  fullscreen.
+- **Start/Pause and Reset buttons sit under the clock**, always in sight, instead of a Reset that appeared only while
+  paused. What to press next is yellow: Start before the clock starts, Resume while paused. While the clock runs,
+  Reset takes a second click; the reset keys still work only while paused.
+- **No more line of text under the clock**, so nothing there moves as the clock starts, pauses or resets. The buttons
+  show the clock's state; the rest is in their tooltips and in the message at the bottom.
+- **Back on slide 1 with time on the clock, Reset turns yellow** and a message asks whether to reset before you start:
+  a look through the slides before the talk starts the clock and would throw the pace off.
 
 ## 1.0.1 (2026-10-26)
 

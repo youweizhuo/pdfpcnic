@@ -21,6 +21,14 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text 
   return e;
 }
 
+/** A button's label and key, redrawn only when they change (so a click in progress isn't lost). */
+function label(b: HTMLElement, text: string, key: string): void {
+  const now = `${text}\n${key}`;
+  if (b.dataset.label === now) return;
+  b.dataset.label = now;
+  b.replaceChildren(text, el("kbd", "", key));
+}
+
 let toastTimer = 0;
 function toast(message: string, kind: "info" | "error" = "info", ms = 4500): void {
   const t = $("toast");
@@ -330,7 +338,7 @@ class Presenter {
         // Never mid-talk by a stray key: the clock has to be paused first.
         if (s.timer.startedAt === null) return;
         if (s.timer.pausedAt === null) {
-          toast("The timer is running. Pause it first (p, or click the clock), then reset.");
+          toast("The timer is running. Pause it first (p), then reset, or click Reset twice.");
           return;
         }
         s.timer = T.freshTimer();
@@ -402,9 +410,39 @@ class Presenter {
     cur.addEventListener("wheel", wheelStepper((d) => this.act(d > 0 ? "next" : "prev")), { signal, passive: true });
     $("next").addEventListener("click", () => this.act("nextSlide"), { signal });
     $("timer").addEventListener("click", () => this.act("timerPause"), { signal });
-    $("timer-reset").addEventListener("click", () => this.act("timerReset"), { signal });
+    const toggle = $("timer-toggle");
+    toggle.addEventListener(
+      "click",
+      () => {
+        toggle.blur();
+        this.act(this.state.timer.startedAt === null ? "timerStart" : "timerPause");
+      },
+      { signal },
+    );
+    const reset = $("timer-reset");
+    reset.addEventListener(
+      "click",
+      () => {
+        reset.blur();
+        const t = this.state.timer;
+        // Running, it takes a second click, so a stray one can't wipe the talk's time.
+        if (t.pausedAt === null && !this.resetArmed) {
+          this.resetArmed = window.setTimeout(() => {
+            this.resetArmed = 0;
+            this.renderTimer();
+          }, 3000);
+          this.renderTimer();
+          return;
+        }
+        clearTimeout(this.resetArmed);
+        this.resetArmed = 0;
+        if (t.pausedAt === null) this.state.timer = T.togglePause(t, Date.now());
+        this.act("timerReset");
+      },
+      { signal },
+    );
 
-    for (const b of document.querySelectorAll<HTMLButtonElement>(".toolbar [data-action]")) {
+    for (const b of document.querySelectorAll<HTMLButtonElement>("#presenter [data-action]")) {
       b.addEventListener(
         "click",
         () => {
@@ -661,7 +699,6 @@ class Presenter {
     this.renderStatus();
 
     const on: Partial<Record<Action, boolean>> = {
-      openAudience: audience.open,
       laserMode: s.laser,
       blank: s.black,
       freeze: s.frozen !== null,
@@ -669,11 +706,13 @@ class Presenter {
       fullscreen: !!document.fullscreenElement,
       help: s.help,
     };
-    // Once the audience window is open, its button makes it fullscreen.
+    // The audience's next step, standing out until the audience is fullscreen.
     const ab = $("audience-button");
     ab.dataset.action = audience.open ? "audienceFullscreen" : "openAudience";
-    ab.innerHTML = audience.open ? "Audience fullscreen <kbd>⇧W</kbd>" : "Audience <kbd>o</kbd>";
-    on.audienceFullscreen = audience.fullscreen;
+    ab.classList.toggle("cta", !audience.fullscreen);
+    if (!audience.open) label(ab, "Open audience window", "o");
+    else if (audience.fullscreen) label(ab, "Exit audience fullscreen", "⇧W");
+    else label(ab, audience.screen ? `Audience fullscreen on ${audience.screen}` : "Audience fullscreen", "⇧W");
     for (const b of document.querySelectorAll<HTMLElement>(".toolbar [data-action]")) {
       b.classList.toggle("on", !!on[b.dataset.action as Action]);
     }
@@ -717,6 +756,10 @@ class Presenter {
     return `${second}:${Math.floor(now / 60_000)}`;
   }
   private beat = "";
+  /** Set while Reset waits for its second click. */
+  private resetArmed = 0;
+  /** On slide 1 with time on the clock, as last drawn. */
+  private stale = false;
 
   /** The ticker's beat: redraws once a shown number turns over, not on every beat. Returns when to beat again. */
   private tick(): number {
@@ -746,22 +789,31 @@ class Presenter {
     timer.textContent = T.format(T.elapsed(t, now));
     timer.classList.toggle("idle", t.startedAt === null || t.pausedAt !== null);
     $("wallclock").textContent = T.formatClock(now);
-    const until = T.untilStart(this.talk(), now);
-    const mode =
-      t.pausedAt !== null
-        ? "paused · click the clock to resume"
-        : t.startedAt !== null
-          ? ""
-          : until
-            ? `talk starts at ${this.deck.startTime}, in ${T.format(until)}`
-            : s.page === 0
-              ? "starts when you leave slide 1"
-              : "starts at your next move, or press s";
-    $("timer-mode").textContent = mode;
-    const line = $("timer-line");
-    line.hidden = !mode;
-    line.classList.toggle("warn", t.pausedAt !== null);
-    $("timer-reset").hidden = t.pausedAt === null;
+    // Back on slide 1 with time on the clock: likely a look through the slides
+    // before the talk, which would throw its pace off. Reset is the way out.
+    const stale = t.startedAt !== null && this.deck.pages[s.page].slide === 0;
+    if (stale && !this.stale) toast("The clock has already started. Starting the talk now? Reset it first.", "info", 8000);
+    this.stale = stale;
+    // The buttons say what state the clock is in, so nothing under it comes and
+    // goes: what to press next stands out, and the rest is in their tooltips.
+    const toggle = $("timer-toggle");
+    if (t.startedAt === null) {
+      label(toggle, "Start", "s");
+      const until = T.untilStart(this.talk(), now);
+      toggle.title = until
+        ? `The talk starts at ${this.deck.startTime}, in ${T.format(until)}.`
+        : `Starts the clock. It also starts ${s.page === 0 ? "when you leave slide 1" : "at your next move"}.`;
+    } else {
+      label(toggle, t.pausedAt === null ? "Pause" : "Resume", "p");
+      toggle.title = "";
+    }
+    toggle.classList.toggle("cta", (t.startedAt === null || t.pausedAt !== null) && !stale);
+    const reset = $<HTMLButtonElement>("timer-reset");
+    reset.title = t.pausedAt === null ? "While the clock runs, click twice." : "";
+    reset.disabled = t.startedAt === null;
+    reset.classList.toggle("cta", stale && !this.resetArmed);
+    reset.classList.toggle("confirm", !!this.resetArmed);
+    label(reset, this.resetArmed ? "Click again to reset" : "Reset", "⇧R");
   }
 
   /** Each slide's planned window, from its first step's start to its last step's end. */
@@ -974,14 +1026,12 @@ class Presenter {
   private renderStatus(): void {
     const status = $("audience-status");
     if (!audience.open) {
-      status.textContent = this.state.solo
-        ? "Presenting in this window. Esc returns to the presenter view."
-        : "Audience window closed. Press o to open it.";
+      status.textContent = this.state.solo ? "Presenting in this window. Esc returns to the presenter view." : "";
     } else if (audience.fullscreen) {
       status.textContent = `Audience fullscreen${audience.screen ? ` on ${audience.screen}` : ""}.`;
     } else {
       status.textContent = audience.screen
-        ? `Audience window open. Shift+W makes it fullscreen on ${audience.screen}.`
+        ? "Audience window open, not fullscreen yet."
         : "Audience window open; drag it to the projector, then double-click it or press Shift+W for fullscreen.";
     }
     const scr = $("screen-status");

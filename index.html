@@ -62,20 +62,22 @@
             <button id="timer" class="timer idle" type="button" title="Click to pause or resume (p)">0:00:00</button>
             <span id="pace-all-text" class="pace-num"></span>
           </div>
-          <p id="timer-line" class="timer-line">
-            <span id="timer-mode"></span>
-            <button id="timer-reset" type="button" hidden>Reset to 0:00:00</button>
-          </p>
+          <div class="timer-controls">
+            <button id="timer-toggle" class="ctl cta" type="button">Start <kbd>s</kbd></button>
+            <button id="timer-reset" class="ctl" type="button" disabled>Reset <kbd>⇧R</kbd></button>
+          </div>
           <div
             id="talkbar"
             class="talkbar"
             title="The slides as planned, this one yellow. The line under them: time spent, colored like the early/late by the clock, then paler to where the talk would end. Red line: the target end."
           ></div>
         </section>
-        <p id="audience-status" class="hintline"></p>
+        <div class="audience-bar">
+          <button type="button" id="audience-button" class="ctl cta" data-action="openAudience">Open audience window <kbd>o</kbd></button>
+          <p id="audience-status" class="hintline"></p>
+        </div>
         <p id="screen-status" class="hintline"></p>
         <nav class="toolbar">
-          <button type="button" id="audience-button" data-action="openAudience">Audience <kbd>o</kbd></button>
           <button type="button" data-action="blank">Black <kbd>b</kbd></button>
           <button type="button" data-action="freeze">Freeze <kbd>f</kbd></button>
           <button type="button" data-action="laserMode">Laser <kbd>2</kbd></button>

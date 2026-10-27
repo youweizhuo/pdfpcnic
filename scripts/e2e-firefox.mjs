@@ -92,9 +92,7 @@ try {
       assert.equal(await page.evaluate(() => typeof CSS.highlights), "object");
     });
 
-    await check(`${build}: the audience window opens and follows`, async () => {
-      await page.keyboard.press("o");
-      await sleep(1500);
+    await check(`${build}: the audience window opens with the deck and follows`, async () => {
       const pages = await browser.pages();
       const audience = pages.at(-1);
       assert.notEqual(audience, page, "no audience window");

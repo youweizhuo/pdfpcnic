@@ -7,10 +7,9 @@ import AppKit
 final class Audience: NSObject, NSWindowDelegate {
     /// Tells the page: the window's status, and keys, clicks, the pointer and links in it.
     var emit: (String, Any) -> Void = { _, _ in }
-    /// The presenter's screen, which the audience goes fullscreen off.
-    var presenterScreen: () -> NSScreen? = { nil }
-    /// Gives the keyboard back to the presenter's window, where the talk is run.
-    var focusPresenter: () -> Void = {}
+    /// The presenter's window, fullscreen or not: the audience opens behind it,
+    /// goes fullscreen off its screen, and gives the keyboard back to it.
+    var presenter: () -> NSWindow? = { nil }
     let view = SlideView()
     private var window: AudienceWindow?
     /// The screen it's fullscreen on.
@@ -56,13 +55,14 @@ final class Audience: NSObject, NSWindowDelegate {
         view.redraw()
     }
 
-    /// Opens it on the presenter's screen, or brings it forward.
-    func open() {
+    /// Opens it on the presenter's screen, or brings it forward. `behind`, as a
+    /// deck opens: behind the presenter, and left as it is if it's open.
+    func open(behind: Bool = false) {
         if let window {
-            window.makeKeyAndOrderFront(nil)
+            if !behind { window.makeKeyAndOrderFront(nil) }
             return
         }
-        let area = (presenterScreen() ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
+        let area = (presenter()?.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
         let width = (area.width * 0.6).rounded()
         let height = (width * 9 / 16).rounded()
         let window = AudienceWindow(
@@ -76,8 +76,12 @@ final class Audience: NSObject, NSWindowDelegate {
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.contentView = view
-        window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(view)
+        if behind, let front = presenter() {
+            window.order(.below, relativeTo: front.windowNumber)
+        } else {
+            window.makeKeyAndOrderFront(nil)
+        }
         self.window = window
         view.hint()
         changed()
@@ -106,7 +110,7 @@ final class Audience: NSObject, NSWindowDelegate {
         }
         // As in Présentation.app, keys go on to the presenter's window. Pressed
         // in the audience window, they reach the talk too.
-        focusPresenter()
+        presenter()?.makeKeyAndOrderFront(nil)
         view.redraw()
         changed()
     }
@@ -125,7 +129,7 @@ final class Audience: NSObject, NSWindowDelegate {
     }
 
     private func destination() -> NSScreen? {
-        Screens.destination(for: window, presenter: presenterScreen())
+        Screens.destination(for: window, presenter: presenter()?.screen)
     }
 }
 

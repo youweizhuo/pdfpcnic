@@ -1,14 +1,15 @@
 # The Mac app: built on macOS, then its smoke test drives it through the demo
 # deck: the deck opens, both windows draw it, the audience goes fullscreen,
-# a reload resumes. Screenshots and the app are kept with the run.
+# the zip installs as an update, a reload resumes. Screenshots and the app are
+# kept with the run.
 name: Mac app
 
 on:
   push:
     branches: ["**"]
-    paths: ["mac/**", "src/**", "index.html", "vite.config.ts", "package*.json", ".github/workflows/mac.yml"]
+    paths: ["mac/**", "src/**", "demo/**", "index.html", "vite.config.ts", "package*.json", ".github/workflows/mac.yml"]
   pull_request:
-    paths: ["mac/**", "src/**", "index.html", "vite.config.ts", "package*.json", ".github/workflows/mac.yml"]
+    paths: ["mac/**", "src/**", "demo/**", "index.html", "vite.config.ts", "package*.json", ".github/workflows/mac.yml"]
   workflow_dispatch:
 
 permissions:
@@ -27,7 +28,7 @@ jobs:
       - run: sh mac/build.sh
       - name: Smoke test
         timeout-minutes: 5
-        run: dist-mac/pdfpcnic.app/Contents/MacOS/pdfpcnic --smoke-test demo/demo.pdf demo/demo.pdfpc e2e-out/mac
+        run: dist-mac/pdfpcnic.app/Contents/MacOS/pdfpcnic --smoke-test demo/demo.pdf demo/demo.pdfpc e2e-out/mac dist-mac/pdfpcnic-mac.zip
       - uses: actions/upload-artifact@v7
         if: always()
         with:

@@ -20,8 +20,8 @@ next slide: the clock and one bar for the whole talk.
 
 ![The presenter view: the current slide with its speaker notes, the next slide, the clock and the talk's pace, and thumbnails](docs/presenter.png)
 
-- **Nothing to install.** Open the page, drop in the PDF and its `.pdfpc` file, press `o`, then `Shift+W`. In Chrome
-  and Edge the audience goes fullscreen on the projector.
+- **Nothing to install.** Open the page, choose the PDF and its `.pdfpc` file, and press `Shift+W`. The audience
+  window comes with the deck, and in Chrome and Edge it goes fullscreen on the projector.
 - **pdfpc's keys and files**: Markdown notes, reveal steps, hidden slides, the end slide, the talk's length.
 - **Pace for timed talks.** Notes can carry each slide's planned window; pdfpcnic shows how this slide and the whole
   talk are going, and colors only what needs your attention.
@@ -33,8 +33,10 @@ next slide: the clock and one bar for the whole talk.
 
 1. Open the page (or `pdfpcnic.html` from a USB stick) and drop your PDF **and** its `.pdfpc` file on it, or choose
    both at once. The `.pdfpc` file is optional; it brings notes, timing, hidden slides and reveal steps.
-2. Press `o` to open the audience window, then `Shift+W` to make it fullscreen. By the clock, one button at a time is
-   yellow, the next thing to press: the audience's steps first, then **Start**.
+2. The audience window opens with the deck; press `Shift+W` to make it fullscreen. By the clock, one button at a time
+   is yellow, the next thing to press: the audience's steps first, then **Start**.
+   - **If the browser blocked the window**: browsers open one only right after a click or key, and a dropped file
+     isn't one. Press `o`, or allow pop-ups for the page and it opens by itself from then on.
    - **Chrome and Edge** ask once to manage windows. Allow it, and `Shift+W` puts the audience fullscreen on another
      screen than the presenter's: an external one over the laptop's own. If you dragged the audience window to a
      screen yourself, it goes fullscreen there.
@@ -52,21 +54,33 @@ shared computer, open the page again and press **Forget** beside **Resume**, or 
 
 The same presenter, in a Mac app of its own, with an audience window it places itself:
 
-- **`Shift+W` puts the audience fullscreen on the projector**, whatever the screens, with nothing to allow first.
+- **The audience window opens with the deck, behind the presenter**, and `Shift+W` puts it fullscreen on the
+  projector, whatever the screens, with nothing to allow first.
 - **The audience window is frameless**, and macOS draws the slides, in both windows, with its own PDF engine, as
   Preview does.
 - **Fullscreen is instant**, with no animation and no new Space, as in Présentation.app. Keys go on to the presenter
   window.
 - **Open a deck from the Finder** (Open With › pdfpcnic), with File › Open, or by dropping it on the window.
 
-To install it, download `pdfpcnic-mac.zip` from the [latest release](https://github.com/youweizhuo/pdfpcnic/releases/latest),
-unzip it, and move pdfpcnic to Applications. The app isn't signed by an Apple developer account, so the first time,
-macOS stops it: open it once, then click **Open Anyway** in System Settings › Privacy & Security. That's needed only
-once.
+To install it, paste this line into Terminal (in Applications › Utilities). It puts pdfpcnic in Applications and opens
+it:
 
-**Updates come by themselves.** Each release's presenter page downloads in the background and opens the next time you
-start the app, never mid-talk. When a release changes the app itself, the app says so once, with a link to the new
-download. **Check for Updates…** in the pdfpcnic menu looks right away.
+```sh
+curl -fsSL https://github.com/youweizhuo/pdfpcnic/releases/latest/download/pdfpcnic-mac.zip -o /tmp/pdfpcnic.zip && ditto -x -k /tmp/pdfpcnic.zip /Applications && open /Applications/pdfpcnic.app
+```
+
+Or download `pdfpcnic-mac.zip` from the [latest release](https://github.com/youweizhuo/pdfpcnic/releases/latest) and
+unzip it. The app isn't signed by a paid Apple developer account, so macOS stops an app that a browser downloaded:
+*Apple could not verify "pdfpcnic" is free of malware*. Click **Done**, open System Settings › Privacy & Security,
+scroll to the bottom, and click **Open Anyway** beside *"pdfpcnic" was blocked*. The button stays there for about an
+hour after macOS stopped the app. It's needed only once, and not at all with the Terminal line: macOS checks only
+files that a browser marks as downloaded, and `curl` doesn't mark them.
+
+**Updates install themselves.** A few seconds after it starts, the app looks for a newer release. If there is one, it
+downloads it and puts it in place of itself, wherever it is. The new version opens the next time you start the app,
+never mid-talk, and macOS doesn't stop it. **Check for Updates…** in the pdfpcnic menu looks right away and says how
+it went. In Applications this happens without a word. In Downloads or Desktop, macOS may first ask to let pdfpcnic
+change files there.
 
 It needs macOS 12 or later, on Apple silicon or Intel.
 
@@ -171,7 +185,7 @@ to the colors.
 The browser reads your PDF and `.pdfpc` file; nothing is uploaded, and there are no accounts, cookies or analytics. On
 the website, a Content Security Policy lets the page load scripts and connect only to its own site, so nothing in a PDF
 or a note can send anything elsewhere. The Mac app's page is held to the same: it reaches only the app. The app itself
-connects only to GitHub, to look for updates, a few seconds after it starts.
+connects only to GitHub, a few seconds after it starts, to look for updates and download them.
 
 To resume after a reload, the browser keeps the last deck you opened, with your place and the clock, in its own storage
 on this computer. **Forget** on the start page removes it. Settings such as sizes and pace colors are kept too.

@@ -24,15 +24,11 @@ jobs:
       - run: sh mac/build.sh
       - name: Smoke test
         timeout-minutes: 5
-        run: dist-mac/pdfpcnic.app/Contents/MacOS/pdfpcnic --smoke-test demo/demo.pdf demo/demo.pdfpc e2e-out/mac
-      # The app, the page installed apps update to, and what tells them about both.
+        run: dist-mac/pdfpcnic.app/Contents/MacOS/pdfpcnic --smoke-test demo/demo.pdf demo/demo.pdfpc e2e-out/mac dist-mac/pdfpcnic-mac.zip
       - uses: actions/upload-artifact@v7
         with:
           name: mac-release
-          path: |
-            dist-mac/pdfpcnic-mac.zip
-            dist-mac/pdfpcnic-mac-page.html
-            dist-mac/pdfpcnic-mac.json
+          path: dist-mac/pdfpcnic-mac.zip
 
   release:
     needs: mac
@@ -66,7 +62,7 @@ jobs:
       - name: GitHub release with the offline file and the Mac app
         run: >-
           gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md
-          dist/pdfpcnic.html dist-mac/pdfpcnic-mac.zip dist-mac/pdfpcnic-mac-page.html dist-mac/pdfpcnic-mac.json
+          dist/pdfpcnic.html dist-mac/pdfpcnic-mac.zip
         env:
           GH_TOKEN: ${{ github.token }}
 

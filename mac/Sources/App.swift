@@ -25,7 +25,7 @@ final class App: NSObject, NSApplicationDelegate {
     private var ready = false
 
     override init() {
-        scheme = PageScheme(page: Updates.page(), pdfs: pdfs)
+        scheme = PageScheme(pdfs: pdfs)
         super.init()
     }
 
@@ -64,8 +64,7 @@ final class App: NSObject, NSApplicationDelegate {
 
     /// Each of the page's calls, to the part that answers it.
     private func wire() {
-        audience.presenterScreen = { [unowned self] in presenter.screen }
-        audience.focusPresenter = { [unowned self] in presenter.web.window?.makeKeyAndOrderFront(nil) }
+        audience.presenter = { [unowned self] in presenter.web.window }
         audience.emit = { [unowned self] name, data in presenter.emit(name, data) }
         presenter.onChange = { [unowned self] in
             presenter.emit("window", presenter.state)
@@ -91,8 +90,8 @@ final class App: NSObject, NSApplicationDelegate {
             audience.show(pdfs[args.int("doc")])
             return nil
         }
-        bridge.on("audienceOpen") { [unowned self] _ in
-            audience.open()
+        bridge.on("audienceOpen") { [unowned self] args in
+            audience.open(behind: args.bool("behind"))
             return nil
         }
         bridge.on("audienceFullscreen") { [unowned self] _ in

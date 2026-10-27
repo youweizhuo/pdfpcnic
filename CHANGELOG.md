@@ -3,6 +3,20 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.2.1 (2026-10-27)
+
+### Changed
+
+- **The audience window opens with the deck.** In the Mac app it opens behind the presenter, and `Shift+W` then puts
+  it fullscreen on the projector. A browser opens a window only right after a click or key. After a dropped file,
+  the yellow button by the clock still offers it (`o`), and allowing pop-ups for the page lets it open by itself.
+- **The Mac app updates itself whole.** It downloads each new release and puts it in place of itself, wherever it is.
+  The new version opens at the next launch, and macOS doesn't stop it, even when the app's own code changed. Releases
+  now attach just the two downloads, `pdfpcnic.html` and `pdfpcnic-mac.zip`.
+- **The Mac app installs with one line in Terminal** (see the README), with no Open Anyway.
+
+1.2.0 can't update itself to this version: install it once more.
+
 ## 1.2.0 (2026-10-27)
 
 ### Added

@@ -26,7 +26,7 @@
 #slide[Two windows][
   - *Presenter*: clock, current and next slide, notes, thumbnails
   - *Audience*: the slide, fullscreen on the projector
-  - Press #box(stroke: 1pt, inset: 4pt, radius: 3pt)[o] to open the audience window
+  - It opens with the deck: press #box(stroke: 1pt, inset: 4pt, radius: 3pt)[Shift+W] for fullscreen
 ]
 
 #pagebreak()

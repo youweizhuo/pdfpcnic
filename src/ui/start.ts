@@ -71,6 +71,14 @@ export async function start(platform: Platform): Promise<void> {
     previous?.dispose();
     await previous?.opened.pdf.close();
     presenter = new Presenter(platform, audience, { source, pdf, deck }, saved, track);
+    // The audience window comes with the deck. A browser opens one only right
+    // after a click or key (or once its pop-ups are allowed): otherwise the
+    // button by the clock offers it, as it does once the window is closed.
+    try {
+      audience.open(true);
+    } catch {
+      // Blocked.
+    }
     if (keep) {
       void platform.store.saveDeck({ pdfName: source.pdf.name, pdf: source.pdf.data, pdfpcName: source.pdfpc?.name, pdfpc: source.pdfpc?.text });
     }

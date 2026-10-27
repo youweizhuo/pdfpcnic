@@ -50,15 +50,9 @@ function pdfjsResources(): Plugin {
 }
 
 /**
- * The calls between the Mac app and its presenter page. Bumped when either
- * side's change; an installed app only takes downloaded pages built for its own.
- */
-const MAC_BRIDGE = 1;
-
-/**
- * Mac build: the page on the Mac platform (src/mac/), saying which bridge it
- * speaks. Its policy keeps everything inside the app: the script and styles
- * are inline, and the only fetches go to the app (pdfpcnic:) or data: URLs.
+ * Mac build: the page on the Mac platform (src/mac/). Its policy keeps
+ * everything inside the app: the script and styles are inline, and the only
+ * fetches go to the app (pdfpcnic:) or data: URLs.
  */
 function macPage(): Plugin {
   const policy = [
@@ -78,7 +72,6 @@ function macPage(): Plugin {
       handler: (html) => ({
         html: html.replace('src="./src/main.ts"', 'src="./src/mac/main.ts"'),
         tags: [
-          { tag: "meta", attrs: { name: "pdfpcnic-bridge", content: String(MAC_BRIDGE) }, injectTo: "head-prepend" },
           { tag: "meta", attrs: { "http-equiv": "Content-Security-Policy", content: policy }, injectTo: "head-prepend" },
         ],
       }),

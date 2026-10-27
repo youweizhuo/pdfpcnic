@@ -51,8 +51,11 @@ export interface Audience {
   readonly pixelWidth: number;
   /** Shows this deck: the window draws it from the PDF, or from the pictures the presenter has drawn of it. */
   bind(deck: Deck, pdf: Pdf, pages: PageCache): void;
-  /** Opens it on this screen, or brings it forward. Call from a key press or click. Throws, saying what to do, if it can't. */
-  open(): void;
+  /**
+   * Opens it on this screen, or brings it forward. Call from a key press or click. Throws, saying what to do, if it
+   * can't. `behind`, as a deck opens: behind the presenter where the platform can put it, and left as it is if open.
+   */
+  open(behind?: boolean): void;
   /** Fullscreen on the projector, or back. Call from a key press or click. */
   toggleFullscreen(): void;
   render(page: number, black: boolean, laser: Point | null, laserSize: number): void;

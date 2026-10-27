@@ -32,8 +32,8 @@ export class MacAudience implements Audience {
     void call("audienceShow", { doc: (pdf as MacPdf).id });
   }
 
-  open(): void {
-    void call("audienceOpen");
+  open(behind = false): void {
+    void call("audienceOpen", { behind });
   }
 
   toggleFullscreen(): void {

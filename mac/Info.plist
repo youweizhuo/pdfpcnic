@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- mac/build.sh fills in the version and PdfpcnicNative, a hash of the app's own code: installed apps compare it with the latest release's to tell whether the app itself changed. -->
+<!-- mac/build.sh fills in the version. -->
 <plist version="1.0">
 <dict>
 	<key>CFBundleName</key>
@@ -27,8 +27,6 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>MIT License. Includes marked (MIT) and DOMPurify (Apache-2.0 or MPL-2.0).</string>
-	<key>PdfpcnicNative</key>
-	<string>@NATIVE@</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

@@ -152,12 +152,13 @@ export class PopupAudience implements Audience {
 
   /**
    * Opens (or re-attaches to) the audience window, on this screen. Call from a
-   * click or key press: browsers only allow popups from user input.
+   * click or key press: browsers only allow popups from user input. A browser
+   * puts a new window in front, `behind` or not.
    */
-  open(): void {
+  open(behind = false): void {
     if (!this.deck) return;
     if (this.isOpen) {
-      this.win!.focus();
+      if (!behind) this.win!.focus();
       return;
     }
     const { left, top, width, height } = centered();

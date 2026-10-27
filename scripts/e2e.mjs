@@ -119,6 +119,9 @@ try {
   });
 
   await page.evaluate(() => (window.shown = window.pdfpcnic.deck));
+  // The audience window comes with the deck where the browser allows it. Here a script counts as a click, so it
+  // always would: for the offline copy, the browser blocks it instead, as it does when no click or key came first.
+  if (mode !== "site") await page.evaluate(() => ([window.allowed, window.open] = [window.open, () => null]));
   await input.uploadFile(resolve("demo/demo.pdf"), resolve("demo/demo.pdfpc"));
   await page.waitForFunction(() => window.pdfpcnic.deck && window.pdfpcnic.deck !== window.shown, { timeout: 20000 });
 
@@ -176,11 +179,19 @@ try {
 
   await page.screenshot({ path: `${out}/presenter.png` });
 
+  if (mode !== "site") {
+    await check("blocked, the window that comes with the deck is left to its button, with no error", async () => {
+      assert.equal((await browser.pages()).length, 1, "a window opened");
+      assert.match(await text("#audience-button"), /^Open audience window/);
+      assert.equal(await page.$eval("#error", (e) => e.hidden), true);
+    });
+    await page.evaluate(() => (window.open = window.allowed));
+  }
   const popupTarget = browser.waitForTarget((t) => t.opener() === page.target(), { timeout: 10000 });
-  await press("o");
+  if (mode !== "site") await press("o");
   const audience = await (await popupTarget).page();
   watch(audience, "audience");
-  await check("audience window opens and shows the slide", async () => {
+  await check(mode === "site" ? "the audience window opens with the deck and shows the slide" : "o opens the audience window, and it shows the slide", async () => {
     await audience.waitForFunction(() => document.querySelector("#stage canvas")?.width > 0, { timeout: 10000 });
     await new Promise((r) => setTimeout(r, 800));
     assert.ok(await painted(audience, "#stage canvas"), "audience slide is blank");

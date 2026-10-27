@@ -5,7 +5,7 @@
   "disableMarkdown": false,
   "pages": [
     { "idx": 0, "label": "1", "overlay": 0, "note": "**00:00 → 00:45** · 45 s\n\n**Welcome.** This is the title slide.\n\nThe clock starts when you leave this page, like pdfpc. Press **?** for all keys." },
-    { "idx": 1, "label": "2", "overlay": 0, "note": "**00:45 → 02:30** · 105 s\n\nThe audience window opens on the second screen when the browser allows window placement (Chrome, Edge).\n\n- Otherwise drag it to the projector\n- Double-click it, or press **Shift+W** here, for fullscreen" },
+    { "idx": 1, "label": "2", "overlay": 0, "note": "**00:45 → 02:30** · 105 s\n\nThe audience window opens with the deck; in the Mac app, behind this one. If the browser blocked it, press **o**.\n\n- **Shift+W** here puts it fullscreen on the projector (Chrome, Edge, the Mac app)\n- Otherwise drag it to the projector and double-click it" },
     { "idx": 2, "label": "3", "overlay": 0, "note": "**02:30 → 03:30** · 60 s\n\nThree reveal steps share one page label, so they count as **one slide**.\n\n*Next* on the right shows the next slide, not the next step." },
     { "idx": 3, "label": "3", "overlay": 1, "note": "**03:30 → 04:10** · 40 s\n\nStep two of three. Steps can have windows of their own." },
     { "idx": 4, "label": "3", "overlay": 2, "note": "**04:10 → 05:00** · 50 s\n\nLast step. Going back from the next slide jumps to the first step." },

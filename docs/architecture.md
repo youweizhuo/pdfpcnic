@@ -73,17 +73,17 @@ calls the app over a bridge, `src/mac/bridge.ts` → `mac/Sources/Bridge.swift`,
 part that answers it. Bytes go the other way through the page's own address, `pdfpcnic://app/`
 (`PageScheme.swift`): pictures of pages as raw pixels, and the files opened from the Finder.
 
-Updates are in two parts, so most releases need no download:
-
-- **The page updates itself.** Each release carries it (`pdfpcnic-mac-page.html`); the app fetches the latest one in the
-  background and opens it at the next launch (`Updates.swift`). It takes only a page that speaks its bridge: the
-  `pdfpcnic-bridge` number in `vite.config.ts`, bumped whenever a call between the two sides changes.
-- **The app itself** changes only when `mac/` does. `mac/build.sh` stamps the app with a hash of `mac/`, and the release
-  with it (`pdfpcnic-mac.json`); an app whose hash differs offers the download, once per version.
+**The app updates itself whole** (`Updates.swift`). A few seconds after launch, it reads the latest release's version
+from where GitHub sends `releases/latest`. If that's newer, it downloads the release's `pdfpcnic-mac.zip`, unpacks it
+on the app's disk, and swaps it in for the app, wherever the app is. A downloaded app opened where it was unpacked runs
+from a read-only copy (App Translocation), so the swap goes to the original. The running app keeps the page it read at
+launch, so the new version starts at the next launch. Files the app downloads itself carry no quarantine mark, so
+Gatekeeper doesn't stop the new version. With one download for both halves, the page and the Swift code always match.
 
 `mac/build.sh` builds it on a Mac, for Apple silicon and Intel, signed to run but not with an Apple Developer ID. CI
-builds it on every change and runs its smoke test (`pdfpcnic --smoke-test`): the deck opens, both windows draw it, the
-audience goes fullscreen, a reload resumes.
+builds it on every change and runs its smoke test (`pdfpcnic --smoke-test`): the deck opens with the audience window
+behind the presenter, both windows draw it, the audience goes fullscreen, the zip installs over an app, and a reload
+resumes.
 
 ## Adding a platform
 

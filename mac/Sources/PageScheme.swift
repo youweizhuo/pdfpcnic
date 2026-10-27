@@ -8,15 +8,15 @@ final class PageScheme: NSObject, WKURLSchemeHandler {
     static let scheme = "pdfpcnic"
     static let home = URL(string: "pdfpcnic://app/index.html")!
 
-    private let page: URL
+    /// The page, read at launch: an update put in place meanwhile opens at the next.
+    private let page = Bundle.main.url(forResource: "page", withExtension: "html").flatMap { try? Data(contentsOf: $0) }
     private let pdfs: Documents
     /// The bytes of the files last opened from the Finder.
     var opened: [Data] = []
     /// Requests the page gave up on: they get no answer.
     private var stopped = Set<ObjectIdentifier>()
 
-    init(page: URL, pdfs: Documents) {
-        self.page = page
+    init(pdfs: Documents) {
         self.pdfs = pdfs
     }
 
@@ -28,7 +28,7 @@ final class PageScheme: NSObject, WKURLSchemeHandler {
         )
         switch url.path {
         case "/", "/index.html":
-            reply(task, try? Data(contentsOf: page), type: "text/html")
+            reply(task, page, type: "text/html")
         case "/page":
             pdfs.picture(query["doc"] ?? 0, page: query["page"] ?? 0, width: query["width"] ?? 0) { [weak self] data in
                 self?.reply(task, data, type: "application/octet-stream")

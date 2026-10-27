@@ -1,20 +1,24 @@
 import AppKit
 import WebKit
 
-/// `pdfpcnic --smoke-test deck.pdf deck.pdfpc out/`, for CI. It opens the
-/// deck as the Finder would, steps through it, opens the audience window and
-/// makes it fullscreen, checks that both windows drew the slide, reloads to
+/// `pdfpcnic --smoke-test deck.pdf deck.pdfpc out/ pdfpcnic-mac.zip`, for CI.
+/// It opens the deck as the Finder would, with the audience window behind the
+/// presenter, steps through it, makes the audience fullscreen, checks that both
+/// windows drew the slide, installs the zip as an update would, reloads to
 /// check the talk resumes, saves screenshots, and quits: status 1 if anything failed.
 @MainActor
 final class SmokeTest {
     private let files: [URL]
     private let out: URL
+    /// The app's zip, as a release carries it.
+    private let zip: URL
     private var failed = 0
 
     init?(arguments: [String]) {
-        guard let i = arguments.firstIndex(of: "--smoke-test"), arguments.count > i + 3 else { return nil }
+        guard let i = arguments.firstIndex(of: "--smoke-test"), arguments.count > i + 4 else { return nil }
         files = [URL(fileURLWithPath: arguments[i + 1]), URL(fileURLWithPath: arguments[i + 2])]
         out = URL(fileURLWithPath: arguments[i + 3], isDirectory: true)
+        zip = URL(fileURLWithPath: arguments[i + 4])
     }
 
     func run(_ app: App) async {
@@ -55,17 +59,20 @@ final class SmokeTest {
             try await until("the current slide drawn") { try await js(Self.painted("#current canvas")) as? Bool == true }
             try await until("the thumbnails drawn") { try await js(Self.painted("#strip li canvas")) as? Bool == true }
         }
-        await check("keys step through the slides") {
-            try await press("ArrowRight")
-            try await until("page 2") { try await page() == 1 }
-        }
-        await check("the audience window opens, and Quartz draws the slide in it") {
-            try await press("o")
+        await check("the audience window opens with the deck, behind the presenter, and Quartz draws the slide in it") {
             try await until("the audience window") { app.audience.view.window != nil }
+            let windows = NSApp.orderedWindows
+            guard let audience = windows.firstIndex(where: { $0 === app.audience.view.window }),
+                  let presenter = windows.firstIndex(where: { $0 === app.presenter.window }), presenter < audience
+            else { throw Failure("it isn't behind the presenter") }
             try await until("the slide in it") { Self.painted(app.audience.view) }
             try await until("the guide's next step") {
                 (try await js("return document.querySelector('#audience-button').textContent") as? String ?? "").hasPrefix("Audience fullscreen on")
             }
+        }
+        await check("keys step through the slides") {
+            try await press("ArrowRight")
+            try await until("page 2") { try await page() == 1 }
         }
         await check("Shift+W makes the audience fullscreen, and the presenter knows") {
             try await press("W", shift: true)
@@ -91,17 +98,20 @@ final class SmokeTest {
             try await press("w")
             try await until("windowed") { !app.presenter.fullscreen }
         }
-        await check("of downloaded pages, the next launch opens the newest one that speaks this app's bridge") {
-            let html = try String(contentsOf: Updates.bundled, encoding: .utf8)
-            let mine = Updates.folder.appendingPathComponent("98.0.0.html")
-            let other = Updates.folder.appendingPathComponent("99.0.0.html")
-            try FileManager.default.createDirectory(at: Updates.folder, withIntermediateDirectories: true)
-            try html.write(to: mine, atomically: true, encoding: .utf8)
-            try html.replacingOccurrences(of: #"name="pdfpcnic-bridge" content=""#, with: #"name="pdfpcnic-bridge" content="9"#)
-                .write(to: other, atomically: true, encoding: .utf8)
-            defer { [mine, other].forEach { try? FileManager.default.removeItem(at: $0) } }
-            let chosen = Updates.page().lastPathComponent
-            guard chosen == "98.0.0.html" else { throw Failure("it chose \(chosen)") }
+        await check("GitHub says which release is the latest") {
+            let latest = try await Updates.latest()
+            guard latest.split(separator: ".").count == 3 else { throw Failure("it said \"\(latest)\"") }
+        }
+        await check("a release's zip goes in place of the app, wherever it is") {
+            let older = FileManager.default.temporaryDirectory.appendingPathComponent("pdfpcnic-smoke/Anywhere/pdfpcnic.app")
+            try? FileManager.default.removeItem(at: older.deletingLastPathComponent())
+            try FileManager.default.createDirectory(at: older.appendingPathComponent("Contents"), withIntermediateDirectories: true)
+            try Data("an older app".utf8).write(to: older.appendingPathComponent("Contents/old"))
+            try await Updates.install(Data(contentsOf: zip), over: older)
+            let version = NSDictionary(contentsOf: older.appendingPathComponent("Contents/Info.plist"))?["CFBundleShortVersionString"] as? String
+            guard version == Updates.version, !FileManager.default.fileExists(atPath: older.appendingPathComponent("Contents/old").path) else {
+                throw Failure("the app there is \(version ?? "not the release's")")
+            }
         }
         await check("after a reload, Resume picks up the talk at its page") {
             try await Task.sleep(nanoseconds: 800_000_000)

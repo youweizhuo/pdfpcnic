@@ -89,6 +89,9 @@ try {
     await new Promise((r) => setTimeout(r, 120));
   };
   const text = (sel) => page.$eval(sel, (e) => e.textContent);
+  // For text the presenter redraws on the audience's fullscreenchange, which comes a frame after fullscreenElement.
+  const textMatches = (sel, re) =>
+    page.waitForFunction((sel, re) => new RegExp(re).test(document.querySelector(sel).textContent), { timeout: 5000 }, sel, re.source);
   const painted = (p, sel) =>
     p.$eval(sel, (c) => {
       const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
@@ -188,12 +191,12 @@ try {
       const where = () => audience.evaluate(() => ({ x: screenX, w: outerWidth, full: !!document.fullscreenElement }));
       const full = (on) => audience.waitForFunction((on) => !!document.fullscreenElement === on, { timeout: 5000 }, on);
       assert.ok((await where()).x < 1440, "audience not on the presenter's screen");
-      await page.waitForFunction(() => /^Audience fullscreen on /.test(document.querySelector("#audience-button").textContent));
+      await textMatches("#audience-button", /^Audience fullscreen on /);
       await page.screenshot({ path: `${out}/audience-open.png` });
       await press("Shift+W");
       await full(true);
       assert.deepEqual(await where(), { x: 1440, w: 1920, full: true });
-      assert.match(await text("#audience-status"), /^Audience fullscreen on /);
+      await textMatches("#audience-status", /^Audience fullscreen on /);
       await audience.evaluate(() => document.exitFullscreen());
       await full(false);
       // Dragged to the third screen first: fullscreen there.
@@ -223,7 +226,7 @@ try {
     await page.bringToFront();
     await shiftW(page);
     await full(true);
-    assert.match(await text("#audience-button"), /^Exit audience fullscreen/);
+    await textMatches("#audience-button", /^Exit audience fullscreen/);
     await page.click("#audience-button");
     await full(false);
     await page.click("#audience-button");

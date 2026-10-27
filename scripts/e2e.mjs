@@ -199,6 +199,8 @@ try {
       await textMatches("#audience-status", /^Audience fullscreen on /);
       await audience.evaluate(() => document.exitFullscreen());
       await full(false);
+      // Out of fullscreen, it stays on that screen rather than going back behind the presenter.
+      await audience.waitForFunction(() => screen.availLeft === 1440, { timeout: 3000 });
       // Dragged to the third screen first: fullscreen there.
       await audience.evaluate(() => moveTo(3400, 50));
       await audience.waitForFunction(() => screen.availLeft === 3360);
@@ -507,6 +509,28 @@ try {
     assert.equal(await cta("#timer-reset"), false);
   });
 
+  await check("an error stays, its text selectable, until closed", async () => {
+    writeFileSync(`${out}/notes.txt`, "not a deck");
+    await (await page.$("#files")).uploadFile(`${out}/notes.txt`);
+    try {
+      await page.waitForSelector("#error:not([hidden])");
+      assert.equal(await text("#error-text"), "notes.txt is neither a PDF nor a .pdfpc file.");
+      assert.equal(await page.$eval("#error", (e) => getComputedStyle(e).pointerEvents), "auto");
+      // A note comes and goes under it; the error outlasts it.
+      await press("Home");
+      await new Promise((r) => setTimeout(r, 5000));
+      assert.equal(await page.$eval("#error", (e) => e.hidden), false);
+      await page.screenshot({ path: `${out}/error.png` });
+    } finally {
+      await page.click("#error-close");
+      assert.equal(await page.$eval("#error", (e) => e.hidden), true);
+      await press("g");
+      await page.keyboard.type("5");
+      await press("Enter");
+      assert.equal((await state()).page, 6);
+    }
+  });
+
   await check("[ and ] trade current-slide size for room for notes", async () => {
     const box = () => page.$eval("#current", (e) => e.getBoundingClientRect().height);
     const notes = () => page.$eval("#notes", (e) => e.getBoundingClientRect().height);
@@ -677,6 +701,20 @@ try {
       for (const name of ["MIT License", "pdfjs-dist", "marked", "dompurify"]) assert.ok(html.includes(name), name);
     });
   }
+
+  await check("hidden behind another tab, the presenter still draws slides for the audience", async () => {
+    const other = await browser.newPage();
+    try {
+      await other.bringToFront();
+      assert.equal(await page.evaluate(() => document.visibilityState), "hidden");
+      // pdf.js draws in animation-frame steps, which a hidden tab doesn't get.
+      const step = () => new Promise((r) => (requestAnimationFrame(() => r(true)), setTimeout(() => r(false), 2000)));
+      assert.equal(await page.evaluate(step), true);
+    } finally {
+      await other.close();
+      await page.bringToFront();
+    }
+  });
 
   await check("no errors in either window", async () => {
     assert.deepEqual(errors, []);

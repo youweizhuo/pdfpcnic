@@ -22,21 +22,29 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text 
 }
 
 /** A button's label and key, redrawn only when they change (so a click in progress isn't lost). */
-function label(b: HTMLElement, text: string, key: string): void {
+function label(b: HTMLElement, text: string, key = ""): void {
   const now = `${text}\n${key}`;
   if (b.dataset.label === now) return;
   b.dataset.label = now;
-  b.replaceChildren(text, el("kbd", "", key));
+  b.replaceChildren(text, ...(key ? [el("kbd", "", key)] : []));
 }
 
 let toastTimer = 0;
-function toast(message: string, kind: "info" | "error" = "info", ms = 4500): void {
+/** A note at the bottom that goes away on its own, out of the way of clicks. */
+function toast(message: string, ms = 4500): void {
   const t = $("toast");
   t.textContent = message;
-  t.className = `toast ${kind}`;
   t.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => (t.hidden = true), ms);
+}
+
+const reasonOf = (err: unknown) => (err instanceof Error ? err.message : String(err));
+
+/** Something went wrong: it stays, above any note and selectable for copying, until closed. */
+function report(message: string, reason = ""): void {
+  $("error-text").textContent = reason ? `${message}\nThe browser said: ${reason}` : message;
+  $("error").hidden = false;
 }
 
 interface Source {
@@ -74,7 +82,6 @@ const audience = new Audience({
   pointer: (at) => presenter?.pointAt(at, "audience"),
   follow: (to) => presenter?.follow(to),
   change: () => presenter?.render(),
-  refused: () => toast("The browser didn't let this window make the audience fullscreen. Double-click the audience window instead.", "error", 8000),
 });
 
 let presenter: Presenter | null = null;
@@ -322,7 +329,7 @@ class Presenter {
         break;
       case "fullscreen":
         if (document.fullscreenElement) void document.exitFullscreen();
-        else document.documentElement.requestFullscreen().catch(() => toast("This browser refused fullscreen."));
+        else document.documentElement.requestFullscreen().catch((err) => report("The browser refused fullscreen for this window.", reasonOf(err)));
         return;
       case "audienceFullscreen":
         if (audience.open) audience.toggleFullscreen();
@@ -355,12 +362,12 @@ class Presenter {
         s.help = !s.help;
         break;
       case "openAudience":
-        if (!audience.show()) toast("The browser blocked the audience window. Allow pop-ups for this page, then press o again.", "error", 8000);
+        if (!audience.show()) report("The browser blocked the audience window. Allow pop-ups for this page, then press o again.");
         return;
       case "slideSmaller":
       case "slideBigger":
         this.setStage(this.stage + (action === "slideBigger" ? 0.05 : -0.05));
-        toast(`Current slide at ${Math.round(this.stage * 100)}% of its column.`, "info", 1500);
+        toast(`Current slide at ${Math.round(this.stage * 100)}% of its column.`, 1500);
         return;
       case "settings":
         this.syncSettings();
@@ -707,11 +714,15 @@ class Presenter {
       help: s.help,
     };
     // The audience's next step, standing out until the audience is fullscreen.
+    // Where only the audience window can go fullscreen, the button brings it
+    // forward (as o does) and says to double-click it.
     const ab = $("audience-button");
-    ab.dataset.action = audience.open ? "audienceFullscreen" : "openAudience";
+    const toggles = audience.open && (audience.fullscreen || audience.fullscreenFromHere);
+    ab.dataset.action = toggles ? "audienceFullscreen" : "openAudience";
     ab.classList.toggle("cta", !this.audienceReady());
     if (!audience.open) label(ab, "Open audience window", "o");
     else if (audience.fullscreen) label(ab, "Exit audience fullscreen", "⇧W");
+    else if (!toggles) label(ab, "Double-click the audience window");
     else label(ab, audience.screen ? `Audience fullscreen on ${audience.screen}` : "Audience fullscreen", "⇧W");
     for (const b of document.querySelectorAll<HTMLElement>(".toolbar [data-action]")) {
       b.classList.toggle("on", !!on[b.dataset.action as Action]);
@@ -797,7 +808,7 @@ class Presenter {
     // Back on slide 1 with time on the clock: likely a look through the slides
     // before the talk, which would throw its pace off. Reset is the way out.
     const stale = t.startedAt !== null && this.deck.pages[s.page].slide === 0;
-    if (stale && !this.stale) toast("The clock has already started. Starting the talk now? Reset it first.", "info", 8000);
+    if (stale && !this.stale) toast("The clock has already started. Starting the talk now? Reset it first.", 8000);
     this.stale = stale;
     // The buttons say what state the clock is in, so nothing under it comes and
     // goes: what to press next stands out, and the rest is in their tooltips.
@@ -1036,11 +1047,14 @@ class Presenter {
       status.textContent = this.state.solo ? "Presenting in this window. Esc returns to the presenter view." : "";
     } else if (audience.fullscreen) {
       status.textContent = `Audience fullscreen${audience.screen ? ` on ${audience.screen}` : ""}.`;
+    } else if (audience.refused) {
+      status.textContent = "This browser lets only the audience window go fullscreen: double-click it.";
     } else {
       status.textContent = audience.screen
         ? "Audience window open, not fullscreen yet."
-        : "Audience window open; drag it to the projector, then double-click it or press Shift+W for fullscreen.";
+        : "Audience window open; drag it to the projector, then double-click it for fullscreen.";
     }
+    status.classList.toggle("ask", audience.refused);
     const scr = $("screen-status");
     const extended = screen.isExtended;
     scr.textContent =
@@ -1370,8 +1384,8 @@ async function openSource(source: Source, { saved, keep = true, track = true }: 
   if (keep) {
     void store.saveDeck({ pdfName: source.pdf.name, pdf: source.pdf.data, pdfpcName: source.pdfpc?.name, pdfpc: source.pdfpc?.text });
   }
-  if (notices.length) toast(notices.join(" "), "error", 9000);
-  else if (!source.pdfpc) toast("No .pdfpc file. Drop it on this window any time to add notes and timing.", "info", 6000);
+  if (notices.length) report(notices.join(" "));
+  else if (!source.pdfpc) toast("No .pdfpc file. Drop it on this window any time to add notes and timing.", 6000);
 }
 
 async function openFiles(files: Iterable<File>): Promise<void> {
@@ -1397,8 +1411,8 @@ async function openFiles(files: Iterable<File>): Promise<void> {
       throw new Error("That's the .pdfpc file. Add the PDF too (you can select both at once).");
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (presenter) toast(message, "error", 8000);
+    const message = reasonOf(err);
+    if (presenter) report(message);
     else {
       status.hidden = false;
       status.textContent = message;
@@ -1463,6 +1477,7 @@ async function boot(): Promise<void> {
   });
 
   window.addEventListener("keydown", (e) => presenter?.onKey(e));
+  $("error-close").addEventListener("click", () => ($("error").hidden = true));
 
   // Offer to pick up where an earlier visit left off (an accidental reload, say).
   const [deck, session] = await Promise.all([store.loadDeck(), store.loadSession()]);

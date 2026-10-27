@@ -38,7 +38,8 @@ next slide: the clock and one bar for the whole talk.
    - **Chrome and Edge** ask once to manage windows. Allow it, and `Shift+W` puts the audience fullscreen on another
      screen than the presenter's: an external one over the laptop's own. If you dragged the audience window to a
      screen yourself, it goes fullscreen there.
-   - **Other browsers**: drag the window to the projector and double-click it (or press `Shift+W`) for fullscreen.
+   - **Other browsers**: drag the window to the projector and double-click it for fullscreen, as the yellow button
+     says. Only Chrome and Edge can make it fullscreen from the presenter window.
 3. Press `w` to make the presenter fullscreen too, and `→` to start. The clock starts when you leave the first slide.
 
 If the page reloads mid-talk, **Resume** brings back the deck at the same page, with the clock still running.

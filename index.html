@@ -200,7 +200,13 @@
       </form>
     </dialog>
 
-    <div id="toast" class="toast" hidden></div>
+    <div class="toasts">
+      <div id="error" class="toast error" role="alert" hidden>
+        <p id="error-text"></p>
+        <button type="button" id="error-close" class="ctl">Close</button>
+      </div>
+      <div id="toast" class="toast" role="status" hidden></div>
+    </div>
 
     <script type="module" src="./src/main.ts"></script>
   </body>

@@ -99,12 +99,24 @@ try {
       const audience = pages.at(-1);
       assert.notEqual(audience, page, "no audience window");
       assert.match(await page.$eval("#audience-status", (e) => e.textContent), /drag it to the projector/);
+      // Only the audience window can make itself fullscreen here, so no Shift+W: the button says what to do.
+      assert.equal(await page.$eval("#audience-button", (e) => e.textContent), "Double-click the audience window");
       await page.keyboard.press("ArrowRight");
       await sleep(800);
       assert.equal(await page.evaluate(() => window.pdfpcnic.state.page), 2);
       assert.ok(await painted(audience, "canvas"), "audience slide is blank");
+      // Shift+W pressed here anyway says the same.
+      await page.bringToFront();
+      await page.keyboard.down("Shift");
+      await page.keyboard.press("W");
+      await page.keyboard.up("Shift");
+      await page.waitForFunction(() => /only the audience window go fullscreen: double-click it/.test(document.querySelector("#audience-status").textContent));
+      assert.equal(await page.$eval("#error", (e) => e.hidden), true);
+      await page.screenshot({ path: `${out}/${build}-ask.png` });
       await audience.screenshot({ path: `${out}/${build}-audience.png` });
       await audience.close();
+      // The presenter hears of it at once, and offers to open it again.
+      await page.waitForFunction(() => /^Open audience window/.test(document.querySelector("#audience-button").textContent), { timeout: 300 });
     });
 
     await page.screenshot({ path: `${out}/${build}.png` });

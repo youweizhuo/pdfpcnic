@@ -3,6 +3,26 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.1.2 (2026-10-27)
+
+### Changed
+
+- **Errors stay until you close them**, above the notes that come and go, and their text can be selected to copy.
+  They add the browser's own reason where there is one.
+- **Firefox and Safari aren't offered `Shift+W` for the audience**, since only Chrome and Edge can make it fullscreen
+  from the presenter window. There, once the audience window is open, the yellow button says to double-click it (and
+  brings it forward), and `Shift+W` pressed in the presenter says the same instead of showing an error.
+
+### Fixed
+
+- **Closing the audience window shows at once**: the button goes back to "Open audience window" right away, instead
+  of offering fullscreen for a second or more (up to three in Firefox).
+- **The audience window stays on the projector when it leaves fullscreen** in Chrome and Edge. Chrome used to put it
+  back where it opened, on the presenter's screen, where it hid behind the presenter and looked closed.
+- **The audience stays sharp while the presenter's tab is hidden** behind another tab. pdf.js draws in steps timed to
+  the presenter window's animation frames, which a hidden tab doesn't get, so new slides stopped half-drawn and the
+  audience showed a blurry thumbnail until you came back.
+
 ## 1.1.1 (2026-10-27)
 
 ### Changed

@@ -71,6 +71,29 @@ function nameOf(s: ScreenDetailed): string {
   return s.label || (screens && same(s, screens.currentScreen) ? "this screen" : "the other screen");
 }
 
+/**
+ * Whether a key press in the presenter can make the audience fullscreen:
+ * capability delegation (Chrome, Edge). Told by whether postMessage reads its
+ * `delegate` option; the throw right after means nothing is sent.
+ */
+const delegates = (() => {
+  let read = false;
+  try {
+    window.postMessage(null, {
+      get delegate() {
+        read = true;
+        return undefined;
+      },
+      get targetOrigin(): string {
+        throw 0;
+      },
+    } as WindowPostMessageOptions);
+  } catch {
+    // The throw above.
+  }
+  return read;
+})();
+
 const NAME = "pdfpcnic-audience";
 const FULLSCREEN_MESSAGE = "pdfpcnic:fullscreen";
 
@@ -81,8 +104,6 @@ export interface AudienceEvents {
   /** A link on the slide was clicked. */
   follow: FollowLink;
   change(): void;
-  /** The browser refused fullscreen asked for from the presenter window. */
-  refused(): void;
 }
 
 /**
@@ -97,6 +118,14 @@ export class Audience {
   private cache: PageCache | null = null;
   private black: HTMLElement | null = null;
   private poll = 0;
+  /** Shift+W in the presenter makes the audience fullscreen (Chrome, Edge); elsewhere only the audience window can. */
+  readonly fullscreenFromHere = delegates;
+  /** Fullscreen asked for from the presenter and refused, until the audience goes fullscreen. */
+  refused = false;
+  private refuse = () => {
+    this.refused = true;
+    this.events.change();
+  };
 
   constructor(private events: AudienceEvents) {}
 
@@ -189,15 +218,16 @@ export class Audience {
     const win = this.win!;
     // A key pressed (or a click) in the audience window itself: go fullscreen there.
     if (win.navigator.userActivation?.isActive) {
-      win.document.documentElement.requestFullscreen(this.fullscreenOptions()).catch(() => this.events.refused());
+      win.document.documentElement.requestFullscreen(this.fullscreenOptions()).catch(this.refuse);
       return;
     }
     // Otherwise the presenter window holds the user's input; capability
     // delegation (Chromium) lends it to the audience window.
+    if (!delegates) return this.refuse();
     try {
       win.postMessage(FULLSCREEN_MESSAGE, { targetOrigin: "/", delegate: "fullscreen" } as WindowPostMessageOptions);
     } catch {
-      this.events.refused();
+      this.refuse();
     }
   }
 
@@ -215,10 +245,13 @@ export class Audience {
     this.black = doc.getElementById("black")!;
     const hint = doc.getElementById("hint")!;
 
+    // Closed (or reloaded, which loses what this window drew): forget it now,
+    // not at the next poll, so the presenter offers to open it again.
+    win.addEventListener("pagehide", () => this.detach());
     win.addEventListener("keydown", (e) => this.events.key(e));
     win.addEventListener("message", (e) => {
       if (e.data === FULLSCREEN_MESSAGE && !doc.fullscreenElement) {
-        doc.documentElement.requestFullscreen(this.fullscreenOptions()).catch(() => this.events.refused());
+        doc.documentElement.requestFullscreen(this.fullscreenOptions()).catch(this.refuse);
       }
     });
     // A click steps forward, unless it turns out to be a double-click (fullscreen).
@@ -234,7 +267,19 @@ export class Audience {
     });
     doc.addEventListener("fullscreenchange", () => {
       hint.hidden = !!doc.fullscreenElement;
+      if (doc.fullscreenElement) this.refused = false;
       this.events.change();
+    });
+    // Out of fullscreen, Chrome puts the window back where it opened, often
+    // behind the presenter: it stays on the screen it was fullscreen on instead.
+    let was: ScreenDetailed | undefined;
+    win.addEventListener("resize", () => {
+      if (doc.fullscreenElement) was = screenOf(win);
+      else if (was) {
+        const s = was;
+        if (!same(win.screen, s)) win.moveTo(s.availLeft + (s.availWidth - win.outerWidth) / 2, s.availTop + (s.availHeight - win.outerHeight) / 2);
+        was = undefined;
+      }
     });
     doc.addEventListener("contextmenu", (e) => {
       e.preventDefault();
@@ -269,6 +314,7 @@ export class Audience {
     this.view?.dispose();
     this.view = null;
     this.win = null;
+    this.refused = false;
     this.events.change();
   }
 }

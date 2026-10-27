@@ -16,6 +16,30 @@ interface Job {
   lazy: boolean;
 }
 
+/**
+ * pdf.js draws a page in steps, each on this window's next animation frame.
+ * Hidden behind another tab, this window gets none, while the audience window
+ * may be on screen waiting for the slide: hidden, the steps run as tasks.
+ */
+const frame = window.requestAnimationFrame.bind(window);
+const cancelFrame = window.cancelAnimationFrame.bind(window);
+const steps = new Map<number, FrameRequestCallback>();
+const channel = new MessageChannel();
+let stepId = 0;
+channel.port1.onmessage = (e: MessageEvent<number>) => {
+  const step = steps.get(e.data);
+  steps.delete(e.data);
+  step?.(performance.now());
+};
+window.requestAnimationFrame = (cb) => {
+  if (!document.hidden) return frame(cb);
+  // Negative, so never a browser's own frame id.
+  steps.set(--stepId, cb);
+  channel.port2.postMessage(stepId);
+  return stepId;
+};
+window.cancelAnimationFrame = (id) => (id < 0 ? void steps.delete(id) : cancelFrame(id));
+
 /** Resolves when the main thread has a moment with nothing else to do. */
 const idle = () =>
   new Promise<void>((done) =>

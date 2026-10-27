@@ -1,41 +1,61 @@
 // pdfpc's default key bindings, plus `o` to open the audience window, `[` `]`
 // to size the current slide and `,` for settings.
 
-export type Action =
-  | "next"
-  | "prev"
-  | "nextSlide"
-  | "prevSlide"
-  | "next10"
-  | "prev10"
-  | "nextAny"
-  | "prevAny"
-  | "first"
-  | "last"
-  | "back"
-  | "forward"
+/** What a key does to the talk itself: where it is, what the audience sees, the clock (see talk.ts). */
+const TALK_ACTIONS = [
+  "next",
+  "prev",
+  "nextSlide",
+  "prevSlide",
+  "next10",
+  "prev10",
+  "nextAny",
+  "prevAny",
+  "first",
+  "last",
+  "back",
+  "forward",
+  "bookmark",
+  "toBookmark",
+  "normalMode",
+  "laserMode",
+  "freeze",
+  "blank",
+  "escape",
+  "timerStart",
+  "timerPause",
+  "timerReset",
+  "endSlide",
+] as const;
+
+export type TalkAction = (typeof TALK_ACTIONS)[number];
+
+/** What a key does to the presenter's view and the windows (see ui/presenter.ts). */
+export type ViewAction =
   | "overview"
   | "goto"
-  | "bookmark"
-  | "toBookmark"
-  | "normalMode"
-  | "laserMode"
   | "bigger"
   | "smaller"
-  | "freeze"
-  | "blank"
-  | "escape"
   | "fullscreen"
   | "audienceFullscreen"
-  | "timerStart"
-  | "timerPause"
-  | "timerReset"
-  | "endSlide"
   | "help"
   | "openAudience"
   | "slideSmaller"
   | "slideBigger"
   | "settings";
+
+export type Action = TalkAction | ViewAction;
+
+export const isTalkAction = (a: Action): a is TalkAction => (TALK_ACTIONS as readonly string[]).includes(a);
+
+/** A key press, as the browser reports it. */
+export interface KeyPress {
+  key: string;
+  ctrlKey: boolean;
+  altKey: boolean;
+  shiftKey: boolean;
+  metaKey: boolean;
+}
 
 const BINDINGS: Record<string, Action> = {
   ArrowRight: "next",
@@ -85,7 +105,7 @@ const BINDINGS: Record<string, Action> = {
 };
 
 /** Normalizes a key event to the names above, e.g. "Shift+PageDown", "Ctrl+t", "?". */
-export function keyName(e: KeyboardEvent): string {
+export function keyName(e: KeyPress): string {
   let key = e.key === " " ? "Space" : e.key;
   const letter = key.length === 1 && /[a-z]/i.test(key);
   if (letter) key = key.toLowerCase();
@@ -94,7 +114,7 @@ export function keyName(e: KeyboardEvent): string {
   return `${e.ctrlKey ? "Ctrl+" : ""}${e.altKey ? "Alt+" : ""}${shift ? "Shift+" : ""}${key}`;
 }
 
-export function actionFor(e: KeyboardEvent): Action | null {
+export function actionFor(e: KeyPress): Action | null {
   if (e.metaKey) return null;
   return BINDINGS[keyName(e)] ?? null;
 }

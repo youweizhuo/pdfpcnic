@@ -2,8 +2,8 @@
 // time something needs it, so a deck that needs none of them loads none.
 
 import workerFile from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import demoPdf from "../demo/demo.pdf?url";
-import demoPdfpc from "../demo/demo.pdfpc?raw";
+import demoPdf from "../../demo/demo.pdf?url";
+import demoPdfpc from "../../demo/demo.pdfpc?raw";
 
 /** The pdf.js worker, as its own cached file. */
 export function workerUrl(): string {

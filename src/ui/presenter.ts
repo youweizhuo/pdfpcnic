@@ -1,0 +1,716 @@
+// The presenter page: Présentation.app's layout, drawn from the talk
+// (core/talk.ts). It turns keys and clicks into the talk's actions, and runs
+// the platform's windows: its own and the audience's.
+
+import type { Deck, LinkTarget } from "../core/deck.ts";
+import { audienceReady, audienceStep } from "../core/guide.ts";
+import { actionFor, isTalkAction, type Action } from "../core/keys.ts";
+import { mark, span } from "../core/pace.ts";
+import { Talk, type Point, type SavedSession } from "../core/talk.ts";
+import * as T from "../core/timer.ts";
+import type { Audience, Pdf, Platform } from "../platform.ts";
+import { $, el, label, reportError, toast, wheelStepper } from "./dom.ts";
+import { renderNote } from "./notes.ts";
+import { PageCache } from "./page-cache.ts";
+import { Settings } from "./settings.ts";
+import { SlideView, Thumb } from "./slide-view.ts";
+import { Spoken } from "./spoken.ts";
+import { ticker } from "./ticker.ts";
+
+/** A deck's files, as read. */
+export interface Source {
+  pdf: { name: string; data: ArrayBuffer };
+  pdfpc?: { name: string; text: string };
+}
+
+/** A deck, opened: its files, the PDF engine's hold on it, and its slides. */
+export interface Opened {
+  source: Source;
+  pdf: Pdf;
+  deck: Deck;
+}
+
+export class Presenter {
+  readonly talk: Talk;
+  /** What the presenter has open over the slides. */
+  private view = {
+    overview: false,
+    /** Slide selected in the overview. */
+    selected: 0,
+    help: false,
+    /** Presenting in this window (single screen). */
+    solo: false,
+  };
+  private cache: PageCache;
+  private settings: Settings;
+  private current: SlideView;
+  private next: SlideView;
+  private solo: SlideView | null = null;
+  private thumbs = new Map<number, Thumb[]>();
+  private stripItems: HTMLElement[] = [];
+  private overviewItems: HTMLElement[] = [];
+  private observers = new Map<HTMLElement, IntersectionObserver>();
+  private abort = new AbortController();
+  private stopTicking = () => {};
+  private saveTimer = 0;
+  private notesPage = -1;
+  private stripSlide = -1;
+  private spoken = new Spoken();
+
+  constructor(
+    private platform: Platform,
+    private audience: Audience,
+    readonly opened: Opened,
+    saved: SavedSession | undefined,
+    /** Save the place and the clock, for resuming after a reload. */
+    readonly track: boolean,
+  ) {
+    const { deck, pdf } = opened;
+    this.talk = new Talk(deck, saved, Date.now());
+    this.cache = new PageCache(pdf);
+    this.settings = new Settings(platform.store, deck, { pace: () => this.renderTimer(), dim: () => this.renderNotesDim() }, () => this.target);
+
+    const first = deck.pages[0];
+    document.documentElement.style.setProperty("--aspect", `${first.width} / ${first.height}`);
+    document.title = `${deck.name} · pdfpcnic`;
+
+    this.current = new SlideView($("current"), deck, this.cache, 1, { follow: this.follow, marked: true });
+    this.current.onLayout = () => this.fitSlidebar();
+    this.next = new SlideView($("next"), deck, this.cache, 2, { align: "start" });
+    this.cache.onRender((page) => this.thumbs.get(page)?.forEach((t) => t.draw()));
+    audience.bind(deck, this.cache);
+
+    $("start").hidden = true;
+    $("presenter").hidden = false;
+    this.settings.apply();
+    this.current.start();
+    this.next.start();
+    this.buildStrip();
+    this.buildTalkbar();
+    this.wire();
+    this.stopTicking = ticker(() => this.tick());
+    this.render();
+  }
+
+  get deck(): Deck {
+    return this.talk.deck;
+  }
+
+  dispose(): void {
+    this.abort.abort();
+    this.stopTicking();
+    clearTimeout(this.saveTimer);
+    this.observers.forEach((o) => o.disconnect());
+    this.observers.clear();
+    this.current.dispose();
+    this.next.dispose();
+    this.solo?.dispose();
+    this.cache.dispose();
+    $("solo").hidden = true;
+    $("overview").hidden = true;
+    $("help").hidden = true;
+  }
+
+  // Input
+
+  act(action: Action): void {
+    if (action === "escape" && this.closeTop()) return;
+    if (isTalkAction(action)) {
+      const said = this.talk.act(action);
+      if (said) toast(said);
+      if (action === "endSlide") {
+        this.buildStrip();
+        this.buildTalkbar();
+      }
+      return this.render();
+    }
+    const v = this.view;
+    switch (action) {
+      case "overview":
+        return this.setOverview(!v.overview);
+      case "goto":
+        return this.openGoto();
+      case "bigger":
+      case "smaller": {
+        const f = action === "bigger" ? 1 : -1;
+        if (this.talk.state.laser) this.settings.setLaserSize(this.settings.laserSize * (f > 0 ? 1.2 : 1 / 1.2));
+        else this.settings.setNotesSize(this.settings.notesSize + 2 * f);
+        return this.render();
+      }
+      case "fullscreen":
+        this.platform.window.setFullscreen(!this.platform.window.fullscreen).catch(reportError);
+        return;
+      case "audienceFullscreen":
+        if (this.audience.status.mode !== "closed") this.audience.toggleFullscreen();
+        else this.setSolo(!v.solo);
+        return;
+      case "help":
+        v.help = !v.help;
+        return this.render();
+      case "openAudience":
+        try {
+          this.audience.open();
+        } catch (err) {
+          reportError(err);
+        }
+        return;
+      case "slideSmaller":
+      case "slideBigger":
+        this.settings.setStage(this.settings.stage + (action === "slideBigger" ? 0.05 : -0.05));
+        toast(`Current slide at ${Math.round(this.settings.stage * 100)}% of its column.`, 1500);
+        return;
+      case "settings":
+        return this.settings.open();
+    }
+  }
+
+  /** Esc closes what's over the slides first: the help, the overview, then presenting in this window. */
+  private closeTop(): boolean {
+    const v = this.view;
+    if (v.help) {
+      v.help = false;
+      this.render();
+    } else if (v.overview) this.setOverview(false);
+    else if (v.solo) this.setSolo(false);
+    else return false;
+    return true;
+  }
+
+  onKey(e: KeyboardEvent): void {
+    // Dialogs (go to, settings) keep their keys.
+    if (e.target instanceof HTMLInputElement || document.querySelector("dialog[open]")) return;
+    if (this.view.overview && this.overviewKey(e)) {
+      e.preventDefault();
+      return;
+    }
+    const action = actionFor(e);
+    if (!action) return;
+    e.preventDefault();
+    this.act(action);
+  }
+
+  /** Follows a link on a slide, in this window or the audience's. */
+  readonly follow = (to: LinkTarget) => {
+    this.talk.follow(to);
+    this.render();
+  };
+
+  /** Jumps to a page, from the thumbnails, the overview or a slide number. */
+  private go(page: number): void {
+    this.talk.go(page, true);
+    this.render();
+  }
+
+  /** Laser position from the presenter's current slide or the audience window. */
+  pointAt(at: Point | null): void {
+    if (this.talk.point(at)) this.renderLaser();
+  }
+
+  private wire(): void {
+    const signal = this.abort.signal;
+    const cur = this.current.root;
+    cur.addEventListener("pointermove", (e) => this.pointAt(this.current.toPage(e.clientX, e.clientY)), { signal });
+    cur.addEventListener("pointerleave", () => this.pointAt(null), { signal });
+    cur.addEventListener("click", () => this.act("next"), { signal });
+    cur.addEventListener(
+      "contextmenu",
+      (e) => {
+        e.preventDefault();
+        this.act("prev");
+      },
+      { signal },
+    );
+    cur.addEventListener("wheel", wheelStepper((d) => this.act(d > 0 ? "next" : "prev")), { signal, passive: true });
+    $("next").addEventListener("click", () => this.act("nextSlide"), { signal });
+    $("timer").addEventListener("click", () => this.act("timerPause"), { signal });
+    const toggle = $("timer-toggle");
+    toggle.addEventListener(
+      "click",
+      () => {
+        toggle.blur();
+        this.act(this.talk.state.timer.startedAt === null ? "timerStart" : "timerPause");
+      },
+      { signal },
+    );
+    const reset = $("timer-reset");
+    reset.addEventListener(
+      "click",
+      () => {
+        reset.blur();
+        // Running, it takes a second click, so a stray one can't wipe the talk's time.
+        if (this.talk.state.timer.pausedAt === null && !this.resetArmed) {
+          this.resetArmed = window.setTimeout(() => {
+            this.resetArmed = 0;
+            this.renderTimer();
+          }, 3000);
+          this.renderTimer();
+          return;
+        }
+        clearTimeout(this.resetArmed);
+        this.resetArmed = 0;
+        if (this.talk.state.timer.pausedAt === null) this.talk.act("timerPause");
+        this.act("timerReset");
+      },
+      { signal },
+    );
+
+    for (const b of document.querySelectorAll<HTMLButtonElement>("#presenter [data-action]")) {
+      b.addEventListener(
+        "click",
+        () => {
+          b.blur();
+          this.act(b.dataset.action as Action);
+        },
+        { signal },
+      );
+    }
+    $("help").addEventListener("click", () => this.act("help"), { signal });
+    this.settings.wire(signal);
+
+    const win = this.platform.window;
+    win.onChange(() => {
+      if (this.view.solo && !win.fullscreen) this.setSolo(false);
+      else this.render();
+    }, signal);
+  }
+
+  // Drawing
+
+  render(): void {
+    const t = this.talk;
+    const s = t.state;
+    const d = this.deck;
+    const here = d.pages[s.page];
+    const room = t.audience;
+
+    this.current.show(s.page);
+    const next = t.nextPage();
+    this.next.show(next);
+    $("next").classList.toggle("empty", next === null);
+    $("next").classList.toggle("backup", next !== null && d.pages[next].slide > s.endSlide);
+
+    this.solo?.show(room.page);
+    this.renderLaser();
+
+    if (this.notesPage !== s.page) {
+      this.notesPage = s.page;
+      const body = $("notes-body");
+      if (here.note) renderNote(body, here.note, d.markdown);
+      else body.replaceChildren(el("p", "empty", "No notes for this slide."));
+      $("notes").scrollTop = 0;
+      this.spoken.index(body);
+    }
+
+    if (this.stripSlide !== here.slide) {
+      this.stripItems[this.stripSlide]?.classList.remove("current");
+      this.stripSlide = here.slide;
+      const item = this.stripItems[here.slide];
+      item?.classList.add("current");
+      item?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+    for (const [slide, seg] of this.segs) seg.classList.toggle("current", slide === here.slide);
+
+    // When the audience isn't seeing your current slide, say so over it, and
+    // mark in the strip the slide it is frozen on.
+    const frozen = s.frozen === null ? null : d.pages[s.frozen].slide;
+    this.stripItems.forEach((li, i) => li.classList.toggle("frozen", i === frozen));
+    const card = $("audience-state");
+    card.hidden = !s.black && frozen === null;
+    card.className = `audience-state ${s.black ? "black" : "frozen"}`;
+    card.querySelector("strong")!.textContent = s.black ? "Audience screen is black" : `Audience frozen on slide ${frozen! + 1}`;
+    card.querySelector("span")!.textContent = s.black
+      ? `Press b to show slide ${(frozen ?? here.slide) + 1}${frozen === null ? "" : " (frozen)"}`
+      : `Press f to move it to slide ${here.slide + 1}`;
+
+    // The audience's next step: on the button by the clock, standing out
+    // until the audience sees the slides, and in the line under the slides.
+    const status = this.audience.status;
+    const step = audienceStep(status, this.view.solo);
+    const ab = $("audience-button");
+    ab.dataset.action = step.action;
+    ab.classList.toggle("cta", !audienceReady(status, this.view.solo));
+    label(ab, step.label, step.key);
+    const line = $("audience-status");
+    line.textContent = step.status;
+    line.classList.toggle("ask", step.ask);
+    const extended = this.platform.window.extended;
+    const scr = $("screen-status");
+    scr.textContent = extended === false ? "One screen only. For a projector, set displays to Extend (on Windows: Win+P)." : "";
+    scr.classList.toggle("warn", extended === false);
+
+    const on: Partial<Record<Action, boolean>> = {
+      laserMode: s.laser,
+      blank: s.black,
+      freeze: s.frozen !== null,
+      overview: this.view.overview,
+      fullscreen: this.platform.window.fullscreen,
+      help: this.view.help,
+    };
+    for (const b of document.querySelectorAll<HTMLElement>(".toolbar [data-action]")) {
+      b.classList.toggle("on", !!on[b.dataset.action as Action]);
+    }
+    $("help").hidden = !this.view.help;
+    this.current.root.classList.toggle("laser-on", s.laser);
+
+    // Keep what is on screen, and render the pages around it ahead of time.
+    this.cache.pinned = new Set([s.page, room.page, ...(next === null ? [] : [next])]);
+    const width = Math.max(this.audience.pixelWidth, this.current.pixelWidth, this.solo?.pixelWidth ?? 0);
+    const prev = t.slideFrom(here.slide, -1);
+    // The next step and the next slide right away; going back and further ahead when idle.
+    this.cache.prefetch(
+      [s.page + 1, ...(next === null ? [] : [next])],
+      [s.page - 1, ...(prev === null ? [] : [t.firstOf(prev)]), s.page + 2, s.page + 3],
+      width,
+    );
+
+    this.renderTimer();
+    this.save();
+  }
+
+  private renderLaser(): void {
+    const s = this.talk.state;
+    const room = this.talk.audience;
+    const size = this.settings.laserSize;
+    this.current.setLaser(s.laser ? s.laserAt : null, size);
+    this.audience.render(room.page, room.black, room.laser, size);
+    this.solo?.setLaser(room.laser, size);
+  }
+
+  // The clock and the pace
+
+  /** What the clock and pace show turn over with: the second of the talk (before it starts, of the day) and the minute. */
+  private beatAt(now: number): string {
+    const t = this.talk.state.timer;
+    const second = Math.floor((t.startedAt === null ? now : T.elapsed(t, now)) / 1000);
+    return `${second}:${Math.floor(now / 60_000)}`;
+  }
+  private beat = "";
+  /** Set while Reset waits for its second click. */
+  private resetArmed = 0;
+  /** On slide 1 with time on the clock, as last drawn. */
+  private stale = false;
+  /** The talk's target length in seconds, as last drawn; settings show the levels against it. */
+  private target = 0;
+
+  /** The ticker's beat: redraws once a shown number turns over, not on every beat. Returns when to beat again. */
+  private tick(): number {
+    const now = Date.now();
+    if (this.beatAt(now) !== this.beat) this.renderTimer();
+    // In between, this slide's line and the notes move on, each redrawn only once it has changed.
+    else if (this.talk.budget !== null) {
+      this.renderFill(now);
+      this.renderNotesDim(now);
+    }
+    return this.beatMs;
+  }
+
+  private renderTimer(): void {
+    const now = Date.now();
+    this.beat = this.beatAt(now);
+    this.renderClock(now);
+    this.renderPace(now);
+    this.renderNotesDim(now);
+  }
+
+  /** Présentation.app's clock: time since the start, and the time of day. */
+  private renderClock(now: number): void {
+    const t = this.talk.state.timer;
+    const timer = $("timer");
+    timer.textContent = T.format(T.elapsed(t, now));
+    timer.classList.toggle("idle", t.startedAt === null || t.pausedAt !== null);
+    $("wallclock").textContent = T.formatClock(now);
+    const stale = this.talk.stale;
+    if (stale && !this.stale) toast("The clock has already started. Starting the talk now? Reset it first.", 8000);
+    this.stale = stale;
+    // The buttons say what state the clock is in, so nothing under it comes and
+    // goes: what to press next stands out, and the rest is in their tooltips.
+    // One button stands out at a time, and the audience's steps come first.
+    const ours = audienceReady(this.audience.status, this.view.solo);
+    const toggle = $("timer-toggle");
+    if (t.startedAt === null) {
+      label(toggle, "Start", "s");
+      const until = T.untilStart(this.deck, now);
+      toggle.title = until
+        ? `The talk starts at ${this.deck.startTime}, in ${T.format(until)}.`
+        : `Starts the clock. It also starts ${this.talk.state.page === 0 ? "when you leave slide 1" : "at your next move"}.`;
+    } else {
+      label(toggle, t.pausedAt === null ? "Pause" : "Resume", "p");
+      toggle.title = "";
+    }
+    toggle.classList.toggle("cta", ours && (t.startedAt === null || t.pausedAt !== null) && !stale);
+    const reset = $<HTMLButtonElement>("timer-reset");
+    reset.title = t.pausedAt === null ? "While the clock runs, click twice." : "";
+    reset.disabled = t.startedAt === null;
+    reset.classList.toggle("cta", ours && stale && !this.resetArmed);
+    reset.classList.toggle("confirm", !!this.resetArmed);
+    label(reset, this.resetArmed ? "Click again to reset" : "Reset", "⇧R");
+  }
+
+  /** The talk bar's blocks, by slide. */
+  private segs = new Map<number, HTMLElement>();
+  private barScale = 0;
+
+  /** The talk bar: one block per slide with a planned window. */
+  private buildTalkbar(): void {
+    this.segs = new Map(this.talk.onBar.map((slide) => [slide, el("div", "seg")]));
+    $("talkbar").replaceChildren(el("div", "past"), ...this.segs.values(), el("div", "projected"), el("div", "spent"), el("div", "target"));
+    this.barScale = 0;
+  }
+
+  /** Dims the part of the note you'd have said by now, its edge fading over a second and a half of the slide's time. */
+  private renderNotesDim(now = Date.now()): void {
+    const used = this.settings.notesDim > 0 ? this.talk.used(now) : null;
+    this.spoken.show(used, used === null ? 0 : 1.5 / this.talk.budget!);
+  }
+
+  /** This slide's line in device pixels, and how far along it is drawn. */
+  private fillPixels = 0;
+  private fillAt = -1;
+
+  /**
+   * This slide's line, redrawn only once it has moved on a whole pixel: as
+   * smooth as the screen can show, at a few frames a second. (A CSS animation
+   * would have the browser draw every frame the screen shows, 60 or more a
+   * second, for a line that moves a pixel every tenth of a second or so.)
+   */
+  private renderFill(now: number): void {
+    const width = Math.max(1, this.fillPixels);
+    const px = Math.round((this.talk.used(now) ?? 0) * width);
+    if (px === this.fillAt) return;
+    this.fillAt = px;
+    $("slide-fill").style.transform = `scaleX(${px / width})`;
+  }
+
+  /** How soon to look again: when the line is due to move a pixel, at most 25 times a second; 4 times otherwise. */
+  private beatMs = 250;
+
+  /** Lays this slide's line exactly along the slide's foot: the slide is drawn in whole pixels, its box isn't. */
+  private fitSlidebar(): void {
+    const c = this.current.canvas.getBoundingClientRect();
+    const bar = $("pace-slide");
+    if (!c.width || bar.hidden) return;
+    bar.style.width = `${c.width}px`;
+    this.fillPixels = c.width * devicePixelRatio;
+    this.fillAt = -1;
+    bar.style.left = bar.style.top = "0px";
+    const b = bar.getBoundingClientRect();
+    bar.style.left = `${c.left - b.left}px`;
+    bar.style.top = `${c.bottom - b.top}px`;
+  }
+
+  private renderPace(now: number): void {
+    const p = this.talk.progress(now, this.settings.slack);
+    for (const id of ["pace-slide", "pace-all-text", "talkbar"]) $(id).hidden = !p.planned;
+    if (!p.planned) {
+      this.beatMs = 250;
+      return;
+    }
+    this.target = p.target;
+
+    // This slide, in the line under it. Words only once it's seriously over;
+    // the line says the rest. A slide planned to take no time has no line
+    // (the row keeps its place, so the notes don't jump).
+    const own = p.slide;
+    $("pace-slide").classList.toggle("none", !own);
+    if (own) {
+      const text = $("pace-slide-text");
+      text.textContent = own.tone === "serious" || own.tone === "severe" ? `${span(own.over)} over` : "";
+      text.className = `slidebar-text t-${own.tone}`;
+      $("slide-fill").className = `slide-fill t-${own.tone}`;
+      $("pace-slide").title = own.plan
+        ? `This slide: planned ${mark(own.plan.start)}–${mark(own.plan.end)}, ${span(own.budget)}`
+        : `This slide: ${span(own.budget)}, off the talk's plan`;
+    }
+    this.renderFill(now);
+    const budget = this.talk.budget;
+    const moving = budget !== null && this.talk.state.timer.pausedAt === null && (this.talk.used(now) ?? 1) < 1;
+    this.beatMs = moving ? Math.min(250, Math.max(40, (budget * 1000) / Math.max(1, this.fillPixels))) : 250;
+
+    // All slides: a little early is simply on time here, and on time needs no words.
+    const all = $("pace-all-text");
+    all.textContent = p.late > 0 ? `${span(p.late)} late` : p.tone === "early" ? `${span(p.late)} early` : "";
+    all.className = `pace-num t-${p.tone}`;
+    all.title = `Where the talk ends at this pace. Planned to end at ${mark(p.planned)}; target ${mark(p.target)}`;
+
+    // The bar, with a red line at the target end. Time spent runs under it,
+    // colored like "All slides", and goes on lighter to where the talk would end.
+    const bar = $("talkbar");
+    const x = (t: number) => `${((Math.min(Math.max(t, 0), p.scale) / p.scale) * 100).toFixed(3)}%`;
+    if (p.scale !== this.barScale) {
+      this.barScale = p.scale;
+      for (const { slide, start, end } of p.segments) {
+        const seg = this.segs.get(slide);
+        if (!seg) continue;
+        seg.style.left = x(start);
+        seg.style.width = `calc(${x(end)} - ${x(start)})`;
+      }
+      bar.querySelector<HTMLElement>(".target")!.style.left = x(p.target);
+      bar.querySelector<HTMLElement>(".past")!.style.left = x(p.target);
+    }
+    const tone = `t-${p.started ? p.tone : "on"}`;
+    const spent = bar.querySelector<HTMLElement>(".spent")!;
+    spent.style.width = x(p.at);
+    spent.className = `spent ${tone}`;
+    const projected = bar.querySelector<HTMLElement>(".projected")!;
+    projected.style.width = x(p.finish);
+    projected.className = `projected ${tone}`;
+  }
+
+  // Strip and overview
+
+  private thumb(page: number): Thumb {
+    const t = new Thumb(page, this.cache, this.deck);
+    const list = this.thumbs.get(page) ?? [];
+    list.push(t);
+    this.thumbs.set(page, list);
+    return t;
+  }
+
+  private lazy(root: HTMLElement, items: Array<[HTMLElement, Thumb]>): void {
+    this.observers.get(root)?.disconnect();
+    for (const [page, list] of this.thumbs) this.thumbs.set(page, list.filter((t) => t.canvas.isConnected));
+    const byEl = new Map(items);
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => e.isIntersecting && byEl.get(e.target as HTMLElement)?.reveal()),
+      { root, rootMargin: "600px 0px" },
+    );
+    items.forEach(([e]) => io.observe(e));
+    this.observers.set(root, io);
+  }
+
+  private buildStrip(): void {
+    const t = this.talk;
+    const strip = $("strip");
+    strip.style.setProperty("--digits", `${String(this.deck.slides.length).length}ch`);
+    const items: Array<[HTMLElement, Thumb]> = [];
+    this.stripItems = [];
+    this.stripSlide = -1;
+    strip.replaceChildren();
+    this.deck.slides.forEach((_, slide) => {
+      if (slide === t.state.endSlide + 1) strip.append(el("li", "divider", "Backup"));
+      const li = el("li");
+      li.classList.toggle("hidden", !t.slideVisible(slide));
+      const thumb = this.thumb(t.lastOf(slide));
+      li.append(el("span", "num", String(slide + 1)), thumb.canvas);
+      li.addEventListener("click", () => this.go(t.firstOf(slide)));
+      strip.append(li);
+      this.stripItems[slide] = li;
+      items.push([li, thumb]);
+    });
+    this.lazy(strip, items);
+  }
+
+  private setOverview(open: boolean): void {
+    this.view.overview = open;
+    $("overview").hidden = !open;
+    if (open) {
+      this.view.selected = this.talk.slide;
+      this.buildOverview();
+    }
+    this.render();
+  }
+
+  private buildOverview(): void {
+    const t = this.talk;
+    const grid = $("overview-grid");
+    const items: Array<[HTMLElement, Thumb]> = [];
+    this.overviewItems = [];
+    grid.replaceChildren();
+    this.deck.slides.forEach((pages, slide) => {
+      if (slide === t.state.endSlide + 1) grid.append(el("li", "divider", "Backup"));
+      const li = el("li");
+      li.classList.toggle("hidden", !t.slideVisible(slide));
+      li.classList.toggle("current", slide === t.slide);
+      const thumb = this.thumb(t.lastOf(slide));
+      const cap = el("div", "cap");
+      cap.append(
+        el("span", "", String(slide + 1)),
+        el("span", "", [pages.length > 1 ? `${pages.length} steps` : "", t.slideVisible(slide) ? "" : "hidden"].filter(Boolean).join(" · ")),
+      );
+      li.append(thumb.canvas, cap);
+      li.addEventListener("click", () => this.pick(slide));
+      grid.append(li);
+      this.overviewItems[slide] = li;
+      items.push([li, thumb]);
+    });
+    this.lazy($("overview"), items);
+    this.select(this.view.selected);
+  }
+
+  private select(slide: number): void {
+    const v = this.view;
+    this.overviewItems[v.selected]?.classList.remove("selected");
+    v.selected = Math.max(0, Math.min(this.deck.slides.length - 1, slide));
+    const item = this.overviewItems[v.selected];
+    item?.classList.add("selected");
+    item?.scrollIntoView({ block: "nearest" });
+  }
+
+  private pick(slide: number): void {
+    this.setOverview(false);
+    this.go(this.talk.firstOf(slide));
+  }
+
+  private overviewKey(e: KeyboardEvent): boolean {
+    const v = this.view;
+    const items = this.overviewItems;
+    const top = items[0]?.offsetTop;
+    const columns = Math.max(1, items.filter((i) => i.offsetTop === top).length);
+    const moves: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns, ArrowUp: -columns };
+    if (e.key in moves && !e.shiftKey) {
+      this.select(v.selected + moves[e.key]);
+      return true;
+    }
+    if (e.key === "Enter") {
+      this.pick(v.selected);
+      return true;
+    }
+    if (e.key === "Home" || e.key === "End") {
+      this.select(e.key === "Home" ? 0 : this.deck.slides.length - 1);
+      return true;
+    }
+    return false;
+  }
+
+  // Dialogs and modes
+
+  private openGoto(): void {
+    const dialog = $<HTMLDialogElement>("goto");
+    const input = $<HTMLInputElement>("goto-input");
+    input.value = "";
+    input.max = String(this.deck.slides.length);
+    let submitted = false;
+    dialog.querySelector("form")!.onsubmit = () => (submitted = true);
+    dialog.onclose = () => {
+      const n = Number.parseInt(input.value, 10);
+      if (submitted && n >= 1 && n <= this.deck.slides.length) this.go(this.talk.firstOf(n - 1));
+    };
+    dialog.showModal();
+  }
+
+  /** Presents in this window, for a single screen: the slide fills it, fullscreen. */
+  private setSolo(on: boolean): void {
+    this.view.solo = on;
+    const host = $("solo");
+    host.hidden = !on;
+    if (on) {
+      this.solo = new SlideView(host, this.deck, this.cache, 0, { follow: this.follow });
+      this.solo.start();
+      host.onpointermove = (e) => this.pointAt(this.solo?.toPage(e.clientX, e.clientY) ?? null);
+      host.onclick = () => this.act("next");
+      this.platform.window.setFullscreen(true).catch(() => {});
+    } else {
+      this.solo?.dispose();
+      this.solo = null;
+      host.replaceChildren();
+      this.platform.window.setFullscreen(false).catch(() => {});
+    }
+    this.render();
+  }
+
+  private save(): void {
+    if (!this.track) return;
+    clearTimeout(this.saveTimer);
+    this.saveTimer = window.setTimeout(() => void this.platform.store.saveSession(this.talk.save(Date.now())), 300);
+  }
+}

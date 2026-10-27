@@ -1,34 +1,22 @@
-import { AnnotationLayer } from "pdfjs-dist";
-import { destinationPage, type Deck } from "./deck";
-import { THUMB_WIDTH, type PageCache } from "./render";
+import type { Deck, LinkTarget } from "../core/deck.ts";
+import type { Point } from "../core/talk.ts";
+import { THUMB_WIDTH, type PageCache } from "./page-cache.ts";
 
-export interface Point {
-  x: number;
-  y: number;
-}
-
-/**
- * Where a click on a slide's link leads: a page of the deck, or a PDF named
- * action (NextPage, GoBack…). Web links open in a new tab by themselves.
- */
-export type FollowLink = (to: { page: number } | { action: string }) => void;
-
-// pdf.js's annotation layer places each link in percent of the page; these
-// rules (in whichever window the slide is) make them clickable boxes. The
-// PDF's own link borders (hyperref's colored boxes) stay off, as on the
-// drawn slide; `marked` outlines the links instead, for the presenter.
+// Each link is a box in percent of the page; these rules (in whichever window
+// the slide is) make them clickable. The PDF's own link borders (hyperref's
+// colored boxes) stay off, as on the drawn slide; `marked` outlines the links
+// instead, for the presenter.
 const LINK_CSS = `
 .slide-links { position: absolute; pointer-events: none; }
-.slide-links section { position: absolute; border: 0 !important; }
-.slide-links a { position: absolute; inset: 0; pointer-events: auto; cursor: pointer; }
+.slide-links a { position: absolute; pointer-events: auto; cursor: pointer; }
 .slide-links.marked a { outline: 1px solid rgb(255 214 10 / 0.85); outline-offset: -1px; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.45); }
 .slide-links.marked a:hover { background: rgb(255 214 10 / 0.2); outline-color: #ffd60a; }
 `;
 
 export interface SlideViewOptions {
   align?: "center" | "start";
-  /** Makes the slide's links clickable. */
-  follow?: FollowLink;
+  /** Makes the slide's links clickable. Web links open in a new tab by themselves. */
+  follow?: (to: LinkTarget) => void;
   /** Outlines the links, so the presenter sees what is clickable. */
   marked?: boolean;
 }
@@ -61,7 +49,12 @@ export class SlideView {
     this.root = host;
     this.root.classList.add("slide-view");
     this.canvas = doc.createElement("canvas");
-    this.links = this.linkLayer();
+    this.links = doc.createElement("div");
+    this.links.className = this.options.marked ? "slide-links marked" : "slide-links";
+    // A click on a link follows it, and doesn't also step the slides or make a double-click.
+    for (const type of ["click", "dblclick"]) {
+      this.links.addEventListener(type, (e) => (e.target as Element).closest("a") && e.stopPropagation());
+    }
     this.laser = doc.createElement("div");
     this.laser.className = "laser-dot";
     this.laser.hidden = true;
@@ -88,8 +81,8 @@ export class SlideView {
   show(page: number | null): void {
     if (page === this.page) return;
     this.page = page;
+    this.showLinks();
     this.layout();
-    void this.showLinks(page);
   }
 
   /** Device-pixel width the page is drawn at, for prefetching neighbors at the same size. */
@@ -155,18 +148,6 @@ export class SlideView {
     this.onLayout();
   }
 
-  /** An empty layer for a page's links. */
-  private linkLayer(): HTMLDivElement {
-    const layer = this.root.ownerDocument.createElement("div");
-    layer.className = this.options.marked ? "slide-links marked" : "slide-links";
-    layer.hidden = true;
-    // A click on a link follows it, and doesn't also step the slides or make a double-click.
-    for (const type of ["click", "dblclick"]) {
-      layer.addEventListener(type, (e) => (e.target as Element).closest("a") && e.stopPropagation());
-    }
-    return layer;
-  }
-
   /** Lays the link layer over the drawn slide. */
   private placeLinks(): void {
     const { canvas, links } = this;
@@ -174,51 +155,29 @@ export class SlideView {
     Object.assign(links.style, { left: canvas.style.left, top: canvas.style.top, width: canvas.style.width, height: canvas.style.height });
   }
 
-  /** Has pdf.js build the page's links, as its own viewer does, into a fresh layer. */
-  private async showLinks(page: number | null): Promise<void> {
+  /** The page's links, as boxes over it. */
+  private showLinks(): void {
     const { follow } = this.options;
-    const links = page === null ? [] : this.deck.pages[page].links;
-    if (!follow || (!links.length && !this.links.childElementCount)) return;
-    const layer = this.linkLayer();
-    if (page !== null && links.length) {
-      const doc = this.deck.doc;
-      const proxy = await doc.getPage(page + 1);
-      const viewport = proxy.getViewport({ scale: 1 });
-      // The few calls pdf.js's link elements make, in place of its viewer's link service.
-      const linkService = {
-        externalLinkEnabled: true,
-        addLinkAttributes(a: HTMLAnchorElement, url: string) {
-          a.href = a.title = url;
+    const doc = this.root.ownerDocument;
+    const links = follow && this.page !== null ? this.deck.pages[this.page].links : [];
+    this.links.replaceChildren(
+      ...links.map(({ x, y, width, height, to }) => {
+        const a = doc.createElement("a");
+        Object.assign(a.style, { left: `${x * 100}%`, top: `${y * 100}%`, width: `${width * 100}%`, height: `${height * 100}%` });
+        if ("url" in to) {
+          a.href = a.title = to.url;
           a.target = "_blank";
           a.rel = "noopener noreferrer";
-        },
-        getDestinationHash: () => "#",
-        getAnchorUrl: () => "#",
-        async goToDestination(dest: string | unknown[]) {
-          const to = await destinationPage(doc, dest);
-          if (to !== null) follow({ page: to });
-        },
-        executeNamedAction: (action: string) => follow({ action }),
-        executeSetOCGState() {},
-      };
-      const annotationLayer = new AnnotationLayer({
-        div: layer,
-        page: proxy,
-        viewport,
-        linkService,
-        accessibilityManager: null,
-        annotationCanvasMap: null,
-        annotationEditorUIManager: null,
-        structTreeLayer: null,
-        commentManager: null,
-        annotationStorage: null,
-      });
-      await annotationLayer.render({ div: layer, page: proxy, viewport, annotations: links, linkService: linkService as never, renderForms: false });
-    }
-    if (page !== this.page) return;
-    this.links.replaceWith(layer);
-    this.links = layer;
-    this.placeLinks();
+        } else {
+          a.href = "#";
+          a.addEventListener("click", (e) => {
+            e.preventDefault();
+            follow!(to);
+          });
+        }
+        return a;
+      }),
+    );
   }
 
   private draw(): void {

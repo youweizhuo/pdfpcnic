@@ -2,25 +2,8 @@
 // mid-talk resumes at the same slide with the timer still running. All of it
 // stays in this browser's storage.
 
-import type { TimerState } from "./timer";
-
-export interface SavedDeck {
-  pdfName: string;
-  pdf: ArrayBuffer;
-  pdfpcName?: string;
-  pdfpc?: string;
-}
-
-export interface SavedSession {
-  pdfName: string;
-  page: number;
-  timer: TimerState;
-  endSlide?: number;
-  bookmark?: number | null;
-  /** Seconds spent on each planned window, by the presenter's keys. */
-  spent?: Record<string, number>;
-  savedAt: number;
-}
+import type { SavedSession } from "../core/talk.ts";
+import type { SavedDeck, Store } from "../platform.ts";
 
 const DB = "pdfpcnic";
 const STORE = "kv";
@@ -56,16 +39,8 @@ const quiet = async <T>(p: () => Promise<T>): Promise<T | undefined> => {
   }
 };
 
-export const saveDeck = (d: SavedDeck) => quiet(() => run("readwrite", (s) => s.put(d, "deck")));
-export const loadDeck = () => quiet(() => run<SavedDeck | undefined>("readonly", (s) => s.get("deck")));
-export const saveSession = (x: SavedSession) => quiet(() => run("readwrite", (s) => s.put(x, "session")));
-export const loadSession = () => quiet(() => run<SavedSession | undefined>("readonly", (s) => s.get("session")));
-export const clearSession = () => quiet(() => run("readwrite", (s) => s.delete("session")));
-/** Drops the kept deck and session, as when leaving a shared computer. */
-export const forget = () => quiet(() => run("readwrite", (s) => s.clear()));
-
 /** Small per-browser preferences. */
-export function pref<T>(key: string, fallback: T): T {
+function pref<T>(key: string, fallback: T): T {
   try {
     const v = localStorage.getItem(`pdfpcnic.${key}`);
     return v === null ? fallback : (JSON.parse(v) as T);
@@ -74,10 +49,20 @@ export function pref<T>(key: string, fallback: T): T {
   }
 }
 
-export function setPref(key: string, value: unknown): void {
+function setPref(key: string, value: unknown): void {
   try {
     localStorage.setItem(`pdfpcnic.${key}`, JSON.stringify(value));
   } catch {
     // ignore
   }
 }
+
+export const store: Store = {
+  saveDeck: (d: SavedDeck) => quiet(() => run("readwrite", (s) => s.put(d, "deck"))),
+  loadDeck: () => quiet(() => run<SavedDeck | undefined>("readonly", (s) => s.get("deck"))),
+  saveSession: (x: SavedSession) => quiet(() => run("readwrite", (s) => s.put(x, "session"))),
+  loadSession: () => quiet(() => run<SavedSession | undefined>("readonly", (s) => s.get("session"))),
+  forget: () => quiet(() => run("readwrite", (s) => s.clear())),
+  pref,
+  setPref,
+};

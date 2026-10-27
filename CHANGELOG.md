@@ -3,6 +3,16 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## Unreleased
+
+### Changed
+
+- **Links work on turned pages** too (a PDF page with its own rotation). They used to be left off.
+- **For contributors:** the code is split into the talk (`src/core/`), the presenter page (`src/ui/`) and the
+  browser's side (`src/web/`), behind the ports in `src/platform.ts`, so another platform, such as a native Mac app,
+  can provide its own windows and PDF engine. See [docs/architecture.md](docs/architecture.md). The core has unit
+  tests, `npm test`, which need Node 22.18 or later.
+
 ## 1.1.2 (2026-10-27)
 
 ### Changed

@@ -1,7 +1,10 @@
+import type { Deck } from "../core/deck.ts";
+import type { AudienceStatus } from "../core/guide.ts";
+import type { Point } from "../core/talk.ts";
+import type { Audience, AudienceEvents } from "../platform.ts";
+import type { PageCache } from "../ui/page-cache.ts";
+import { SlideView } from "../ui/slide-view.ts";
 import css from "./audience.css?inline";
-import type { Deck } from "./deck";
-import type { PageCache } from "./render";
-import { SlideView, type FollowLink, type Point } from "./view";
 
 // Window Management API (Chromium); absent elsewhere, which is fine.
 interface ScreenDetailed extends Screen {
@@ -97,31 +100,20 @@ const delegates = (() => {
 const NAME = "pdfpcnic-audience";
 const FULLSCREEN_MESSAGE = "pdfpcnic:fullscreen";
 
-export interface AudienceEvents {
-  key(e: KeyboardEvent): void;
-  step(delta: 1 | -1): void;
-  pointer(at: Point | null): void;
-  /** A link on the slide was clicked. */
-  follow: FollowLink;
-  change(): void;
-}
-
 /**
  * The audience window: an empty popup this window draws into. One script
  * drives both windows, so nothing has to be synced or stored, and it works
  * from file:// too.
  */
-export class Audience {
+export class PopupAudience implements Audience {
   private win: Window | null = null;
   private view: SlideView | null = null;
   private deck: Deck | null = null;
   private cache: PageCache | null = null;
   private black: HTMLElement | null = null;
   private poll = 0;
-  /** Shift+W in the presenter makes the audience fullscreen (Chrome, Edge); elsewhere only the audience window can. */
-  readonly fullscreenFromHere = delegates;
   /** Fullscreen asked for from the presenter and refused, until the audience goes fullscreen. */
-  refused = false;
+  private refused = false;
   private refuse = () => {
     this.refused = true;
     this.events.change();
@@ -133,42 +125,46 @@ export class Audience {
   bind(deck: Deck, cache: PageCache): void {
     this.deck = deck;
     this.cache = cache;
-    if (this.open) this.mount();
+    if (this.isOpen) this.mount();
   }
 
-  get open(): boolean {
+  private get isOpen(): boolean {
     return !!this.win && !this.win.closed;
   }
 
-  get fullscreen(): boolean {
-    return this.open && !!this.win!.document.fullscreenElement;
+  get status(): AudienceStatus {
+    const win = this.isOpen ? this.win! : null;
+    const fullscreen = !!win?.document.fullscreenElement;
+    // The screen it is fullscreen on, or goes to at Shift+W, when the browser lists screens.
+    const screen = win && (fullscreen ? screenOf(win) : destination(win));
+    return {
+      mode: !win ? "closed" : fullscreen ? "fullscreen" : "window",
+      screen: screen ? nameOf(screen) : null,
+      // Shift+W in the presenter makes the audience fullscreen (Chrome, Edge); elsewhere only the audience window can.
+      remote: delegates,
+      refused: this.refused,
+    };
   }
 
   get pixelWidth(): number {
-    return this.open ? (this.view?.pixelWidth ?? 0) : 0;
-  }
-
-  /** The screen the window is fullscreen on, or goes to at Shift+W, when the browser lists screens. */
-  get screen(): string | null {
-    if (!this.open) return null;
-    const s = this.fullscreen ? screenOf(this.win!) : destination(this.win!);
-    return s ? nameOf(s) : null;
+    return this.isOpen ? (this.view?.pixelWidth ?? 0) : 0;
   }
 
   /**
    * Opens (or re-attaches to) the audience window, on this screen. Call from a
    * click or key press: browsers only allow popups from user input.
    */
-  show(): boolean {
-    if (!this.deck) return false;
-    if (this.open) {
+  open(): void {
+    if (!this.deck) return;
+    if (this.isOpen) {
       this.win!.focus();
-      return true;
+      return;
     }
     const { left, top, width, height } = centered();
     const features = `popup,left=${left},top=${top},width=${width},height=${height}`;
+    const blocked = () => new Error("The browser blocked the audience window. Allow pop-ups for this page, then press o again.");
     let win = window.open("", NAME, features);
-    if (!win) return false;
+    if (!win) throw blocked();
     try {
       this.attach(win);
     } catch {
@@ -176,41 +172,30 @@ export class Audience {
       // opened before a reload is out of reach. Replace it.
       win.close();
       win = window.open("", `${NAME}-${Date.now()}`, features);
-      if (!win) return false;
+      if (!win) throw blocked();
       this.attach(win);
     }
     // Chrome asks once to manage windows; Shift+W then knows the other screens.
     void loadScreens().then(() => this.events.change());
     this.events.change();
-    return true;
   }
 
   /** Fullscreen on or off. Call from user input in either window. */
   toggleFullscreen(): void {
-    if (!this.open) return;
+    if (!this.isOpen) return;
     if (this.win!.document.fullscreenElement) void this.win!.document.exitFullscreen();
     else this.goFullscreen();
   }
 
-  close(): void {
-    this.win?.close();
-    this.detach();
-  }
-
   render(page: number, black: boolean, laser: Point | null, laserSize: number): void {
-    if (!this.open || !this.view) return;
+    if (!this.isOpen || !this.view) return;
     this.view.show(page);
     this.view.setLaser(laser, laserSize);
     this.black!.hidden = !black;
   }
 
-  dispose(): void {
-    clearInterval(this.poll);
-    this.view?.dispose();
-  }
-
   private fullscreenOptions(): FullscreenOptions {
-    const to = this.open ? destination(this.win!) : null;
+    const to = this.isOpen ? destination(this.win!) : null;
     return to ? { screen: to } : {};
   }
 

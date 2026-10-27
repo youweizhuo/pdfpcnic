@@ -19,11 +19,12 @@ slides, transitions, video, and anything that sends a deck off the machine.
 
 ## Development
 
-You need Node 22.12 or later, and Chrome or Chromium and Firefox for the end-to-end checks.
+You need Node 22.18 or later, and Chrome or Chromium and Firefox for the end-to-end checks.
 
 ```sh
 npm install
 npm run dev                                      # local server with reload
+npm test                                         # unit tests of the core
 npm run build                                    # type-check, then dist/ (the site) and dist/pdfpcnic.html
 CHROME_PATH=/path/to/chrome npm run e2e          # end-to-end checks on the offline file
 CHROME_PATH=/path/to/chrome npm run e2e -- site  # ... and on the site, with window placement
@@ -35,18 +36,21 @@ deployed copy: `npm run e2e -- https://youweizhuo.github.io/pdfpcnic/`.
 
 ### Where things are
 
-- `src/deck.ts` reads the PDF and `.pdfpc` file into slides.
-- `src/render.ts` renders pages at the screen's pixel size and keeps the neighbors ready.
-- `src/audience.ts` drives the audience window. It's an empty popup this window draws into, so nothing needs syncing.
-- `src/pace.ts` and `src/timer.ts` read timing lines and keep the clock.
-- `src/main.ts` holds the presenter.
-- `src/variant-site.ts` and `src/variant-single.ts` hold what differs between the site and the offline file.
+[docs/architecture.md](docs/architecture.md) explains the layout. In short:
+
+- `src/core/` is the talk itself: slides from the PDF and `.pdfpc` file, keys, the clock and pace. No browser code;
+  its tests are in `test/`.
+- `src/ui/` is the presenter page, which draws the talk.
+- `src/platform.ts` lists what pdfpcnic needs from where it runs, and `src/web/` provides it in the browser: pdf.js,
+  the audience popup, fullscreen and storage. `src/web/variant-*.ts` hold what differs between the site and the
+  offline file.
 - `demo/` has the demo deck: Typst source, PDF and `.pdfpc`.
 - `deploy/` and `Containerfile` are for self-hosting.
 
 ## Pull requests
 
-- `npm run build` and the e2e runs pass. New behavior gets an e2e check.
+- `npm test`, `npm run build` and the e2e runs pass. New behavior gets a check: a unit test for the core, an e2e
+  check for the page.
 - Keep it light. Every dependency and every kilobyte ends up in the offline file, and drawing on the main thread
   costs smoothness on weak machines.
 - Match the code around you: plain TypeScript and DOM, no framework, comments that say why.

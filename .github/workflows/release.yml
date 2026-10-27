@@ -20,6 +20,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm test
       - run: npm run build
       - name: End-to-end checks (Chrome)
         run: npm run e2e && npm run e2e -- site

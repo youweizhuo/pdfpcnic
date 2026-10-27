@@ -1,7 +1,29 @@
-import { AnnotationType, getDocument, GlobalWorkerOptions, PDFWorker, type PDFDocumentProxy } from "pdfjs-dist";
-import { resources, workerUrl } from "variant";
-import { splitPlan, type Plan } from "./pace";
-import type { PdfpcFile, PdfpcPage } from "./pdfpc";
+import { splitPlan, type Plan } from "./pace.ts";
+import type { PdfpcFile, PdfpcPage } from "./pdfpc.ts";
+
+/** Where a link on a slide leads: a page of the deck, a web page, or a PDF named action (NextPage, GoBack…). */
+export type LinkTarget = { page: number } | { url: string } | { action: string };
+
+/** A link on a page: its box, in fractions of the page from its top left, and where it leads. */
+export interface Link {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  to: LinkTarget;
+}
+
+/** What the PDF engine reads from a page. */
+export interface PageInfo {
+  /** Size in PDF points, rotation applied. */
+  width: number;
+  height: number;
+  /** The PDF's page label, if it has one. */
+  label: string | null;
+  /** Text of the page's note annotations (sticky notes, highlights), which pdfpc takes for notes. */
+  note: string;
+  links: Link[];
+}
 
 export interface Page {
   index: number;
@@ -17,8 +39,7 @@ export interface Page {
   plan: Plan | null;
   /** Seconds a slide off the talk's clock (a backup slide) takes, from the note's first line. */
   length: number | null;
-  /** The page's link annotations, as pdf.js reads them, for its annotation layer. */
-  links: object[];
+  links: Link[];
   /** Size in PDF points, rotation applied. */
   width: number;
   height: number;
@@ -26,7 +47,6 @@ export interface Page {
 
 export interface Deck {
   name: string;
-  doc: PDFDocumentProxy;
   pages: Page[];
   /** Page indices of each logical slide. */
   slides: number[][];
@@ -42,55 +62,10 @@ export interface Deck {
   warnings: string[];
 }
 
-let worker: Promise<PDFWorker> | null = null;
-
-/** One pdf.js worker shared by every deck, started on first use. */
-async function startWorker(): Promise<PDFWorker> {
-  const url = workerUrl();
-  GlobalWorkerOptions.workerSrc = url;
-  // pdf.js treats a file:// page as cross-origin and wraps the worker in a
-  // blob: module, which Chrome refuses there. Started here, it loads.
-  try {
-    const w = new Worker(url, { type: "module" });
-    const ready = await new Promise<boolean>((resolve) => {
-      const timer = setTimeout(() => resolve(false), 8000);
-      const done = (ok: boolean) => () => {
-        clearTimeout(timer);
-        resolve(ok);
-      };
-      w.addEventListener("message", done(true), { once: true });
-      w.addEventListener("error", done(false), { once: true });
-    });
-    // pdf.js's typings say `port: null`; its code takes a Worker.
-    if (ready) return new PDFWorker({ port: w as unknown as null });
-    w.terminate();
-  } catch {
-    // fall through
-  }
-  // pdf.js tries its own way and, failing that, renders on this thread.
-  return new PDFWorker();
-}
-
-export async function openDeck(data: ArrayBuffer, name: string, meta: PdfpcFile | null): Promise<Deck> {
-  worker ??= startWorker();
-  // pdf.js transfers the buffer to its worker; keep the caller's copy usable.
-  const doc = await getDocument({ data: new Uint8Array(data.slice(0)), worker: await worker, ...resources() }).promise;
-  const n = doc.numPages;
-
-  const [labels, info] = await Promise.all([
-    doc.getPageLabels().catch(() => null),
-    Promise.all(
-      Array.from({ length: n }, async (_, i) => {
-        const page = await doc.getPage(i + 1);
-        const { width, height } = page.getViewport({ scale: 1 });
-        const annotations = await page.getAnnotations().catch(() => []);
-        // Links go where pdf.js puts them on an upright page; a turned page (rare in slides) gets none.
-        const links = page.rotate % 360 ? [] : annotations.filter((a) => a.annotationType === AnnotationType.LINK);
-        return { width, height, note: annotationNote(annotations), links };
-      }),
-    ),
-  ]);
-  const label = (i: number) => labels?.[i] || String(i + 1);
+/** Puts a PDF's pages and its `.pdfpc` file together into slides, as pdfpc does. */
+export function buildDeck(name: string, info: PageInfo[], meta: PdfpcFile | null): Deck {
+  const n = info.length;
+  const label = (i: number) => info[i].label || String(i + 1);
 
   // Position of each page in its run of equal labels (pdfpc's auto-detected overlay).
   const run: number[] = [];
@@ -146,7 +121,6 @@ export async function openDeck(data: ArrayBuffer, name: string, meta: PdfpcFile 
   const clampSlide = (s: number | undefined) => (s === undefined ? undefined : Math.min(s, last));
   return {
     name,
-    doc,
     pages,
     slides,
     endSlide: clampSlide(meta?.endSlide) ?? last,
@@ -158,16 +132,6 @@ export async function openDeck(data: ArrayBuffer, name: string, meta: PdfpcFile 
     noteFontSize: meta?.noteFontSize,
     warnings,
   };
-}
-
-/** The page index a link's destination (named or explicit) points at, or null. */
-export async function destinationPage(doc: PDFDocumentProxy, dest: string | unknown[]): Promise<number | null> {
-  const explicit = typeof dest === "string" ? await doc.getDestination(dest).catch(() => null) : dest;
-  const ref = explicit?.[0];
-  // A page reference, or (from some generators) a page index.
-  if (Number.isInteger(ref)) return ref as number;
-  if (!ref || typeof ref !== "object") return null;
-  return doc.getPageIndex(ref as { num: number; gen: number }).catch(() => null);
 }
 
 /** Finds the page a .pdfpc entry describes, as pdfpc does: by index if the label agrees, else by label. */
@@ -184,15 +148,4 @@ function locate(p: PdfpcPage, n: number, label: (i: number) => string, run: numb
     }
   }
   return p.idx < n ? p.idx : null;
-}
-
-const NOTE_ANNOTATIONS = new Set(["Text", "FreeText", "Highlight", "Underline", "Squiggly"]);
-
-/** Text of a page's note annotations, the types pdfpc imports as notes. */
-function annotationNote(annotations: Array<{ subtype?: string; contentsObj?: { str?: string } }>): string {
-  return annotations
-    .filter((a) => a.subtype && NOTE_ANNOTATIONS.has(a.subtype))
-    .map((a) => a.contentsObj?.str?.trim() ?? "")
-    .filter(Boolean)
-    .join("\n");
 }

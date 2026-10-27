@@ -51,7 +51,7 @@ function pdfjsResources(): Plugin {
 
 // Two builds from one source: the site (`dist/`, with files fetched as needed)
 // and `--mode single` (`dist-single/index.html`, everything inlined so it runs
-// from file:// with no network). `src/variant-*.ts` holds what differs.
+// from file:// with no network). `src/web/variant-*.ts` holds what differs.
 export default defineConfig(({ mode }) => {
   const single = mode === "single";
   return {
@@ -62,7 +62,7 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
-        variant: resolve(single ? "src/variant-single.ts" : "src/variant-site.ts"),
+        variant: resolve(single ? "src/web/variant-single.ts" : "src/web/variant-site.ts"),
       },
     },
     plugins: single ? [viteSingleFile()] : [contentSecurityPolicy(), pdfjsResources()],

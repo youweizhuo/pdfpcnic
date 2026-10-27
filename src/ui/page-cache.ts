@@ -1,5 +1,4 @@
-import { AnnotationMode } from "pdfjs-dist";
-import type { Deck } from "./deck";
+import type { Pdf } from "../platform.ts";
 
 /** Width in device pixels of overview and strip thumbnails. */
 export const THUMB_WIDTH = 360;
@@ -16,30 +15,6 @@ interface Job {
   lazy: boolean;
 }
 
-/**
- * pdf.js draws a page in steps, each on this window's next animation frame.
- * Hidden behind another tab, this window gets none, while the audience window
- * may be on screen waiting for the slide: hidden, the steps run as tasks.
- */
-const frame = window.requestAnimationFrame.bind(window);
-const cancelFrame = window.cancelAnimationFrame.bind(window);
-const steps = new Map<number, FrameRequestCallback>();
-const channel = new MessageChannel();
-let stepId = 0;
-channel.port1.onmessage = (e: MessageEvent<number>) => {
-  const step = steps.get(e.data);
-  steps.delete(e.data);
-  step?.(performance.now());
-};
-window.requestAnimationFrame = (cb) => {
-  if (!document.hidden) return frame(cb);
-  // Negative, so never a browser's own frame id.
-  steps.set(--stepId, cb);
-  channel.port2.postMessage(stepId);
-  return stepId;
-};
-window.cancelAnimationFrame = (id) => (id < 0 ? void steps.delete(id) : cancelFrame(id));
-
 /** Resolves when the main thread has a moment with nothing else to do. */
 const idle = () =>
   new Promise<void>((done) =>
@@ -47,10 +22,10 @@ const idle = () =>
   );
 
 /**
- * Renders pages on demand and keeps them as bitmaps. One full-size bitmap per
- * page serves every view of it (smaller views scale it down); thumbnails are
- * kept separately. Full-size bitmaps are evicted least-recently-used once
- * they pass the memory budget.
+ * Pictures of pages, drawn by the platform's PDF engine on demand and kept.
+ * One full-size picture per page serves every view of it (smaller views scale
+ * it down); thumbnails are kept separately. Full-size pictures are evicted
+ * least-recently-used once they pass the memory budget.
  */
 export class PageCache {
   private full = new Map<number, ImageBitmap>();
@@ -59,13 +34,12 @@ export class PageCache {
   private running = false;
   private bytes = 0;
   private listeners = new Set<(page: number) => void>();
-  private canvas = document.createElement("canvas");
   private disposed = false;
   /** Pages never evicted: what is on screen now. */
   pinned = new Set<number>();
 
   constructor(
-    private deck: Deck,
+    private pdf: Pdf,
     private budget = 320 * 2 ** 20,
   ) {}
 
@@ -109,7 +83,7 @@ export class PageCache {
     this.queue = this.queue.filter((j) => !j.prefetch);
     width = Math.min(Math.ceil(width), MAX_WIDTH);
     [...soon, ...later].forEach((page, i) => {
-      if (page < 0 || page >= this.deck.pages.length) return;
+      if (page < 0 || page >= this.pdf.pages.length) return;
       if ((this.full.get(page)?.width ?? 0) >= width * 0.98) return;
       this.enqueue({ page, width, thumb: false, priority: 10 + i, prefetch: true, lazy: i >= soon.length });
     });
@@ -153,7 +127,7 @@ export class PageCache {
         if (have && have.width >= job.width * 0.98) continue;
         let bmp: ImageBitmap;
         try {
-          bmp = await this.render(job.page, job.width);
+          bmp = await this.pdf.draw(job.page, job.width);
         } catch (err) {
           // A deck closed mid-render (another one opened) isn't a failure.
           if (this.disposed) return;
@@ -170,18 +144,6 @@ export class PageCache {
     } finally {
       this.running = false;
     }
-  }
-
-  private async render(index: number, width: number): Promise<ImageBitmap> {
-    const page = await this.deck.doc.getPage(index + 1);
-    const base = page.getViewport({ scale: 1 });
-    const viewport = page.getViewport({ scale: width / base.width });
-    const canvas = this.canvas;
-    canvas.width = Math.round(viewport.width);
-    canvas.height = Math.round(viewport.height);
-    // Note annotations become speaker notes, so they are left off the slide (as pdfpc does).
-    await page.render({ canvas, viewport, annotationMode: AnnotationMode.DISABLE, background: "#fff" }).promise;
-    return createImageBitmap(canvas);
   }
 
   private store(job: Job, bmp: ImageBitmap): void {

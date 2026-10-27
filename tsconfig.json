@@ -10,9 +10,11 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "paths": { "variant": ["./src/variant-site.ts"] }
+    "paths": { "variant": ["./src/web/variant-site.ts"] }
   },
   "include": ["src"]
 }

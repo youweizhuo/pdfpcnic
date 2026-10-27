@@ -37,18 +37,16 @@ function clockTime(hhmm: string, now: number): number {
   return d.getTime();
 }
 
-export interface Talk {
+/** The talk's set times, from the .pdfpc file. */
+export interface TalkTimes {
   /** Minutes, 0 for none. */
   duration: number;
   startTime?: string;
   endTime?: string;
-  /** 0-based slide shown now, and the last slide of the talk proper. */
-  slide: number;
-  endSlide: number;
 }
 
 /** Talk length in ms: from the end time if one is set, else from the duration. */
-export function talkLength(t: TimerState, talk: Talk, now: number): number {
+export function talkLength(t: TimerState, talk: TalkTimes, now: number): number {
   if (talk.endTime) {
     // Before the clock starts, from the talk's start time when it has one.
     const from = t.startedAt ?? (talk.startTime ? clockTime(talk.startTime, now) : now);
@@ -59,7 +57,7 @@ export function talkLength(t: TimerState, talk: Talk, now: number): number {
 }
 
 /** Ms until the talk's start time, or 0 when it has none or it has passed. */
-export function untilStart(talk: Talk, now: number): number {
+export function untilStart(talk: TalkTimes, now: number): number {
   return talk.startTime ? Math.max(0, clockTime(talk.startTime, now) - now) : 0;
 }
 

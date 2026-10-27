@@ -1,0 +1,12 @@
+// The core runs anywhere: no DOM, no browser, no PDF engine. Checked on its
+// own with no DOM types, so a browser API used here fails the build. Plain
+// erasable TypeScript, so Node runs it as it is for the tests.
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": [],
+    "erasableSyntaxOnly": true
+  },
+  "include": ["."]
+}

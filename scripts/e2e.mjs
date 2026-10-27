@@ -11,7 +11,7 @@ import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeF
 import { createServer } from "node:http";
 import { extname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import puppeteer from "puppeteer-core";
+import { launch } from "./launch.mjs";
 
 const chrome = process.env.CHROME_PATH;
 if (!chrome) {
@@ -42,7 +42,7 @@ if (remote) {
   url = pathToFileURL(resolve("dist/pdfpcnic.html")).href;
 }
 
-const browser = await puppeteer.launch({
+const browser = await launch({
   executablePath: chrome,
   headless: true,
   // A laptop, a projector to its right, and a third screen beyond.

@@ -9,7 +9,7 @@ import { createReadStream, existsSync, mkdirSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import puppeteer from "puppeteer-core";
+import { launch } from "./launch.mjs";
 
 const firefox = process.env.FIREFOX_PATH;
 if (!firefox) {
@@ -33,7 +33,7 @@ const builds = {
   single: pathToFileURL(resolve("dist/pdfpcnic.html")).href,
 };
 
-const browser = await puppeteer.launch({
+const browser = await launch({
   browser: "firefox",
   executablePath: firefox,
   headless: true,

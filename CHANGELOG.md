@@ -3,6 +3,15 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## Unreleased
+
+### Changed
+
+- **`Shift+W` puts the audience fullscreen on the projector**, in one key press. `o` opens the audience window on
+  your screen; `Shift+W` then makes it fullscreen on another screen (an external one over the laptop's own), or where
+  you dragged it. Chrome picks the screen itself, so the window no longer has to be moved there first, which could
+  leave it on the wrong display in Chrome on Windows. It no longer moves on its own when it opens.
+
 ## 1.0.1 (2026-10-26)
 
 ### Changed

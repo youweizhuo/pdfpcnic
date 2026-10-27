@@ -45,8 +45,8 @@ if (remote) {
 const browser = await puppeteer.launch({
   executablePath: chrome,
   headless: true,
-  // Two screens: a laptop and a projector to its right.
-  args: ["--no-sandbox", "--window-size=1440,900", "--screen-info={0,0 1440x900}{1440,0 1920x1080}"],
+  // A laptop, a projector to its right, and a third screen beyond.
+  args: ["--no-sandbox", "--window-size=1440,900", "--screen-info={0,0 1440x900}{1440,0 1920x1080}{3360,0 1280x800}"],
   defaultViewport: null,
 });
 const errors = [];
@@ -182,14 +182,26 @@ try {
   });
 
   if (mode === "site") {
-    await check("window placement puts the audience on the second screen; the next key makes it fullscreen", async () => {
-      const where = await audience.evaluate(() => ({ x: screenX, w: outerWidth }));
-      assert.ok(where.x >= 1440, `audience at x=${where.x}`);
-      assert.equal(where.w, 1920);
-      assert.match(await text("#audience-status"), /next key press/);
-      await press("ArrowRight", "ArrowLeft");
-      await audience.waitForFunction(() => !!document.fullscreenElement, { timeout: 5000 });
-      assert.match(await text("#audience-status"), /fullscreen on/);
+    await check("the audience opens on this screen; Shift+W makes it fullscreen on another, or where it was moved", async () => {
+      const where = () => audience.evaluate(() => ({ x: screenX, w: outerWidth, full: !!document.fullscreenElement }));
+      const full = (on) => audience.waitForFunction((on) => !!document.fullscreenElement === on, { timeout: 5000 }, on);
+      assert.ok((await where()).x < 1440, "audience not on the presenter's screen");
+      await page.waitForFunction(() => /fullscreen on /.test(document.querySelector("#audience-status").textContent));
+      await page.screenshot({ path: `${out}/audience-open.png` });
+      await press("Shift+W");
+      await full(true);
+      assert.deepEqual(await where(), { x: 1440, w: 1920, full: true });
+      assert.match(await text("#audience-status"), /^Audience fullscreen on /);
+      await audience.evaluate(() => document.exitFullscreen());
+      await full(false);
+      // Dragged to the third screen first: fullscreen there.
+      await audience.evaluate(() => moveTo(3400, 50));
+      await audience.waitForFunction(() => screen.availLeft === 3360);
+      await press("Shift+W");
+      await full(true);
+      assert.deepEqual(await where(), { x: 3360, w: 1280, full: true });
+      await audience.evaluate(() => document.exitFullscreen());
+      await full(false);
     });
   }
 

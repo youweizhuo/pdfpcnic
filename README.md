@@ -20,8 +20,8 @@ next slide: the clock and one bar for the whole talk.
 
 ![The presenter view: the current slide with its speaker notes, the next slide, the clock and the talk's pace, and thumbnails](docs/presenter.png)
 
-- **Nothing to install.** Open the page, drop in the PDF and its `.pdfpc` file, press `o`. In Chrome and Edge the
-  audience window moves to the projector and goes fullscreen.
+- **Nothing to install.** Open the page, drop in the PDF and its `.pdfpc` file, press `o`, then `Shift+W`. In Chrome
+  and Edge the audience goes fullscreen on the projector.
 - **pdfpc's keys and files**: Markdown notes, reveal steps, hidden slides, the end slide, the talk's length.
 - **Pace for timed talks.** Notes can carry each slide's planned window; pdfpcnic shows how this slide and the whole
   talk are going, and colors only what needs your attention.
@@ -33,9 +33,10 @@ next slide: the clock and one bar for the whole talk.
 
 1. Open the page (or `pdfpcnic.html` from a USB stick) and drop your PDF **and** its `.pdfpc` file on it, or choose
    both at once. The `.pdfpc` file is optional; it brings notes, timing, hidden slides and reveal steps.
-2. Press `o` to open the audience window.
-   - **Chrome and Edge** ask once to manage windows. Allow it, and the audience window moves to the projector and goes
-     fullscreen at your next key press.
+2. Press `o` to open the audience window, then `Shift+W` to make it fullscreen.
+   - **Chrome and Edge** ask once to manage windows. Allow it, and `Shift+W` puts the audience fullscreen on another
+     screen than the presenter's: an external one over the laptop's own. If you dragged the audience window to a
+     screen yourself, it goes fullscreen there.
    - **Other browsers**: drag the window to the projector and double-click it (or press `Shift+W`) for fullscreen.
 3. Press `w` to make the presenter fullscreen too, and `→` to start. The timer starts when you leave the first slide.
 

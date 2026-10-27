@@ -347,9 +347,7 @@ class Presenter {
         s.help = !s.help;
         break;
       case "openAudience":
-        void audience.show().then((ok) => {
-          if (!ok) toast("The browser blocked the audience window. Allow pop-ups for this page, then press o again.", "error", 8000);
-        });
+        if (!audience.show()) toast("The browser blocked the audience window. Allow pop-ups for this page, then press o again.", "error", 8000);
         return;
       case "slideSmaller":
       case "slideBigger":
@@ -981,12 +979,10 @@ class Presenter {
         : "Audience window closed. Press o to open it.";
     } else if (audience.fullscreen) {
       status.textContent = `Audience fullscreen${audience.screen ? ` on ${audience.screen}` : ""}.`;
-    } else if (audience.awaitingFullscreen) {
-      status.textContent = `Audience window on ${audience.screen}. It goes fullscreen at your next key press or click.`;
     } else {
-      status.textContent =
-        `Audience window open${audience.screen ? ` on ${audience.screen}` : "; drag it to the projector"}. ` +
-        "Double-click it or press Shift+W for fullscreen.";
+      status.textContent = audience.screen
+        ? `Audience window open. Shift+W makes it fullscreen on ${audience.screen}.`
+        : "Audience window open; drag it to the projector, then double-click it or press Shift+W for fullscreen.";
     }
     const scr = $("screen-status");
     const extended = screen.isExtended;
@@ -1409,9 +1405,6 @@ async function boot(): Promise<void> {
     if (e.dataTransfer?.files.length) void openFiles([...e.dataTransfer.files]);
   });
 
-  // A key press or click lends the audience window what it needs to go fullscreen.
-  window.addEventListener("keydown", () => audience.claimFullscreen(), { capture: true });
-  window.addEventListener("pointerdown", () => audience.claimFullscreen(), { capture: true });
   window.addEventListener("keydown", (e) => presenter?.onKey(e));
 
   // Offer to pick up where an earlier visit left off (an accidental reload, say).

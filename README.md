@@ -25,7 +25,7 @@ next slide: the clock and one bar for the whole talk.
 - **pdfpc's keys and files**: Markdown notes, reveal steps, hidden slides, the end slide, the talk's length.
 - **Pace for timed talks.** Notes can carry each slide's planned window; pdfpcnic shows how this slide and the whole
   talk are going, and colors only what needs your attention.
-- **Made for unfamiliar machines.** The offline file needs no network, a reload resumes mid-talk with the timer
+- **Made for unfamiliar machines.** The offline file needs no network, a reload resumes mid-talk with the clock
   running, and the slides render at the screen's pixel size with the next ones ready ahead.
 - **Private.** Files stay on the computer. There are no accounts, no analytics and no uploads.
 
@@ -33,15 +33,15 @@ next slide: the clock and one bar for the whole talk.
 
 1. Open the page (or `pdfpcnic.html` from a USB stick) and drop your PDF **and** its `.pdfpc` file on it, or choose
    both at once. The `.pdfpc` file is optional; it brings notes, timing, hidden slides and reveal steps.
-2. Press `o` to open the audience window, then `Shift+W` to make it fullscreen. The yellow button under the clock does
-   the same, one step at a time.
+2. Press `o` to open the audience window, then `Shift+W` to make it fullscreen. By the clock, one button at a time is
+   yellow, the next thing to press: the audience's steps first, then **Start**.
    - **Chrome and Edge** ask once to manage windows. Allow it, and `Shift+W` puts the audience fullscreen on another
      screen than the presenter's: an external one over the laptop's own. If you dragged the audience window to a
      screen yourself, it goes fullscreen there.
    - **Other browsers**: drag the window to the projector and double-click it (or press `Shift+W`) for fullscreen.
-3. Press `w` to make the presenter fullscreen too, and `→` to start. The timer starts when you leave the first slide.
+3. Press `w` to make the presenter fullscreen too, and `→` to start. The clock starts when you leave the first slide.
 
-If the page reloads mid-talk, **Resume** brings back the deck at the same page, with the timer still running.
+If the page reloads mid-talk, **Resume** brings back the deck at the same page, with the clock still running.
 
 On an unfamiliar machine, check that the displays are set to **Extend**, not mirror (`Win+P` on Windows). The presenter
 warns you when it sees only one screen. With one screen, `Shift+W` presents in the same window. When you leave a
@@ -63,8 +63,8 @@ The same keys as pdfpc, plus `o` for the audience window. Press `?` (or **Help**
 | `b` / `f` | black screen / freeze the audience on this slide while you move on (a card over your current slide says so) |
 | `2` / `1` | laser pointer on / off (`+` `-` change its size) |
 | `Esc` | leave black, freeze and laser |
-| `s` / `p`, click the clock, or **Start** / **Pause** | start / pause the timer |
-| `Ctrl+T` or `Shift+R`, or **Reset** | reset the timer to zero; the keys only while paused, the button with a second click while it runs |
+| `s` / `p`, click the clock, or **Start** / **Pause** | start / pause the clock |
+| `Ctrl+T` or `Shift+R`, or **Reset** | reset the clock to zero; the keys only while paused, the button with a second click while it runs |
 | `,` | settings: current slide, notes and laser sizes; pace colors |
 | `+` / `-` | notes text size |
 | `[` / `]` | current slide smaller / bigger, trading room with the notes |
@@ -103,8 +103,8 @@ the `.pdfpc` file.
 The clock counts up from zero, beside the time of day, as in Présentation.app. It never changes color; the pace bars
 under it do that job. **Pause** and **Reset** sit right under it: if you looked through the slides before the talk,
 the clock has been running, so reset it before you start (back on slide 1, Reset turns yellow to remind you). While
-it runs, Reset takes a second click, and the reset keys work only while paused, so a stray click or key can't wipe
-the timer mid-talk. After a reset the clock starts again at your next move.
+it runs, Reset takes a second click, and the reset keys work only while paused, so a stray click or key can't zero
+the clock mid-talk. After a reset the clock starts again at your next move.
 
 A note can start with the slide's planned window, in minutes and seconds from the start of the talk:
 
@@ -149,8 +149,8 @@ The browser reads your PDF and `.pdfpc` file; nothing is uploaded, and there are
 the website, a Content Security Policy lets the page load scripts and connect only to its own site, so nothing in a PDF
 or a note can send anything elsewhere.
 
-To resume after a reload, the browser keeps the last deck you opened, with your place and timer, in its own storage on
-this computer. **Forget** on the start page removes it. Settings such as sizes and pace colors are kept too.
+To resume after a reload, the browser keeps the last deck you opened, with your place and the clock, in its own storage
+on this computer. **Forget** on the start page removes it. Settings such as sizes and pace colors are kept too.
 
 ## Browsers
 

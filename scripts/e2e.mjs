@@ -436,12 +436,20 @@ try {
     await press("Escape");
   });
 
+  const cta = (sel) => page.$eval(sel, (e) => e.classList.contains("cta"));
+  const ctaIs = (sel, on) => page.waitForFunction((sel, on) => document.querySelector(sel).classList.contains("cta") === on, { timeout: 5000 }, sel, on);
+
   await check("the clock, and the button under it, pause and resume the timer", async () => {
     assert.match(await text("#timer-toggle"), /^Pause/);
     await page.click("#timer");
     assert.ok((await state()).timer.pausedAt > 0);
     assert.match(await text("#timer-toggle"), /^Resume/);
-    assert.equal(await page.$eval("#timer-toggle", (e) => e.classList.contains("cta")), true);
+    // One button stands out at a time: the audience's step first, then the clock's.
+    assert.equal(await cta("#timer-toggle"), false);
+    assert.equal(await cta("#audience-button"), true);
+    await press("Shift+W");
+    await ctaIs("#timer-toggle", true);
+    assert.equal(await cta("#audience-button"), false);
     await page.click("#timer-toggle");
     assert.equal((await state()).timer.pausedAt, null);
     await page.click("#timer-toggle");
@@ -450,7 +458,6 @@ try {
     assert.equal((await state()).timer.pausedAt, null);
   });
 
-  const cta = (sel) => page.$eval(sel, (e) => e.classList.contains("cta"));
   // Nothing under the clock comes and goes: the talk bar stays put whatever the clock does.
   const barTop = () => page.$eval("#talkbar", (e) => e.getBoundingClientRect().top);
   const runningTop = await barTop();
@@ -489,6 +496,10 @@ try {
     assert.equal(await cta("#timer-toggle"), false);
     assert.equal(await barTop(), runningTop);
     await page.screenshot({ path: `${out}/stale-clock.png` });
+    // The audience out of fullscreen: its button stands out instead.
+    await audience.evaluate(() => document.exitFullscreen());
+    await ctaIs("#timer-reset", false);
+    assert.equal(await cta("#audience-button"), true);
     await press("g");
     await page.keyboard.type("5");
     await press("Enter");

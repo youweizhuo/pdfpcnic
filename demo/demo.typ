@@ -19,12 +19,12 @@
   #v(0.2em)
   #text(30pt)[A pdfpc-style presenter in the browser]
   #v(1em)
-  #text(20pt, fill: luma(110))[demo deck · press → to start the timer]
+  #text(20pt, fill: luma(110))[demo deck · press → to start the clock]
 ]
 
 #pagebreak()
 #slide[Two windows][
-  - *Presenter*: timer, current and next slide, notes, thumbnails
+  - *Presenter*: clock, current and next slide, notes, thumbnails
   - *Audience*: the slide, fullscreen on the projector
   - Press #box(stroke: 1pt, inset: 4pt, radius: 3pt)[o] to open the audience window
 ]

@@ -3,6 +3,14 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.1.1 (2026-10-27)
+
+### Changed
+
+- **One yellow button at a time**, the next thing to press: the audience's steps come first, then the clock's. Before
+  the talk, Start turns yellow once the audience is fullscreen.
+- **Messages, the key list and the demo deck say "clock"**, as the buttons do, instead of "timer" in some places.
+
 ## 1.1.0 (2026-10-27)
 
 ### Changed

@@ -338,12 +338,12 @@ class Presenter {
         // Never mid-talk by a stray key: the clock has to be paused first.
         if (s.timer.startedAt === null) return;
         if (s.timer.pausedAt === null) {
-          toast("The timer is running. Pause it first (p), then reset, or click Reset twice.");
+          toast("The clock is running. Pause it first (p), then reset, or click Reset twice.");
           return;
         }
         s.timer = T.freshTimer();
         this.forgetVisits();
-        toast("Timer at 0:00:00. It starts at your next move, or press s.");
+        toast("Clock reset to 0:00:00. It starts again at your next move, or press s.");
         break;
       case "endSlide":
         s.endSlide = slide;
@@ -709,7 +709,7 @@ class Presenter {
     // The audience's next step, standing out until the audience is fullscreen.
     const ab = $("audience-button");
     ab.dataset.action = audience.open ? "audienceFullscreen" : "openAudience";
-    ab.classList.toggle("cta", !audience.fullscreen);
+    ab.classList.toggle("cta", !this.audienceReady());
     if (!audience.open) label(ab, "Open audience window", "o");
     else if (audience.fullscreen) label(ab, "Exit audience fullscreen", "⇧W");
     else label(ab, audience.screen ? `Audience fullscreen on ${audience.screen}` : "Audience fullscreen", "⇧W");
@@ -781,6 +781,11 @@ class Presenter {
     this.renderNotesDim(now);
   }
 
+  /** The audience sees the slides: fullscreen, or presented in this window. */
+  private audienceReady(): boolean {
+    return audience.fullscreen || this.state.solo;
+  }
+
   /** Présentation.app's clock: time since the start, and the time of day. */
   private renderClock(now: number): void {
     const s = this.state;
@@ -796,6 +801,8 @@ class Presenter {
     this.stale = stale;
     // The buttons say what state the clock is in, so nothing under it comes and
     // goes: what to press next stands out, and the rest is in their tooltips.
+    // One button stands out at a time, and the audience's steps come first.
+    const ours = this.audienceReady();
     const toggle = $("timer-toggle");
     if (t.startedAt === null) {
       label(toggle, "Start", "s");
@@ -807,11 +814,11 @@ class Presenter {
       label(toggle, t.pausedAt === null ? "Pause" : "Resume", "p");
       toggle.title = "";
     }
-    toggle.classList.toggle("cta", (t.startedAt === null || t.pausedAt !== null) && !stale);
+    toggle.classList.toggle("cta", ours && (t.startedAt === null || t.pausedAt !== null) && !stale);
     const reset = $<HTMLButtonElement>("timer-reset");
     reset.title = t.pausedAt === null ? "While the clock runs, click twice." : "";
     reset.disabled = t.startedAt === null;
-    reset.classList.toggle("cta", stale && !this.resetArmed);
+    reset.classList.toggle("cta", ours && stale && !this.resetArmed);
     reset.classList.toggle("confirm", !!this.resetArmed);
     label(reset, this.resetArmed ? "Click again to reset" : "Reset", "⇧R");
   }

@@ -130,8 +130,8 @@ export const HELP: Array<[string, Array<[string, string]>]> = [
   [
     "Presenter",
     [
-      ["s / p", "start / pause timer (or click the clock)"],
-      ["Ctrl+T or Shift+R", "reset timer to zero (pause it first)"],
+      ["s / p", "start / pause the clock (or click it)"],
+      ["Ctrl+T or Shift+R", "reset the clock to zero (pause it first)"],
       ["Ctrl+E", "mark the end slide"],
       ["+ / −", "notes size (laser size in laser mode)"],
       ["[ / ]", "current slide smaller / bigger, for room for notes"],

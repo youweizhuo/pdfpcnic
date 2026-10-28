@@ -3,6 +3,23 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.2.6 (2026-10-28)
+
+### Changed
+
+- **Filled yellow is what's on, a yellow outline what to press next.** Black, Freeze, the laser and fullscreen fill
+  yellow while on; the audience's next step, Start, and Reset (while paused, or after a rehearsal) are outlined, one
+  at a time. The purple is gone.
+- **Start, Pause and Resume are a labeled button again**, beside the clock's digits.
+- **Reset and both windows' fullscreen sit together** at the foot of the right column, the audience's last; Overview,
+  Settings, Help and Open… are the row under them. Under the current slide: Black, Freeze and Laser.
+- **The thumbnails' edge is wider**, 24 px, still inside the window's margin.
+
+### Fixed
+
+- **Buttons at the foot keep their state under the mouse:** Reset's red "Click again to reset" showed white while the
+  mouse was still on it.
+
 ## 1.2.5 (2026-10-28)
 
 ### Changed

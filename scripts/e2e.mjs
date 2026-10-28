@@ -253,13 +253,13 @@ try {
     await full(true);
     // Lit while on, as the presenter's button by it; clicked, it ends.
     await page.waitForSelector("#audience-button.on", { timeout: 3000 });
-    // Whatever the audience's button says, the buttons beside it and the line under the bar stay put.
+    // Whatever the audience's button says, the buttons around it and the line over them stay put.
     const places = await page.evaluate(() => {
       const button = document.querySelector("#audience-button");
       const was = button.innerHTML;
       const at = (sel) => JSON.stringify(document.querySelector(sel).getBoundingClientRect());
       const places = ["Open audience window <kbd>o</kbd>", "Double-click the audience window", "Audience fullscreen <kbd>⇧W</kbd>"].map(
-        (html) => ((button.innerHTML = html), `${at('.slide-tools [data-action="blank"]')} ${at("#presenter-button")} ${at("#audience-status")}`),
+        (html) => ((button.innerHTML = html), `${at("#timer-reset")} ${at("#presenter-button")} ${at('.foot [data-action="overview"]')} ${at("#audience-status")}`),
       );
       button.innerHTML = was;
       return places;
@@ -528,10 +528,10 @@ try {
   });
 
   const cta = (sel) => page.$eval(sel, (e) => e.classList.contains("cta"));
-  const toggle = () => page.$eval("#timer-toggle", (e) => e.ariaLabel);
+  const toggle = () => page.$eval("#timer-toggle", (e) => e.firstChild.textContent.trim());
   const ctaIs = (sel, on) => page.waitForFunction((sel, on) => document.querySelector(sel).classList.contains("cta") === on, { timeout: 5000 }, sel, on);
 
-  await check("the clock, and the icon by it, pause and resume the timer", async () => {
+  await check("the clock, and the button by it, pause and resume the timer", async () => {
     assert.equal(await toggle(), "Pause");
     await page.click("#timer");
     assert.ok((await state()).timer.pausedAt > 0);

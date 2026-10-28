@@ -35,8 +35,8 @@ All the time sits under the next slide: the clock and one bar for the whole talk
    both at once. The `.pdfpc` file is optional; it brings notes, timing, hidden slides and reveal steps. The deck
    shows on the page, with its slides and length: press **Present** (or `Enter`).
 2. Present opens the presenter and, in the same click, the audience window; press `Shift+W` to make it fullscreen.
-   One button at a time is purple, the next thing to press: the audience's, under the current slide, first, then
-   **Start** (▶ by the clock). Yellow means on: black, freeze, the laser, fullscreen.
+   One button at a time has a yellow outline, the next thing to press: the audience's, at the foot of the right
+   column, first, then **Start** by the clock. Filled yellow means on: black, freeze, the laser, fullscreen.
    - **If the browser blocked the window** (pop-ups blocked for the page): allow them, then press `o`. If you close
      the audience window, `o` brings it back too.
    - **Chrome and Edge** ask once to manage windows. Allow it, and `Shift+W` puts the audience fullscreen on another
@@ -46,7 +46,7 @@ All the time sits under the next slide: the clock and one bar for the whole talk
      says. Only Chrome and Edge can make it fullscreen from the presenter window.
 
    Until the talk starts, the line under the talk bar says what to do with the audience window.
-3. Press `w` to make the presenter fullscreen too (its button is at the foot of the right column), and `→` to start. The clock
+3. Press `w` to make the presenter fullscreen too (its button is beside the audience's), and `→` to start. The clock
    starts when you leave the first slide.
 
 `Esc` steps back one thing at a time: it closes the help or the overview, then ends black, freeze and the laser, then
@@ -110,7 +110,7 @@ The same keys as pdfpc, plus `o` for the audience window. Press `?` (or **Help**
 | `b` / `f` | black screen / freeze the audience on this slide while you move on (a card over your current slide says so) |
 | `2` / `1` | laser pointer on / off (`+` `-` change its size) |
 | `Esc` | one step back: close the help or the overview, then end black, freeze and laser, then leave presenter fullscreen; never the audience's |
-| `s` / `p`, click the clock, or ▶ / ❚❚ by it | start / pause the clock |
+| `s` / `p`, click the clock, or **Start** / **Pause** by it | start / pause the clock |
 | `Ctrl+T` or `Shift+R`, or **Reset** | reset the clock to zero; the keys only while paused, the button with a second click while it runs |
 | `,` | settings: current slide, notes and laser sizes; pace colors |
 | `+` / `-` | notes text size |
@@ -148,9 +148,9 @@ the `.pdfpc` file.
 ## Pace
 
 The clock counts up from zero, as in Présentation.app. It never changes color; the pace bars
-under it do that job. Beside it, ▶ starts or resumes it and ❚❚ pauses it. **Reset** sits at the foot of the column,
-away from them, and turns purple while the clock is paused: if you looked through the slides before the talk, the
-clock has been running, so reset it before you start (back on slide 1, Reset turns purple to remind you). While
+under it do that job. Beside it, **Start**, then **Pause** and **Resume**. **Reset** sits at the foot of the column,
+away from them, and is outlined in yellow while the clock is paused: if you looked through the slides before the
+talk, the clock has been running, so reset it before you start (back on slide 1, Reset is outlined to remind you). While
 it runs, Reset takes a second click, and the reset keys work only while paused, so a stray click or key can't zero
 the clock mid-talk. After a reset the clock starts again at your next move.
 

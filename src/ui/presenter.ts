@@ -342,7 +342,7 @@ export class Presenter {
       ? `Press b to show slide ${(frozen ?? here.slide) + 1}${frozen === null ? "" : " (frozen)"}`
       : `Press f to move it to slide ${here.slide + 1}`;
 
-    // The audience's next step: on the button under the current slide,
+    // The audience's next step: on its button at the foot of the column,
     // standing out until the audience sees the slides, and in the line under
     // the bar until the talk starts (or when it answers a press).
     const status = this.audience.status;
@@ -443,22 +443,21 @@ export class Presenter {
     const stale = this.talk.stale;
     if (stale && !this.stale) toast("The clock has already started. Starting the talk now? Reset it first.", 8000);
     this.stale = stale;
-    // The icon by the clock says what it does next: start, pause, resume.
+    // The button by the clock says what it does next: start, pause, resume.
     // What to press next stands out: Start before the talk, Reset while paused
     // or after a rehearsal. One at a time, and the audience's steps come first.
     const ours = audienceReady(this.audience.status, this.view.solo);
     const toggle = $("timer-toggle");
     const running = t.startedAt !== null && t.pausedAt === null;
-    toggle.classList.toggle("running", running);
     if (t.startedAt === null) {
-      toggle.ariaLabel = "Start";
+      label(toggle, "Start", "s");
       const until = T.untilStart(this.deck, now);
       toggle.title = until
-        ? `The talk starts at ${this.deck.startTime}, in ${T.format(until)}. (s starts it now.)`
-        : `Start (s). It also starts ${this.talk.state.page === 0 ? "when you leave slide 1" : "at your next move"}.`;
+        ? `The talk starts at ${this.deck.startTime}, in ${T.format(until)}.`
+        : `Starts the clock. It also starts ${this.talk.state.page === 0 ? "when you leave slide 1" : "at your next move"}.`;
     } else {
-      toggle.ariaLabel = running ? "Pause" : "Resume";
-      toggle.title = `${toggle.ariaLabel} (p)`;
+      label(toggle, running ? "Pause" : "Resume", "p");
+      toggle.title = "";
     }
     toggle.classList.toggle("cta", ours && t.startedAt === null && !stale);
     const reset = $<HTMLButtonElement>("timer-reset");

@@ -63,7 +63,6 @@
       </div>
       <!-- What the audience sees, under the slide it shows. -->
       <nav class="toolbar slide-tools">
-        <button type="button" id="audience-button" class="ctl cta" data-action="openAudience">Open audience window <kbd>o</kbd></button>
         <button type="button" data-action="blank">Black <kbd>b</kbd></button>
         <button type="button" data-action="freeze">Freeze <kbd>f</kbd></button>
         <button type="button" data-action="laserMode">Laser <kbd>2</kbd></button>
@@ -77,10 +76,7 @@
         <section class="time">
           <div class="clock">
             <button id="timer" class="timer idle" type="button" title="Click to pause or resume (p)">0:00:00</button>
-            <button id="timer-toggle" class="ctl cta clock-toggle" type="button" aria-label="Start">
-              <svg class="play" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.2v11.6L13.5 8z" /></svg>
-              <svg class="pause" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 2.5h3.2v11H3.5zm5.8 0h3.2v11H9.3z" /></svg>
-            </button>
+            <button id="timer-toggle" class="ctl cta" type="button">Start <kbd>s</kbd></button>
             <span id="pace-all-text" class="pace-num"></span>
           </div>
           <div
@@ -92,13 +88,20 @@
         <p id="screen-status" class="hintline"></p>
         <!-- The audience's next step, until the talk starts. -->
         <p id="audience-status" class="hintline guide"></p>
-        <nav class="toolbar">
-          <button type="button" data-action="overview">Overview <kbd>Tab</kbd></button>
-          <button type="button" id="presenter-button" class="ctl" data-action="fullscreen">Presenter fullscreen <kbd>w</kbd></button>
-          <button type="button" data-action="settings">Settings <kbd>,</kbd></button>
-          <button type="button" data-action="help">Help <kbd>?</kbd></button>
-          <button type="button" id="open-files">Open…</button>
-          <button id="timer-reset" class="ctl" type="button" disabled>Reset <kbd>⇧R</kbd></button>
+        <!-- The clock's reset and both windows' fullscreen, each lit while on; the audience's last, so its
+             changing label moves nothing. Then the rest. -->
+        <nav class="toolbar foot">
+          <div>
+            <button id="timer-reset" class="ctl" type="button" disabled>Reset <kbd>⇧R</kbd></button>
+            <button type="button" id="presenter-button" class="ctl" data-action="fullscreen">Presenter fullscreen <kbd>w</kbd></button>
+            <button type="button" id="audience-button" class="ctl cta" data-action="openAudience">Open audience window <kbd>o</kbd></button>
+          </div>
+          <div>
+            <button type="button" data-action="overview">Overview <kbd>Tab</kbd></button>
+            <button type="button" data-action="settings">Settings <kbd>,</kbd></button>
+            <button type="button" data-action="help">Help <kbd>?</kbd></button>
+            <button type="button" id="open-files">Open…</button>
+          </div>
         </nav>
       </aside>
 

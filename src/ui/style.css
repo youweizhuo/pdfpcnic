@@ -6,10 +6,8 @@
   --faint: #48484a;
   --line: #2c2c2e;
   --panel: #1c1c1e;
-  /* What's on. */
+  /* What's on, filled; what to press next, outlined. */
   --accent: #ffd60a;
-  /* What to press next. */
-  --next: #bf5af2;
   --ahead: #64d2ff;
   --behind: #ff9f0a;
   --over: #ff453a;
@@ -236,7 +234,7 @@ kbd {
 .slide-fill.t-severe {
   background: var(--severe);
 }
-/* The audience's step, black, freeze and the laser, at the slide's right edge. */
+/* Black, freeze and the laser, at the slide's right edge. */
 .slide-tools {
   grid-area: tools;
   justify-self: center;
@@ -433,30 +431,13 @@ kbd {
 .timer,
 .pace-num {
   font-size: clamp(28px, 3vw, 60px);
-  font-size: min(clamp(28px, 3vw, 60px), 8.5cqi);
+  /* Room for the button between them. */
+  font-size: min(clamp(28px, 3vw, 60px), calc((100cqi - 140px) / 9.4));
   line-height: 1;
 }
-/* Start, pause, resume: an icon by the digits, sized with them. */
-.clock .clock-toggle {
+/* Start, pause, resume, by the digits. */
+.clock .ctl {
   align-self: center;
-  justify-content: center;
-  width: 1.1em;
-  height: 0.9em;
-  padding: 0;
-  font-size: clamp(28px, 3vw, 60px);
-  font-size: min(clamp(28px, 3vw, 60px), 8.5cqi);
-}
-.clock-toggle svg {
-  width: 0.42em;
-  height: 0.42em;
-  fill: currentColor;
-}
-.clock-toggle .pause,
-.clock-toggle.running .play {
-  display: none;
-}
-.clock-toggle.running .pause {
-  display: block;
 }
 .timer {
   padding: 0;
@@ -497,14 +478,9 @@ kbd {
 }
 /* What to do next: the audience's step, starting the clock, a reset. */
 .ctl.cta {
-  border-color: var(--next);
-  background: var(--next);
-  color: #000;
+  border-color: var(--accent);
+  color: var(--accent);
   font-weight: 600;
-}
-.ctl.cta kbd {
-  border-color: rgb(0 0 0 / 0.3);
-  color: #3a3a3c;
 }
 .ctl.confirm {
   border-color: var(--over);
@@ -513,7 +489,8 @@ kbd {
 /* What's on, lit as in the toolbar. */
 .ctl.on {
   border-color: var(--accent);
-  color: var(--accent);
+  background: var(--accent);
+  color: #000;
 }
 .pace-num {
   margin-left: auto;
@@ -657,13 +634,28 @@ kbd {
   font-size: 15px;
   cursor: pointer;
 }
-.toolbar button:hover {
+.toolbar button:hover:not(.cta, .confirm) {
   border-color: var(--faint);
   color: var(--fg);
 }
 .toolbar button.on {
   border-color: var(--accent);
-  color: var(--accent);
+  background: var(--accent);
+  color: #000;
+}
+.toolbar button.on kbd {
+  border-color: rgb(0 0 0 / 0.3);
+  color: #3a3a3c;
+}
+/* Two rows at the foot of the column. */
+.foot {
+  flex-direction: column;
+  align-items: stretch;
+}
+.foot div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .toolbar kbd {
   font-size: 12px;
@@ -697,7 +689,7 @@ kbd {
   right: 0;
   bottom: 0;
   z-index: 4;
-  width: 10px;
+  width: 24px;
 }
 .strip li {
   display: grid;

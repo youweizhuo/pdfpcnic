@@ -43,9 +43,10 @@ final class SlideView: NSView {
         guard let cgPage else { return nil }
         let size = PageBox(cgPage).size
         let scale = min(bounds.width / size.width, bounds.height / size.height)
-        let w = (size.width * scale).rounded(.down)
-        let h = (size.height * scale).rounded(.down)
-        return CGRect(x: ((bounds.width - w) / 2).rounded(.down), y: ((bounds.height - h) / 2).rounded(.down), width: w, height: h)
+        // The bars on each side at the nearest whole point, alike: a slide a fraction of a point short of the window fills it, with no black line.
+        let x = ((bounds.width - size.width * scale) / 2).rounded()
+        let y = ((bounds.height - size.height * scale) / 2).rounded()
+        return CGRect(x: x, y: y, width: bounds.width - 2 * x, height: bounds.height - 2 * y)
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -159,14 +160,6 @@ final class SlideView: NSView {
     override func keyDown(with event: NSEvent) {
         guard let key = Self.press(event) else { return super.keyDown(with: event) }
         events("audienceKey", key)
-    }
-
-    override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        if event.modifierFlags.contains(.command), event.charactersIgnoringModifiers == "w" {
-            events("close", true)
-            return true
-        }
-        return super.performKeyEquivalent(with: event)
     }
 
     /// A key press as a browser names it (KeyboardEvent.key), for the page's key bindings. Command keys are the menus'.

@@ -79,6 +79,12 @@ kbd {
   font-weight: 250;
   letter-spacing: -0.035em;
 }
+.version {
+  color: var(--dim);
+  font-size: 0.34em;
+  font-weight: 400;
+  letter-spacing: 0;
+}
 .say {
   margin: 2px 0 0;
   color: #636366;
@@ -122,6 +128,17 @@ kbd {
   color: var(--dim);
   line-height: 1.45;
 }
+.ready {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 28px;
+  border: 1.5px solid var(--accent);
+  border-radius: 16px;
+}
+.ready .start-actions {
+  margin: 8px 0 4px;
+}
 .link {
   color: var(--accent);
   text-decoration: underline;
@@ -162,6 +179,9 @@ kbd {
 }
 .start-foot a {
   color: inherit;
+}
+.start-foot span:empty {
+  display: none;
 }
 
 /* Presenter: Présentation.app's layout. The current slide with its notes

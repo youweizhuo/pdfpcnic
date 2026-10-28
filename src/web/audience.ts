@@ -157,7 +157,6 @@ export class PopupAudience implements Audience {
    * puts a new window in front, `behind` or not.
    */
   open(behind = false): void {
-    if (!this.deck) return;
     if (this.isOpen) {
       if (!behind) this.win!.focus();
       return;
@@ -228,7 +227,8 @@ export class PopupAudience implements Audience {
         `<p id="hint">Double-click for fullscreen</p></body></html>`,
     );
     doc.close();
-    this.mount();
+    // Opened in a click before the deck is read, it shows it once bound.
+    if (this.deck) this.mount();
     this.black = doc.getElementById("black")!;
     const hint = doc.getElementById("hint")!;
 

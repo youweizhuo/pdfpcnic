@@ -159,9 +159,9 @@ final class App: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// The audience window is part of the presenter's: it closes with it, and the app with them.
     @objc private func closeWindow() {
-        let key = NSApp.keyWindow
-        if key != nil, key === audience.view.window { audience.close() } else { presenter.window.performClose(nil) }
+        presenter.window.performClose(nil)
     }
 
     @objc private func checkForUpdates() {

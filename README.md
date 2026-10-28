@@ -32,11 +32,12 @@ next slide: the clock and one bar for the whole talk.
 ## Presenting
 
 1. Open the page (or `pdfpcnic.html` from a USB stick) and drop your PDF **and** its `.pdfpc` file on it, or choose
-   both at once. The `.pdfpc` file is optional; it brings notes, timing, hidden slides and reveal steps.
-2. The audience window opens with the deck; press `Shift+W` to make it fullscreen. By the clock, one button at a time
-   is yellow, the next thing to press: the audience's steps first, then **Start**.
-   - **If the browser blocked the window**: browsers open one only right after a click or key, and a dropped file
-     isn't one. Press `o`, or allow pop-ups for the page and it opens by itself from then on.
+   both at once. The `.pdfpc` file is optional; it brings notes, timing, hidden slides and reveal steps. The deck
+   shows on the page, with its slides and length: press **Present** (or `Enter`).
+2. Present opens the presenter and, in the same click, the audience window; press `Shift+W` to make it fullscreen.
+   By the clock, one button at a time is yellow, the next thing to press: the audience's steps first, then **Start**.
+   - **If the browser blocked the window** (pop-ups blocked for the page): allow them, then press `o`. If you close
+     the audience window, `o` brings it back too.
    - **Chrome and Edge** ask once to manage windows. Allow it, and `Shift+W` puts the audience fullscreen on another
      screen than the presenter's: an external one over the laptop's own. If you dragged the audience window to a
      screen yourself, it goes fullscreen there.
@@ -61,7 +62,7 @@ shared computer, open the page again and press **Forget** beside **Resume**, or 
 The same presenter, in a Mac app of its own, with an audience window it places itself:
 
 - **The audience window opens with the deck, behind the presenter**, and `Shift+W` puts it fullscreen on the
-  projector, whatever the screens, with nothing to allow first.
+  projector, whatever the screens, with nothing to allow first. It's part of the presenter's window: it closes with it.
 - **The audience window is frameless**, and macOS draws the slides, in both windows, with its own PDF engine, as
   Preview does.
 - **Fullscreen is instant**, with no animation and no new Space, as in Présentation.app. Keys go on to the presenter
@@ -191,7 +192,7 @@ to the colors.
 
 ## Privacy
 
-The browser reads your PDF and `.pdfpc` file; nothing is uploaded, and there are no accounts, cookies or analytics. On
+Your PDF and `.pdfpc` file open in the browser and aren't sent anywhere; there are no accounts, cookies or analytics. On
 the website, a Content Security Policy lets the page load scripts and connect only to its own site, so nothing in a PDF
 or a note can send anything elsewhere. The Mac app's page is held to the same: it reaches only the app. The app itself
 connects only to GitHub, a few seconds after it starts, to look for updates and download them.

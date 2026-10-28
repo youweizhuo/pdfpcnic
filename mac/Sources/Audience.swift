@@ -20,7 +20,6 @@ final class Audience: NSObject, NSWindowDelegate {
         view.events = { [unowned self] name, data in
             switch name {
             case "fullscreen": toggleFullscreen()
-            case "close": close()
             default: emit(name, data)
             }
         }
@@ -113,14 +112,6 @@ final class Audience: NSObject, NSWindowDelegate {
         presenter()?.makeKeyAndOrderFront(nil)
         view.redraw()
         changed()
-    }
-
-    func close() {
-        if isFullscreen {
-            view.exitFullScreenMode(options: nil)
-            fullscreenOn = nil
-        }
-        window?.close()
     }
 
     func windowWillClose(_ notification: Notification) {

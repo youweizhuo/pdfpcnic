@@ -3,6 +3,27 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.2.4 (2026-10-28)
+
+### Changed
+
+- **A deck waits on the start page for Present.** Chosen or dropped, it shows with its files, slides and length;
+  **Present** (or `Enter`) opens the presenter and, in the same click, the audience window, so every browser allows
+  it and the browser and the Mac app go the same way. **Resume** and **Try the demo** open it in their click too.
+  Dropping the `.pdfpc` after the PDF adds it to the waiting deck. A deck opened from the Finder, or with one open
+  already, opens at once.
+- **The audience window is part of the presenter's** in the Mac app: it has no close of its own, and `Cmd-W` closes
+  the presenter, the audience with it. In the browser, `o` brings it back if it's closed.
+- **The version sits by the name**, larger: "1.2.4", or "1.2.4 for Mac" in the app.
+- **The start page's words:** the website says your slides open in the browser and aren't sent anywhere; the app's
+  page says "on your Mac" and drops the lines about uploads and the network.
+
+### Fixed
+
+- **No black line at the edge of the Mac app's audience window.** The slide's size was rounded down to whole points,
+  so a window a fraction of a point off the slide's shape, as the app opens it on many screens, kept one point of
+  black at the top or the right. Letterbox bars are now even on both sides.
+
 ## 1.2.3 (2026-10-28)
 
 ### Changed

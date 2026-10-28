@@ -119,10 +119,22 @@ try {
   });
 
   await page.evaluate(() => (window.shown = window.pdfpcnic.deck));
-  // The audience window comes with the deck where the browser allows it. Here a script counts as a click, so it
-  // always would: for the offline copy, the browser blocks it instead, as it does when no click or key came first.
+  // The audience window comes with the deck, in Present's click. For the offline copy, the browser blocks it here, as
+  // one would with pop-ups blocked.
   if (mode !== "site") await page.evaluate(() => ([window.allowed, window.open] = [window.open, () => null]));
   await input.uploadFile(resolve("demo/demo.pdf"), resolve("demo/demo.pdfpc"));
+  if (mode !== "site") {
+    // On the start page, the deck waits for Present. (With the demo open, the site's opens at once.)
+    await check("on the start page, the version shows by the name, and a deck waits for Present", async () => {
+      assert.match(await text("#version"), /^\d+\.\d+\.\d+$/);
+      await page.waitForSelector("#ready:not([hidden])", { timeout: 20000 });
+      assert.equal(await text("#ready-name"), "demo.pdf + demo.pdfpc");
+      assert.equal(await text("#ready-info"), "8 slides · 10 min");
+      assert.equal(await page.evaluate(() => window.pdfpcnic.deck), undefined);
+      assert.equal(await page.evaluate(() => document.activeElement.id), "present");
+    });
+    await page.keyboard.press("Enter");
+  }
   await page.waitForFunction(() => window.pdfpcnic.deck && window.pdfpcnic.deck !== window.shown, { timeout: 20000 });
 
   await check("deck loads with pdfpc metadata", async () => {
@@ -771,6 +783,8 @@ try {
       page.on("response", (r) => r.url().includes("/pdfjs/") && fetched.set(r.url().split("/pdfjs/")[1], r.status()));
       writeFileSync(`${out}/no-fonts.pdf`, pdfWithoutFonts());
       await (await page.$("#files")).uploadFile(`${out}/no-fonts.pdf`);
+      await page.waitForSelector("#ready:not([hidden])", { timeout: 20000 });
+      await page.click("#present");
       await page.waitForFunction(() => window.pdfpcnic.deck?.name === "no-fonts.pdf", { timeout: 20000 });
       await page.waitForFunction(() => document.querySelector("#current canvas")?.width > 0);
       await new Promise((r) => setTimeout(r, 1000));

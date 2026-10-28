@@ -74,6 +74,8 @@ try {
 
     await check(`${build}: the deck loads and draws`, async () => {
       await (await page.$("#files")).uploadFile(resolve("demo/demo.pdf"), resolve("demo/demo.pdfpc"));
+      await page.waitForSelector("#ready:not([hidden])", { timeout: 20000 });
+      await page.click("#present");
       await page.waitForFunction(() => window.pdfpcnic.state, { timeout: 20000 });
       assert.equal(await page.evaluate(() => window.pdfpcnic.deck.slides.length), 8);
       await page.waitForFunction(() => document.querySelector("#next canvas")?.width > 0);

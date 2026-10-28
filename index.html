@@ -17,9 +17,9 @@
   <body>
     <section id="start" class="start">
       <div class="start-inner">
-        <h1 class="wordmark">pdfpcnic</h1>
+        <h1 class="wordmark">pdfpcnic <span id="version" class="version"></span></h1>
         <p class="say">pronounced “PDF picnic”</p>
-        <p class="tagline">Present PDF slides with a pdfpc-style presenter view, in the browser.</p>
+        <p id="tagline" class="tagline">Present PDF slides with a pdfpc-style presenter view, in the browser.</p>
 
         <label id="drop" class="drop">
           <input id="files" type="file" accept=".pdf,.pdfpc,.json,application/pdf" multiple />
@@ -27,7 +27,18 @@
           <span class="drop-sub">or <span class="link">choose files</span>. The <code>.pdfpc</code> file is optional; it brings notes, timing and reveal steps.</span>
         </label>
 
-        <div class="start-actions">
+        <!-- The deck read from the files: Present opens the presenter and, in the same click, the audience window. -->
+        <div id="ready" class="ready" hidden>
+          <span id="ready-name" class="drop-title"></span>
+          <span id="ready-info" class="drop-sub"></span>
+          <div class="start-actions">
+            <button id="present" class="primary" type="button">Present <kbd>Enter</kbd></button>
+            <button id="choose-other" type="button">Choose other files</button>
+          </div>
+          <span class="drop-sub">Opens the presenter here and the audience window for the projector.</span>
+        </div>
+
+        <div id="actions" class="start-actions">
           <button id="resume" class="primary" type="button" hidden></button>
           <button id="forget" type="button" title="Remove the kept deck from this browser, as when leaving a shared computer" hidden>Forget it</button>
           <button id="demo" type="button">Try the demo deck</button>
@@ -36,9 +47,9 @@
         <p id="start-error" class="start-error" hidden></p>
 
         <footer class="start-foot">
-          <span>Files stay on this computer; nothing is uploaded.</span>
+          <span id="private">Your slides open in this browser; they aren't sent anywhere.</span>
           <span id="offline-note"></span>
-          <span id="version"></span>
+          <span id="links"></span>
         </footer>
       </div>
     </section>

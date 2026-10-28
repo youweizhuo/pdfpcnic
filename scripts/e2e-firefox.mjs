@@ -92,7 +92,7 @@ try {
       await sleep(2200);
       assert.equal(await page.evaluate(() => window.pdfpcnic.state.page), 1);
       assert.match(await page.$eval("#timer", (e) => e.textContent), /^0:00:0[12]$/);
-      assert.match(await page.$eval("#pace-all-text", (e) => e.textContent), /^(\d.* (early|late))?$/);
+      assert.match(await page.$eval("#finish", (e) => e.textContent), /^\d+:\d\d(:\d\d)?$/);
       assert.equal(await page.evaluate(() => typeof CSS.highlights), "object");
     });
 

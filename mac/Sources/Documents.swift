@@ -35,7 +35,8 @@ final class Documents {
 
     subscript(id: Int) -> Doc? { docs[id] }
 
-    /// Opens a PDF; answers with its id and what each page holds (core/deck.ts's PageInfo).
+    /// Opens a PDF; answers with its id, what each page holds (core/deck.ts's PageInfo) and the top of its
+    /// outline (OutlineEntry).
     func open(_ data: Data) throws -> [String: Any] {
         guard let pdf = PDFDocument(data: data),
               let provider = CGDataProvider(data: data as CFData), let cg = CGPDFDocument(provider),
@@ -60,7 +61,7 @@ final class Documents {
         let id = nextID
         nextID += 1
         docs[id] = Doc(cg: cg, background: background, links: links)
-        return ["id": id, "pages": pages]
+        return ["id": id, "pages": pages, "outline": Self.outline(pdf)]
     }
 
     func close(_ id: Int) {
@@ -103,6 +104,15 @@ final class Documents {
     }
 
     private static let noteTypes: Set<String> = ["Text", "FreeText", "Highlight", "Underline", "Squiggly"]
+
+    /// The top level of the outline (the bookmarks), with the page each entry opens.
+    private static func outline(_ pdf: PDFDocument) -> [[String: Any]] {
+        guard let root = pdf.outlineRoot else { return [] }
+        return (0..<root.numberOfChildren).compactMap { i -> [String: Any]? in
+            guard let entry = root.child(at: i), let page = entry.destination?.page else { return nil }
+            return ["title": entry.label ?? "", "page": pdf.index(for: page)]
+        }
+    }
 
     /// Text of a page's note annotations, the types pdfpc imports as notes.
     private static func note(_ page: PDFPage) -> String {

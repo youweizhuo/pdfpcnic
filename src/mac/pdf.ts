@@ -1,6 +1,6 @@
 // PDFs through the Mac app: PDFKit reads the pages, and Quartz draws them, as Preview does.
 
-import type { PageInfo } from "../core/deck.ts";
+import type { OutlineEntry, PageInfo } from "../core/deck.ts";
 import type { Pdf } from "../platform.ts";
 import { base64, call } from "./bridge.ts";
 
@@ -10,10 +10,11 @@ export interface MacPdf extends Pdf {
 }
 
 export async function openPdf(data: ArrayBuffer): Promise<MacPdf> {
-  const { id, pages } = await call<{ id: number; pages: PageInfo[] }>("openPdf", { data: await base64(data) });
+  const { id, pages, outline } = await call<{ id: number; pages: PageInfo[]; outline: OutlineEntry[] }>("openPdf", { data: await base64(data) });
   return {
     id,
     pages,
+    outline,
     async draw(page, width) {
       // Raw pixels, so nothing is encoded on the way: the width and height, then the rows, RGBA.
       const res = await fetch(`page?doc=${id}&page=${page}&width=${Math.round(width)}`);

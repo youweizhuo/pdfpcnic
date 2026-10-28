@@ -71,6 +71,13 @@ export class Settings {
     this.store.setPref("notesSize", this.notesSize);
   }
 
+  /** Equal columns and the current slide at full size, as at first. */
+  resetLayout(): void {
+    this.applyColumns(0.5);
+    this.store.setPref("split", this.split);
+    this.setStage(1);
+  }
+
   setTimeOfDay(on: boolean): void {
     this.timeOfDay = on;
     this.store.setPref("barTimeOfDay", on);
@@ -143,15 +150,13 @@ export class Settings {
     $("set-defaults").addEventListener(
       "click",
       () => {
-        this.setStage(1);
+        this.resetLayout();
         this.setNotesSize(this.deckNotesSize);
         this.store.setPref("notesSize", null);
         this.setLaserSize(0.035);
         this.useSlack({ ...SLACK.time });
         this.setNotesDim(0.5);
         this.setTimeOfDay(false);
-        this.applyColumns(0.5);
-        this.store.setPref("split", this.split);
         this.sync();
       },
       { signal },

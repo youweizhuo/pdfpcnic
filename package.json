@@ -1,6 +1,6 @@
 {
   "name": "pdfpcnic",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "description": "pdfpc-style PDF presenter that runs in the browser, also as a single offline HTML file",
   "keywords": [
     "pdfpc",

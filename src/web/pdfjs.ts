@@ -2,7 +2,7 @@
 
 import { AnnotationMode, AnnotationType, getDocument, GlobalWorkerOptions, PDFWorker, type PDFDocumentProxy, type PageViewport } from "pdfjs-dist";
 import { resources, workerUrl } from "variant";
-import type { Link, LinkTarget, PageInfo } from "../core/deck.ts";
+import type { Link, LinkTarget, OutlineEntry, PageInfo } from "../core/deck.ts";
 import type { Pdf } from "../platform.ts";
 
 /**
@@ -78,9 +78,11 @@ export async function openPdf(data: ArrayBuffer): Promise<Pdf> {
       };
     }),
   );
+  const outline = await outlineOf(doc, pageOf);
   const canvas = document.createElement("canvas");
   return {
     pages,
+    outline,
     async draw(index, width) {
       const page = await doc.getPage(index + 1);
       const viewport = page.getViewport({ scale: width / page.getViewport({ scale: 1 }).width });
@@ -133,6 +135,13 @@ async function linksOf(annotations: Annotation[], viewport: PageViewport, pageOf
 }
 
 /** Finds the page index a link's destination (named or explicit) points at, asking pdf.js once for the names. */
+/** The top level of the outline, with the page each entry opens; entries that lead nowhere are left out. */
+async function outlineOf(doc: PDFDocumentProxy, pageOf: (dest: string | unknown[]) => Promise<number | null>): Promise<OutlineEntry[]> {
+  const items = (await doc.getOutline().catch(() => null)) ?? [];
+  const entries = await Promise.all(items.map(async (it) => ({ title: it.title, page: it.dest ? await pageOf(it.dest) : null })));
+  return entries.filter((e): e is OutlineEntry => e.page !== null);
+}
+
 function destinations(doc: PDFDocumentProxy): (dest: string | unknown[]) => Promise<number | null> {
   let named: Promise<Map<string, unknown[]>> | null = null;
   return async (dest) => {

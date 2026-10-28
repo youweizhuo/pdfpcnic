@@ -73,26 +73,30 @@
 
       <aside class="side">
         <div id="next"></div>
-        <section class="time">
-          <div class="clock">
-            <button id="timer" class="timer idle" type="button" title="Click to pause or resume (p)">0:00:00</button>
-            <button id="timer-toggle" class="ctl cta" type="button">Start <kbd>s</kbd></button>
-            <span id="pace-all-text" class="pace-num"></span>
-          </div>
-          <div
-            id="talkbar"
-            class="talkbar"
-            title="The slides as planned, this one yellow. The line under them: time spent, colored like the early/late by the clock, then paler to where the talk would end. Red line: the target end. Over it, its time; under it, where the talk would end: on the clock, or as times of day. Click to switch."
-          ></div>
-        </section>
+        <!-- The whole talk, along the next slide's foot as this slide's line is along the current one's. -->
+        <div
+          id="talkbar"
+          class="talkbar"
+          title="The whole talk: time spent, colored by the pace, then paler to where the talk would end; this slide's planned part in yellow; the target end in red, and under it where the talk would end. Click for times of day."
+        ></div>
+        <!-- Level with black, freeze and the laser, and the clock with the notes' first line, as the columns start. -->
+        <nav class="toolbar timer-controls">
+          <button id="timer-toggle" class="ctl cta" type="button">Start <kbd>s</kbd></button>
+          <button id="timer-reset" class="ctl" type="button" disabled>Reset <kbd>⇧R</kbd></button>
+        </nav>
+        <div class="clock">
+          <button id="timer" class="timer idle" type="button" title="Click to pause or resume (p)">0:00:00</button>
+          <span id="finish" class="finish"></span>
+        </div>
+        <!-- The next slide's notes, in grey: how it starts, as much as fits. -->
+        <article id="next-notes" class="notes next-notes"><div id="next-notes-body" class="notes-body"></div></article>
         <p id="screen-status" class="hintline"></p>
         <!-- The audience's next step, until the talk starts. -->
         <p id="audience-status" class="hintline guide"></p>
-        <!-- The clock's reset and both windows' fullscreen, each lit while on; the audience's last, so its
-             changing label moves nothing. Then the rest. -->
+        <!-- Both windows' fullscreen, each lit while on; the audience's last, so its changing label moves
+             nothing. Then the rest. -->
         <nav class="toolbar foot">
           <div>
-            <button id="timer-reset" class="ctl" type="button" disabled>Reset <kbd>⇧R</kbd></button>
             <button type="button" id="presenter-button" class="ctl" data-action="fullscreen">Presenter fullscreen <kbd>w</kbd></button>
             <button type="button" id="audience-button" class="ctl cta" data-action="openAudience">Open audience window <kbd>o</kbd></button>
           </div>
@@ -105,8 +109,7 @@
         </nav>
       </aside>
 
-      <!-- The thumbnails, in over the page while the mouse is at the right edge or over them. -->
-      <div id="strip-edge" class="strip-edge"></div>
+      <!-- The thumbnails, in over the page while the mouse rests at the right edge or is over them. -->
       <ol id="strip" class="strip"></ol>
     </main>
 
@@ -139,7 +142,7 @@
             </div>
             <div>
               <dt><i class="sw this"></i><i class="sw next"></i></dt>
-              <dd>The bar: the slides as planned, this one yellow. The line under it is time spent, then paler to where the talk would end if you moved on now, colored like the early/late by the clock:</dd>
+              <dd>The line under the next slide is the whole talk: time spent, then paler to where the talk would end if you moved on now, this slide's planned part in yellow over it. It's colored by the pace, as is the time at the clock's right, where the talk would end:</dd>
               <dt><i class="sw on"></i></dt>
               <dd>on time, or a little early;</dd>
               <dt><i class="sw late"></i><i class="sw serious"></i><i class="sw severe"></i></dt>
@@ -149,7 +152,7 @@
             </div>
             <div>
               <dt><i class="sw target"></i></dt>
-              <dd>Red line: the target end, <code>duration</code>, else where the plan ends. Over it, its time; under it, where the talk would end: on the clock, or as times of day (click the bar to switch).</dd>
+              <dd>Red line: the target end, <code>duration</code>, else where the plan ends. Under it, where the talk would end. Click the line for the clocks as times of day.</dd>
             </div>
           </dl>
         </section>
@@ -179,8 +182,8 @@
           <kbd>+ −</kbd>
         </label>
         <div class="setting">
-          <span>Times on the bar</span>
-          <div id="set-times" class="switch" title="Or click the bar">
+          <span>Clocks</span>
+          <div id="set-times" class="switch" title="Or click the line under the next slide">
             <button type="button" data-times="clock">clock</button>
             <button type="button" data-times="day">time of day</button>
           </div>

@@ -5,12 +5,6 @@
 const NAME = "spoken";
 const supported = typeof CSS !== "undefined" && "highlights" in CSS;
 
-/** A paragraph that opens with *ref* is a reference, not spoken (TokenSlides' convention). */
-function isRef(block: Element): boolean {
-  const first = [...block.childNodes].find((n) => n.nodeType !== Node.TEXT_NODE || n.textContent!.trim());
-  return first instanceof HTMLElement && first.tagName === "EM" && first.textContent!.trim().toLowerCase() === "ref";
-}
-
 /** Characters that count: everything but whitespace. */
 const counted = (text: string) => text.replace(/\s/g, "").length;
 
@@ -27,9 +21,9 @@ export class Spoken {
   total = 0;
   private shown = -1;
 
-  /** Indexes the spoken text of a freshly rendered note. */
+  /** Indexes the spoken text of a freshly rendered note: all but its references. */
   index(root: HTMLElement): void {
-    const refs = [...root.querySelectorAll("p, li")].filter(isRef);
+    const refs = [...root.querySelectorAll(".ref")];
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     this.nodes = [];
     this.total = 0;

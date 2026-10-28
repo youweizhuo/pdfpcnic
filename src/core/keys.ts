@@ -42,6 +42,7 @@ export type ViewAction =
   | "openAudience"
   | "slideSmaller"
   | "slideBigger"
+  | "resetLayout"
   | "settings";
 
 export type Action = TalkAction | ViewAction;
@@ -101,6 +102,7 @@ const BINDINGS: Record<string, Action> = {
   o: "openAudience",
   "[": "slideSmaller",
   "]": "slideBigger",
+  "0": "resetLayout",
   ",": "settings",
 };
 
@@ -126,6 +128,7 @@ export function actionFor(e: KeyPress): Action | null {
 export const HELP_TOP: Array<[string, string, mouse?: true]> = [
   ["+ / −", "notes text size; the laser dot's while the laser is on"],
   ["[ / ]", "current slide smaller / bigger, for more room for notes"],
+  ["0", "the layout as at first: equal columns, the current slide full size"],
   ["Esc", "one step back: closes help and overview, ends black, freeze and laser, then leaves presenter fullscreen"],
   ["Drag a divider", "resize the columns, or the slide against its notes", true],
   ["Mouse to the right edge", "the thumbnails, to jump to a slide", true],

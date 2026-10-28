@@ -3,6 +3,32 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.2.7 (2026-10-28)
+
+### Added
+
+- **Sections from the PDF's outline** (its bookmarks, as Beamer and Typst write them) divide the thumbnails and the
+  overview, each by its name. An outline that names nearly every slide, rather than grouping them, is left out.
+- **The next slide's notes, in grey**, under the clock: how it starts, as much as fits, fading where it's cut.
+  Nothing shows when they're the current slide's again, as on a reveal step.
+- **`0` puts the layout back as at first**: equal columns, the current slide full size.
+
+### Changed
+
+- **The two columns mirror each other** as they start: the talk's line along the next slide's foot as this slide's
+  is along the current one's, Start or Pause and Reset level with Black, Freeze and Laser, and the clock level with
+  the notes' first line. Both lines are half again as thick.
+- **The talk's line** shows this slide's planned part in see-through yellow over time spent, instead of a row of
+  slide blocks, and under its red line where the talk would end, not bold; the target's own time is gone.
+- **The clock's row:** the clock, and at its right where the talk would end, as large, colored by the pace; hover
+  over it for how early or late. The early or late words are gone.
+- **Times of day for all the clocks:** clicking the talk's line (or Settings) turns the clock to the time of day, and
+  where the talk would end with it.
+- **`ref` paragraphs show in grey.**
+- **Thumbnails:** wider and sharper, and they come in once the mouse rests within 40 px of the right edge (was 24),
+  watched from the mouse's position, so nothing there takes the clicks.
+- Less room above the slides, and between the slide's buttons and the notes.
+
 ## 1.2.6 (2026-10-28)
 
 ### Changed

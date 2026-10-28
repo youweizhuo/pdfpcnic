@@ -79,7 +79,7 @@ export async function start(platform: Platform): Promise<void> {
       }
     }
     const pdf = await platform.openPdf(source.pdf.data);
-    const deck = buildDeck(source.pdf.name, pdf.pages, meta);
+    const deck = buildDeck(source.pdf.name, pdf.pages, meta, pdf.outline);
     if (source.pdfpc && stem(source.pdfpc.name) !== stem(source.pdf.name)) {
       notices.push(`Note: ${source.pdfpc.name} and ${source.pdf.name} have different names. Check that they belong together.`);
     }

@@ -25,6 +25,18 @@ export interface PageInfo {
   links: Link[];
 }
 
+/** An entry at the top of the PDF's outline (its bookmarks): its title and the page it opens. */
+export interface OutlineEntry {
+  title: string;
+  page: number;
+}
+
+/** A section of the talk, from the PDF's outline: its title and the slide it starts on. */
+export interface Section {
+  title: string;
+  slide: number;
+}
+
 export interface Page {
   index: number;
   /** PDF page label, or the page number when the PDF has none. */
@@ -59,11 +71,13 @@ export interface Deck {
   endTime?: string;
   markdown: boolean;
   noteFontSize?: number;
+  /** Sections from the PDF's outline, in order; none when it only names slides. */
+  sections: Section[];
   warnings: string[];
 }
 
-/** Puts a PDF's pages and its `.pdfpc` file together into slides, as pdfpc does. */
-export function buildDeck(name: string, info: PageInfo[], meta: PdfpcFile | null): Deck {
+/** Puts a PDF's pages, its outline and its `.pdfpc` file together into slides, as pdfpc does. */
+export function buildDeck(name: string, info: PageInfo[], meta: PdfpcFile | null, outline: OutlineEntry[] = []): Deck {
   const n = info.length;
   const label = (i: number) => info[i].label || String(i + 1);
 
@@ -130,8 +144,25 @@ export function buildDeck(name: string, info: PageInfo[], meta: PdfpcFile | null
     endTime: meta?.endTime,
     markdown: !meta?.disableMarkdown,
     noteFontSize: meta?.noteFontSize,
+    sections: sectionsOf(outline, pages, slides.length),
     warnings,
   };
+}
+
+/**
+ * The outline's top level as sections, each starting at the slide its page
+ * is on. An outline with an entry for every other slide or more names slides
+ * rather than grouping them, as the demo's titles do: no sections.
+ */
+export function sectionsOf(outline: OutlineEntry[], pages: Page[], slides: number): Section[] {
+  if (outline.length * 2 > slides) return [];
+  const sections: Section[] = [];
+  for (const { title, page } of outline) {
+    const slide = pages[page]?.slide;
+    if (slide === undefined || !title.trim() || slide <= (sections.at(-1)?.slide ?? -1)) continue;
+    sections.push({ title: title.trim(), slide });
+  }
+  return sections;
 }
 
 /** Finds the page a .pdfpc entry describes, as pdfpc does: by index if the label agrees, else by label. */

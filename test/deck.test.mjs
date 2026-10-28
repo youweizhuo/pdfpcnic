@@ -54,3 +54,25 @@ test("the end and bookmarked slides stay inside the deck", () => {
   assert.equal(d.endSlide, 2);
   assert.equal(d.savedSlide, 1);
 });
+
+test("the outline's top level makes sections, each from the slide its page is on", () => {
+  // Pages 2 and 3 are one slide's reveal steps; the second section opens on its second step.
+  const d = deck(["1", "2", "2", "3", "4", "5"], {
+    outline: [
+      { title: "1. Intro", page: 1 },
+      { title: "2. Method ", page: 2 },
+    ],
+  });
+  assert.deepEqual(d.sections, [{ title: "1. Intro", slide: 1 }]);
+  const e = deck(["1", "2", "3", "4", "5", "6"], { outline: [{ title: "Intro", page: 1 }, { title: "Results", page: 4 }] });
+  assert.deepEqual(e.sections, [
+    { title: "Intro", slide: 1 },
+    { title: "Results", slide: 4 },
+  ]);
+});
+
+test("an outline that names most slides isn't sections, nor is one without titles or pages", () => {
+  assert.deepEqual(deck(["1", "2", "3", "4"], { outline: [1, 2, 3].map((page) => ({ title: `Slide ${page}`, page })) }).sections, []);
+  assert.deepEqual(deck(["1", "2", "3", "4", "5", "6"], { outline: [{ title: " ", page: 1 }, { title: "Late", page: 9 }] }).sections, []);
+  assert.deepEqual(deck(["1", "2"]).sections, []);
+});

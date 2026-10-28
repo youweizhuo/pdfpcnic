@@ -11,8 +11,8 @@ anywhere.
 It's a pdfpc-style presenter for PDF slides that runs in the browser. Use it from the website, carry it as **one HTML
 file** for machines with no network, host it yourself, or install the **Mac app**. Its layout follows
 [Présentation.app](https://iihm.imag.fr/blanch/software/osx-presentation/): black and frameless, with the current
-slide and its notes on the left, the next slide beside them, and the thumbnails a mouse move away at the right edge.
-All the time sits under the next slide: the clock and one bar for the whole talk.
+slide and its notes on the left, the next slide and its notes, in grey, beside them, and the thumbnails a mouse move
+away at the right edge. All the time sits under the next slide: one line for the whole talk, and the clock.
 
 **Open it:** <https://youweizhuo.github.io/pdfpcnic/> · **Offline copy:** `pdfpcnic.html` from the
 [latest release](https://github.com/youweizhuo/pdfpcnic/releases/latest) · **Mac app:** `pdfpcnic-mac.zip`, same place
@@ -36,7 +36,7 @@ All the time sits under the next slide: the clock and one bar for the whole talk
    shows on the page, with its slides and length: press **Present** (or `Enter`).
 2. Present opens the presenter and, in the same click, the audience window; press `Shift+W` to make it fullscreen.
    One button at a time has a yellow outline, the next thing to press: the audience's, at the foot of the right
-   column, first, then **Start** by the clock. Filled yellow means on: black, freeze, the laser, fullscreen.
+   column, first, then **Start** over the clock. Filled yellow means on: black, freeze, the laser, fullscreen.
    - **If the browser blocked the window** (pop-ups blocked for the page): allow them, then press `o`. If you close
      the audience window, `o` brings it back too.
    - **Chrome and Edge** ask once to manage windows. Allow it, and `Shift+W` puts the audience fullscreen on another
@@ -115,6 +115,7 @@ The same keys as pdfpc, plus `o` for the audience window. Press `?` (or **Help**
 | `,` | settings: current slide, notes and laser sizes; pace colors |
 | `+` / `-` | notes text size |
 | `[` / `]` | current slide smaller / bigger, trading room with the notes |
+| `0` | the layout as at first: equal columns, the current slide full size |
 | `w` / `Shift+W` | presenter / audience fullscreen |
 
 ## pdfpc support
@@ -147,10 +148,10 @@ the `.pdfpc` file.
 
 ## Pace
 
-The clock counts up from zero, as in Présentation.app. It never changes color; the pace bars
-under it do that job. Beside it, **Start**, then **Pause** and **Resume**. **Reset** sits at the foot of the column,
-away from them, and is outlined in yellow while the clock is paused: if you looked through the slides before the
-talk, the clock has been running, so reset it before you start (back on slide 1, Reset is outlined to remind you). While
+The clock counts up from zero, as in Présentation.app. It never changes color; the talk's line over it does that
+job. Over it, **Start**, then **Pause** and **Resume**, and **Reset**, which is outlined in yellow while the clock
+is paused: if you looked through the slides before the talk, the clock has been running, so reset it before you
+start (back on slide 1, Reset is outlined to remind you). While
 it runs, Reset takes a second click, and the reset keys work only while paused, so a stray click or key can't zero
 the clock mid-talk. After a reset the clock starts again at your next move.
 
@@ -169,28 +170,29 @@ these lines from the speaker notes, and marks the slides after `#show: appendix`
 Along the foot of the current slide, a line fills as you spend its planned time, then turns the late colors. A
 slide keeps its time over your visits: come back to it and the line goes on where it stopped. The notes dim along
 with it, a character at a time, like a typewriter, so the dimmed part is roughly what you'd have said by now
-(paragraphs that open with *ref* don't count).
+(paragraphs that open with *ref* don't count; they show in grey, as references not to read out).
 
-Next to the clock, the whole talk:
+Under the next slide, the whole talk, laid out as the current slide's own line and level with it:
 
-- **Early or late**: where the talk would end if you moved on right now, with the slides after this one as planned,
-  against the target end (`duration` or `endTime`, else where the plan ends). Reach a two-minute slide on time and it
-  starts at "2:00 early", says nothing once you're within the minute of slack (on time needs no words), and turns
-  late if you stay on. A backup slide
-  isn't on the plan, so there it counts from the last planned slide you were on: a detour shows as late.
-- **The bar** is fixed, with a red line at the target end and some room past it: the slides as planned, this one in
-  yellow, and right under them a thin line of time spent, colored like the early or late beside the clock. The line
-  goes on, paler, to where the talk would end, so you see how far it is from the red line. Over the red line is its
-  time on the clock (`10:00`), and under it, where the talk would end on the clock. Click the bar to see both as
-  times of day instead (also in **Settings**): the target end stays fixed from when the talk started, and a pause
-  moves where it would end later.
+- **The talk's line** is fixed, with a red line at the target end (`duration` or `endTime`, else where the plan
+  ends) and some room past it. Time spent runs along it in the color of the pace, then on, paler, to where the talk
+  would end if you moved on right now, with the slides after this one as planned; this slide's planned part is
+  see-through yellow over it. Under the red line, where the talk would end.
+- **Early or late**, by that same end: it shows as the line's color and as the time at the clock's right, where the
+  talk would end. Reach a two-minute slide on time and it's early; within the minute of slack it's on time; stay on
+  and it turns late. Hover over the time for how early or late, in words. A backup slide isn't on the plan, so
+  there it counts from the last planned slide you were on: a detour shows as late.
+- **Click the line** for the clocks as times of day (also in **Settings**): the clock shows the time, and where the
+  talk would end runs on from now, so a pause moves it later.
 
 Late always shows: orange, deep orange from 1 minute (serious) and red from 2 minutes (very serious). Early shows, in
 blue, only past 1 minute. **Settings** (`,`) changes the three levels, in time or as shares of the talk, and how much the notes dim.
 
 Drag the handle between the current slide and its notes to trade one for the other, and the line between the columns
-to resize them. Rest the mouse at the window's right edge and the thumbnails come in over the page, to jump to a
-slide; they go once the mouse leaves them. **Overview** (`Tab`) shows every slide at once.
+to resize them; `0` puts both back. Rest the mouse at the window's right edge and the thumbnails come in over the
+page, to jump to a slide; they go once the mouse leaves them. **Overview** (`Tab`) shows every slide at once. If the
+PDF's outline (its bookmarks) groups the slides into sections, as Beamer's and Typst's do, both show where each
+section starts.
 
 Without timing lines, the talk's length is split evenly over the slides (pdfpc's even pace). **Help** (`?`) has a key
 to the colors.

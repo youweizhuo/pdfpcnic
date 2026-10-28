@@ -3,7 +3,7 @@
 // same with its own windows and PDF engine. The rest is the same everywhere:
 // the talk (src/core/) and the presenter page (src/ui/).
 
-import type { Deck, LinkTarget, PageInfo } from "./core/deck.ts";
+import type { Deck, LinkTarget, OutlineEntry, PageInfo } from "./core/deck.ts";
 import type { AudienceStatus } from "./core/guide.ts";
 import type { Point, SavedSession } from "./core/talk.ts";
 import type { PageCache } from "./ui/page-cache.ts";
@@ -26,6 +26,8 @@ export interface Platform {
 export interface Pdf {
   /** What each page holds: its size, label, note annotations and links. */
   readonly pages: PageInfo[];
+  /** The top level of the PDF's outline (its bookmarks), in order. */
+  readonly outline: OutlineEntry[];
   /** A picture of a page, `width` device pixels wide. One at a time. */
   draw(page: number, width: number): Promise<ImageBitmap>;
   close(): Promise<void>;

@@ -54,6 +54,8 @@ export class Presenter {
   private stopTicking = () => {};
   private saveTimer = 0;
   private notesPage = -1;
+  /** The next slide's notes, as last shown. */
+  private nextNote: string | null = null;
   private stripSlide = -1;
   private spoken = new Spoken();
 
@@ -77,6 +79,7 @@ export class Presenter {
     this.current = new SlideView($("current"), deck, this.cache, 1, { follow: this.follow, marked: true });
     this.current.onLayout = () => this.fitSlidebar();
     this.next = new SlideView($("next"), deck, this.cache, 2, { align: "start" });
+    this.next.onLayout = () => this.fitLine($("talkbar"), this.next.canvas);
     this.cache.onRender((page) => this.thumbs.get(page)?.forEach((t) => t.draw()));
     audience.bind(deck, pdf, this.cache);
 
@@ -161,6 +164,10 @@ export class Presenter {
         return;
       case "settings":
         return this.settings.open();
+      case "resetLayout":
+        this.settings.resetLayout();
+        toast("Equal columns, and the current slide at full size.", 1500);
+        return;
     }
   }
 
@@ -231,16 +238,28 @@ export class Presenter {
     cur.addEventListener("wheel", wheelStepper((d) => this.act(d > 0 ? "next" : "prev")), { signal, passive: true });
     $("next").addEventListener("click", () => this.act("nextSlide"), { signal });
     $("talkbar").addEventListener("click", () => this.settings.setTimeOfDay(!this.settings.timeOfDay), { signal });
-    // The thumbnails come in once the mouse rests at the right edge, and go once it has left them.
+    // The thumbnails come in once the mouse rests within 40 px of the right
+    // edge, and go once it has left them. Watched from the mouse's position, so
+    // nothing over the edge takes the clicks meant for what's under it.
     const strip = $("strip");
     let stripTimer = 0;
     const stripLater = (open: boolean) => {
       clearTimeout(stripTimer);
-      stripTimer = window.setTimeout(() => strip.classList.toggle("open", open), 300);
+      stripTimer = window.setTimeout(() => ((stripTimer = 0), strip.classList.toggle("open", open)), 300);
     };
-    $("strip-edge").addEventListener("mouseenter", () => stripLater(true), { signal });
-    $("strip-edge").addEventListener("mouseleave", () => strip.classList.contains("open") || clearTimeout(stripTimer), { signal });
-    strip.addEventListener("mouseenter", () => clearTimeout(stripTimer), { signal });
+    const stay = () => (clearTimeout(stripTimer), (stripTimer = 0));
+    window.addEventListener(
+      "mousemove",
+      (e) => {
+        if (strip.classList.contains("open")) return;
+        if (e.clientX < innerWidth - 40) stay();
+        else if (!stripTimer) stripLater(true);
+      },
+      { signal },
+    );
+    // Out of the window, to the projector's screen say.
+    document.addEventListener("mouseout", (e) => e.relatedTarget || strip.classList.contains("open") || stay(), { signal });
+    strip.addEventListener("mouseenter", stay, { signal });
     strip.addEventListener("mouseleave", () => stripLater(false), { signal });
     $("timer").addEventListener("click", () => this.act("timerPause"), { signal });
     const toggle = $("timer-toggle");
@@ -320,6 +339,12 @@ export class Presenter {
       $("notes").scrollTop = 0;
       this.spoken.index(body);
     }
+    // Under the next slide, its notes: nothing when they're this slide's again, a reveal step's say.
+    const nextNote = next === null || d.pages[next].note === here.note ? "" : d.pages[next].note;
+    if (this.nextNote !== nextNote) {
+      this.nextNote = nextNote;
+      renderNote($("next-notes-body"), nextNote, d.markdown);
+    }
 
     if (this.stripSlide !== here.slide) {
       this.stripItems[this.stripSlide]?.classList.remove("current");
@@ -328,7 +353,6 @@ export class Presenter {
       item?.classList.add("current");
       item?.scrollIntoView({ block: "center", behavior: "smooth" });
     }
-    for (const [slide, seg] of this.segs) seg.classList.toggle("current", slide === here.slide);
 
     // When the audience isn't seeing your current slide, say so over it, and
     // mark in the strip the slide it is frozen on.
@@ -438,7 +462,7 @@ export class Presenter {
   private renderClock(now: number): void {
     const t = this.talk.state.timer;
     const timer = $("timer");
-    timer.textContent = T.format(T.elapsed(t, now));
+    timer.textContent = this.settings.timeOfDay ? T.formatClock(now) : T.format(T.elapsed(t, now));
     timer.classList.toggle("idle", t.startedAt === null || t.pausedAt !== null);
     const stale = this.talk.stale;
     if (stale && !this.stale) toast("The clock has already started. Starting the talk now? Reset it first.", 8000);
@@ -468,22 +492,12 @@ export class Presenter {
     label(reset, this.resetArmed ? "Click again to reset" : "Reset", "⇧R");
   }
 
-  /** The talk bar's blocks, by slide. */
-  private segs = new Map<number, HTMLElement>();
+  /** The talk bar's scale, as last laid out. */
   private barScale = 0;
 
-  /** The talk bar: one block per slide with a planned window. */
+  /** The talk bar's parts, back to front. */
   private buildTalkbar(): void {
-    this.segs = new Map(this.talk.onBar.map((slide) => [slide, el("div", "seg")]));
-    $("talkbar").replaceChildren(
-      el("div", "past"),
-      ...this.segs.values(),
-      el("div", "projected"),
-      el("div", "spent"),
-      el("div", "target"),
-      el("span", "target-at"),
-      el("span", "finish-at"),
-    );
+    $("talkbar").replaceChildren(el("div", "past"), el("div", "projected"), el("div", "spent"), el("div", "window"), el("div", "target"), el("span", "finish-at"));
     this.barScale = 0;
   }
 
@@ -513,23 +527,29 @@ export class Presenter {
   /** How soon to look again: when the line is due to move a pixel or the notes a character, at most 25 times a second; 4 times otherwise. */
   private beatMs = 250;
 
-  /** Lays this slide's line exactly along the slide's foot: the slide is drawn in whole pixels, its box isn't. */
-  private fitSlidebar(): void {
-    const c = this.current.canvas.getBoundingClientRect();
-    const bar = $("pace-slide");
-    if (!c.width || bar.hidden) return;
+  /** Lays a line exactly along a slide's foot, as wide: the slide is drawn in whole pixels, its box isn't. Returns its width. */
+  private fitLine(bar: HTMLElement, canvas: HTMLCanvasElement): number {
+    const c = canvas.getBoundingClientRect();
+    if (!c.width || bar.hidden) return 0;
     bar.style.width = `${c.width}px`;
-    this.fillPixels = c.width * devicePixelRatio;
-    this.fillAt = -1;
     bar.style.left = bar.style.top = "0px";
     const b = bar.getBoundingClientRect();
     bar.style.left = `${c.left - b.left}px`;
     bar.style.top = `${c.bottom - b.top}px`;
+    return c.width;
+  }
+
+  /** This slide's line, along the current slide's foot. */
+  private fitSlidebar(): void {
+    const width = this.fitLine($("pace-slide"), this.current.canvas);
+    if (!width) return;
+    this.fillPixels = width * devicePixelRatio;
+    this.fillAt = -1;
   }
 
   private renderPace(now: number): void {
     const p = this.talk.progress(now, this.settings.slack);
-    for (const id of ["pace-slide", "pace-all-text", "talkbar"]) $(id).hidden = !p.planned;
+    for (const id of ["pace-slide", "finish", "talkbar"]) $(id).hidden = !p.planned;
     if (!p.planned) {
       this.beatMs = 250;
       return;
@@ -551,28 +571,14 @@ export class Presenter {
     const moving = budget !== null && this.talk.state.timer.pausedAt === null && (this.talk.used(now) ?? 1) < 1;
     this.beatMs = moving ? Math.min(250, Math.max(40, (budget * 1000) / Math.max(1, this.fillPixels, this.spoken.total))) : 250;
 
-    // All slides: a little early is simply on time here, and on time needs no words.
-    const all = $("pace-all-text");
-    all.textContent = p.late > 0 ? `${span(p.late)} late` : p.tone === "early" ? `${span(p.late)} early` : "";
-    all.className = `pace-num t-${p.tone}`;
-    all.title = `Where the talk ends at this pace. Planned to end at ${mark(p.planned)}; target ${mark(p.target)}`;
-
-    // The bar, with a red line at the target end. Time spent runs under it,
-    // colored like "All slides", and goes on lighter to where the talk would end.
+    // The whole talk: a red line at the target end, time spent colored by the
+    // pace and going on lighter to where the talk would end, this slide's
+    // planned part over them.
     const bar = $("talkbar");
     const x = (t: number) => `${((Math.min(Math.max(t, 0), p.scale) / p.scale) * 100).toFixed(3)}%`;
     if (p.scale !== this.barScale) {
       this.barScale = p.scale;
-      for (const { slide, start, end } of p.segments) {
-        const seg = this.segs.get(slide);
-        if (!seg) continue;
-        seg.style.left = x(start);
-        seg.style.width = `calc(${x(end)} - ${x(start)})`;
-      }
-      bar.querySelector<HTMLElement>(".target")!.style.left = x(p.target);
-      bar.querySelector<HTMLElement>(".past")!.style.left = x(p.target);
-      bar.querySelector<HTMLElement>(".target-at")!.style.left = x(p.target);
-      bar.querySelector<HTMLElement>(".finish-at")!.style.left = x(p.target);
+      for (const part of [".target", ".past", ".finish-at"]) bar.querySelector<HTMLElement>(part)!.style.left = x(p.target);
     }
     const tone = `t-${p.started ? p.tone : "on"}`;
     const spent = bar.querySelector<HTMLElement>(".spent")!;
@@ -581,26 +587,35 @@ export class Presenter {
     const projected = bar.querySelector<HTMLElement>(".projected")!;
     projected.style.width = x(p.finish);
     projected.className = `projected ${tone}`;
-    // At the red line, which doesn't move: the target end over it, where the talk would end under it.
-    const [target, end] = this.ends(p, now);
-    bar.querySelector(".target-at")!.textContent = target;
-    const finish = bar.querySelector<HTMLElement>(".finish-at")!;
+    const mine = p.segments.find((s) => s.slide === this.talk.slide);
+    const slot = bar.querySelector<HTMLElement>(".window")!;
+    slot.hidden = !mine;
+    if (mine) {
+      slot.style.left = x(mine.start);
+      slot.style.width = `calc(${x(mine.end)} - ${x(mine.start)})`;
+    }
+    // Where the talk would end: under the red line, which doesn't move, and at the clock's right.
+    const end = this.end(p, now);
+    const at = bar.querySelector<HTMLElement>(".finish-at")!;
+    at.textContent = end;
+    at.className = `finish-at ${tone}`;
+    const finish = $("finish");
     finish.textContent = end;
-    finish.className = `finish-at ${tone}`;
+    finish.className = `finish ${tone}`;
+    // A little early is simply on time.
+    const pace = p.late > 0 ? `${span(p.late)} late` : p.tone === "early" ? `${span(p.late)} early` : "on time";
+    finish.title = `Where the talk would end at this pace: ${pace}. Planned to end at ${mark(p.planned)}; target ${mark(p.target)}.`;
   }
 
   /**
-   * The bar's two ends, on the clock, or as times of day. As times of day, the
-   * target end is fixed from the talk's start; where the talk would end runs on
-   * from now, so a pause moves it later.
+   * Where the talk would end, on the clock, or as a time of day. As a time of
+   * day it runs on from now, so a pause moves it later.
    */
-  private ends(p: Progress, now: number): [string, string] {
-    if (!this.settings.timeOfDay) return [T.formatShort(p.target * 1000), T.formatShort(p.finish * 1000)];
+  private end(p: Progress, now: number): string {
+    if (!this.settings.timeOfDay) return T.formatShort(p.finish * 1000);
     const started = this.talk.state.timer.startedAt;
     // Before the clock starts: from the talk's start time if it has one ahead, else from now.
-    const start = started ?? now + T.untilStart(this.deck, now);
-    const finish = started === null ? start + p.finish * 1000 : now + (p.finish - p.at) * 1000;
-    return [T.formatClock(start + p.target * 1000), T.formatClock(finish)];
+    return T.formatClock(started === null ? now + T.untilStart(this.deck, now) + p.finish * 1000 : now + (p.finish - p.at) * 1000);
   }
 
   // Strip and overview
@@ -625,6 +640,22 @@ export class Presenter {
     this.observers.set(root, io);
   }
 
+  /**
+   * Lists the slides, as the strip and the overview show them: each from
+   * `item`, with a divider where a section of the PDF's outline starts and
+   * where the backup slides do.
+   */
+  private listSlides(list: HTMLElement, item: (slide: number) => HTMLElement): void {
+    const sections = new Map(this.deck.sections.map((s) => [s.slide, s.title]));
+    list.replaceChildren();
+    this.deck.slides.forEach((_, slide) => {
+      if (slide === this.talk.state.endSlide + 1) list.append(el("li", "divider", "Backup"));
+      const section = sections.get(slide);
+      if (section) list.append(el("li", "divider section", section));
+      list.append(item(slide));
+    });
+  }
+
   private buildStrip(): void {
     const t = this.talk;
     const strip = $("strip");
@@ -632,17 +663,15 @@ export class Presenter {
     const items: Array<[HTMLElement, Thumb]> = [];
     this.stripItems = [];
     this.stripSlide = -1;
-    strip.replaceChildren();
-    this.deck.slides.forEach((_, slide) => {
-      if (slide === t.state.endSlide + 1) strip.append(el("li", "divider", "Backup"));
+    this.listSlides(strip, (slide) => {
       const li = el("li");
       li.classList.toggle("hidden", !t.slideVisible(slide));
       const thumb = this.thumb(t.lastOf(slide));
       li.append(el("span", "num", String(slide + 1)), thumb.canvas);
       li.addEventListener("click", () => this.go(t.firstOf(slide)));
-      strip.append(li);
       this.stripItems[slide] = li;
       items.push([li, thumb]);
+      return li;
     });
     this.lazy(strip, items);
   }
@@ -662,9 +691,8 @@ export class Presenter {
     const grid = $("overview-grid");
     const items: Array<[HTMLElement, Thumb]> = [];
     this.overviewItems = [];
-    grid.replaceChildren();
-    this.deck.slides.forEach((pages, slide) => {
-      if (slide === t.state.endSlide + 1) grid.append(el("li", "divider", "Backup"));
+    this.listSlides(grid, (slide) => {
+      const pages = this.deck.slides[slide];
       const li = el("li");
       li.classList.toggle("hidden", !t.slideVisible(slide));
       li.classList.toggle("current", slide === t.slide);
@@ -676,9 +704,9 @@ export class Presenter {
       );
       li.append(thumb.canvas, cap);
       li.addEventListener("click", () => this.pick(slide));
-      grid.append(li);
       this.overviewItems[slide] = li;
       items.push([li, thumb]);
+      return li;
     });
     this.lazy($("overview"), items);
     this.select(this.view.selected);

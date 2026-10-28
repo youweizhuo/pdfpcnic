@@ -69,11 +69,13 @@
           <div
             id="talkbar"
             class="talkbar"
-            title="The slides as planned, this one yellow. The line under them: time spent, colored like the early/late by the clock, then paler to where the talk would end. Red line: the target end."
+            title="The slides as planned, this one yellow. The line under them: time spent, colored like the early/late by the clock, then paler to where the talk would end. Red line: the target end. Over it, its time; under it, where the talk would end: on the clock, or as times of day. Click to switch."
           ></div>
         </section>
-        <div class="audience-bar">
+        <!-- Both windows' fullscreen, together; each lit while on. -->
+        <div class="screens">
           <button type="button" id="audience-button" class="ctl cta" data-action="openAudience">Open audience window <kbd>o</kbd></button>
+          <button type="button" id="presenter-button" class="ctl" data-action="fullscreen">Presenter fullscreen <kbd>w</kbd></button>
           <p id="audience-status" class="hintline"></p>
         </div>
         <p id="screen-status" class="hintline"></p>
@@ -82,11 +84,9 @@
           <button type="button" data-action="freeze">Freeze <kbd>f</kbd></button>
           <button type="button" data-action="laserMode">Laser <kbd>2</kbd></button>
           <button type="button" data-action="overview">Overview <kbd>Tab</kbd></button>
-          <button type="button" data-action="fullscreen">Presenter fullscreen <kbd>w</kbd></button>
           <button type="button" data-action="settings">Settings <kbd>,</kbd></button>
           <button type="button" data-action="help">Help <kbd>?</kbd></button>
           <button type="button" id="open-files">Open…</button>
-          <span id="wallclock" class="wallclock" title="Time of day"></span>
         </nav>
       </aside>
 
@@ -109,14 +109,25 @@
     <section id="help" class="help" hidden>
       <div class="help-card">
         <h2>Help</h2>
-        <div id="help-grid" class="help-grid">
-          <section id="legend" class="legend">
-            <h3>Pace</h3>
-            <dl>
+        <ul id="help-top" class="help-top"></ul>
+        <!-- The rest, for reference: the usual moves, and the keys the buttons show. -->
+        <div id="help-rest" class="help-rest"></div>
+        <section class="legend">
+          <h3>Pace</h3>
+          <dl>
+            <div>
               <dt>Under the slide</dt>
               <dd>A line that fills as you spend this slide's planned time, over all your visits to it, then turns the late colors; once seriously <span class="t-serious">over</span>, it says by how much. A backup slide's runs against its own length.</dd>
+            </div>
+            <div>
               <dt>By the clock</dt>
               <dd>Where the talk would end if you moved on now, the slides after this one as planned, against the target end: early or <span class="t-late">late</span>. On a backup slide, you'd go on from the last planned slide you were on.</dd>
+            </div>
+            <div>
+              <dt>Notes</dt>
+              <dd>What you'd have said by now, at this slide's planned pace, dims character by character; <em>ref</em> paragraphs don't count (set how much in Settings).</dd>
+            </div>
+            <div>
               <dt><i class="sw this"></i><i class="sw next"></i></dt>
               <dd>The bar: the slides as planned, this one yellow. The line under it is time spent, then paler to where the talk would end if you moved on now, colored like the early/late by the clock:</dd>
               <dt><i class="sw on"></i></dt>
@@ -125,14 +136,14 @@
               <dd>late; deeper as it gets serious and very serious (by default 1 and 2 minutes; see Settings);</dd>
               <dt><i class="sw early"></i></dt>
               <dd>well ahead: by default more than a minute early.</dd>
-              <dt>Notes</dt>
-              <dd>What you'd have said by now, at this slide's planned pace, dims character by character; <em>ref</em> paragraphs don't count (set how much in Settings).</dd>
+            </div>
+            <div>
               <dt><i class="sw target"></i></dt>
-              <dd>Red line: the target end, <code>duration</code>, else where the plan ends.</dd>
-            </dl>
-          </section>
-        </div>
-        <p class="help-foot">Same keys as pdfpc. Click or right-click the audience window to step; double-click it for fullscreen.</p>
+              <dd>Red line: the target end, <code>duration</code>, else where the plan ends. Over it, its time; under it, where the talk would end: on the clock, or as times of day (click the bar to switch).</dd>
+            </div>
+          </dl>
+        </section>
+        <p class="help-foot">Same keys as pdfpc. Click a slide to step on, right-click to step back; double-click the audience window for fullscreen. Click the clock to pause.</p>
       </div>
     </section>
 
@@ -157,6 +168,13 @@
           <output for="set-laser"></output>
           <kbd>+ −</kbd>
         </label>
+        <div class="setting">
+          <span>Times on the bar</span>
+          <div id="set-times" class="switch" title="Or click the bar">
+            <button type="button" data-times="clock">clock</button>
+            <button type="button" data-times="day">time of day</button>
+          </div>
+        </div>
         <h3>Pace colors</h3>
         <div class="setting">
           <span>Measure in</span>

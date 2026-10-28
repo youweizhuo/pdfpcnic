@@ -68,6 +68,11 @@ export function format(ms: number): string {
   return `${Math.floor(s / 3600)}:${two(Math.floor(s / 60) % 60)}:${two(s % 60)}`;
 }
 
+/** "M:SS" within the first hour, "H:MM:SS" from then on. */
+export function formatShort(ms: number): string {
+  return Math.abs(ms) < 3_600_000 ? format(ms).slice(2).replace(/^0(?=\d)/, "") : format(ms);
+}
+
 /** Time of day, "HH:MM". */
 export function formatClock(now: number): string {
   const d = new Date(now);

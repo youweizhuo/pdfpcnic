@@ -3,9 +3,10 @@ import WebKit
 
 /// `pdfpcnic --smoke-test deck.pdf deck.pdfpc out/ pdfpcnic-mac.zip`, for CI.
 /// It opens the deck as the Finder would, with the audience window behind the
-/// presenter, steps through it, makes the audience fullscreen, checks that both
-/// windows drew the slide, installs the zip as an update would, reloads to
-/// check the talk resumes, saves screenshots, and quits: status 1 if anything failed.
+/// presenter, steps through it, makes both windows fullscreen, checks that both
+/// drew the slide and what Esc leaves, installs the zip as an update would,
+/// reloads to check the talk resumes, saves screenshots, and quits: status 1 if
+/// anything failed.
 @MainActor
 final class SmokeTest {
     private let files: [URL]
@@ -67,7 +68,7 @@ final class SmokeTest {
             else { throw Failure("it isn't behind the presenter") }
             try await until("the slide in it") { Self.painted(app.audience.view) }
             try await until("the guide's next step") {
-                (try await js("return document.querySelector('#audience-button').textContent") as? String ?? "").hasPrefix("Audience fullscreen on")
+                (try await js("return document.querySelector('#audience-status').textContent") as? String ?? "").hasPrefix("Audience window open; it goes fullscreen on")
             }
         }
         await check("keys step through the slides") {
@@ -77,8 +78,8 @@ final class SmokeTest {
         await check("Shift+W makes the audience fullscreen, and the presenter knows") {
             try await press("W", shift: true)
             try await until("fullscreen") { app.audience.view.isInFullScreenMode }
-            try await until("the status line") {
-                (try await js("return document.querySelector('#audience-status').textContent") as? String ?? "").hasPrefix("Audience fullscreen")
+            try await until("the status line, and its button lit") {
+                try await js("return /^Audience fullscreen/.test(document.querySelector('#audience-status').textContent) && document.querySelector('#audience-button.on') !== null") as? Bool == true
             }
             try await until("the slide, fullscreen") { Self.painted(app.audience.view) }
         }
@@ -92,11 +93,29 @@ final class SmokeTest {
             try Self.save(app.audience.view, to: out.appendingPathComponent("audience.png"))
             try await Self.save(web, to: out.appendingPathComponent("presenter.png"))
         }
-        await check("w makes the presenter fullscreen, and back") {
+        await check("w makes the presenter fullscreen, its button lit, and back") {
             try await press("w")
             try await until("fullscreen") { app.presenter.fullscreen }
+            try await until("its button lit") { try await js("return document.querySelector('#presenter-button.on') !== null") as? Bool == true }
             try await press("w")
             try await until("windowed") { !app.presenter.fullscreen }
+        }
+        await check("Esc steps back, the laser first, then the presenter's fullscreen; never the audience's") {
+            func laser() async throws -> Bool { try await js("return window.pdfpcnic.state.laser") as? Bool ?? false }
+            try await press("w")
+            try await press("2")
+            try await until("fullscreen, with the laser") {
+                let on = try await laser()
+                return on && app.presenter.fullscreen
+            }
+            try await press("Escape")
+            try await until("the laser off") { try await laser() == false }
+            guard app.presenter.fullscreen else { throw Failure("the first Esc left fullscreen") }
+            try await press("Escape")
+            try await until("windowed") { !app.presenter.fullscreen }
+            try await press("Escape")
+            try await Task.sleep(nanoseconds: 300_000_000)
+            guard app.audience.view.isInFullScreenMode else { throw Failure("Esc took the audience out of fullscreen") }
         }
         await check("GitHub says which release is the latest") {
             let latest = try await Updates.latest()

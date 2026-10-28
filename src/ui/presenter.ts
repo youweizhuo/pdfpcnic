@@ -6,7 +6,7 @@ import type { Deck, LinkTarget } from "../core/deck.ts";
 import { audienceReady, audienceStep } from "../core/guide.ts";
 import { actionFor, isTalkAction, type Action } from "../core/keys.ts";
 import { mark, span } from "../core/pace.ts";
-import { Talk, type Point, type SavedSession } from "../core/talk.ts";
+import { Talk, type Point, type Progress, type SavedSession } from "../core/talk.ts";
 import * as T from "../core/timer.ts";
 import type { Audience, Pdf, Platform } from "../platform.ts";
 import { $, el, label, reportError, toast, wheelStepper } from "./dom.ts";
@@ -114,7 +114,7 @@ export class Presenter {
   // Input
 
   act(action: Action): void {
-    if (action === "escape" && this.closeTop()) return;
+    if (action === "escape" && this.escape()) return;
     if (isTalkAction(action)) {
       const said = this.talk.act(action);
       if (said) toast(said);
@@ -164,15 +164,23 @@ export class Presenter {
     }
   }
 
-  /** Esc closes what's over the slides first: the help, the overview, then presenting in this window. */
-  private closeTop(): boolean {
+  /**
+   * Esc steps back one thing at a time, the same in the browser and the app:
+   * what's open over the slides (the help, the overview, presenting in this
+   * window), then what the audience sees instead of the slide (black, freeze,
+   * the laser: the talk ends those), then the presenter's fullscreen. Never the
+   * audience's: the room's screen changes only with Shift+W, or a double-click on it.
+   */
+  private escape(): boolean {
     const v = this.view;
+    const s = this.talk.state;
     if (v.help) {
       v.help = false;
       this.render();
     } else if (v.overview) this.setOverview(false);
     else if (v.solo) this.setSolo(false);
-    else return false;
+    else if (s.black || s.frozen !== null || s.laser || !this.platform.window.fullscreen) return false;
+    else this.platform.window.setFullscreen(false).catch(reportError);
     return true;
   }
 
@@ -222,6 +230,7 @@ export class Presenter {
     );
     cur.addEventListener("wheel", wheelStepper((d) => this.act(d > 0 ? "next" : "prev")), { signal, passive: true });
     $("next").addEventListener("click", () => this.act("nextSlide"), { signal });
+    $("talkbar").addEventListener("click", () => this.settings.setTimeOfDay(!this.settings.timeOfDay), { signal });
     $("timer").addEventListener("click", () => this.act("timerPause"), { signal });
     const toggle = $("timer-toggle");
     toggle.addEventListener(
@@ -343,10 +352,11 @@ export class Presenter {
       blank: s.black,
       freeze: s.frozen !== null,
       overview: this.view.overview,
+      audienceFullscreen: status.mode === "fullscreen",
       fullscreen: this.platform.window.fullscreen,
       help: this.view.help,
     };
-    for (const b of document.querySelectorAll<HTMLElement>(".toolbar [data-action]")) {
+    for (const b of document.querySelectorAll<HTMLElement>("#presenter [data-action]")) {
       b.classList.toggle("on", !!on[b.dataset.action as Action]);
     }
     $("help").hidden = !this.view.help;
@@ -412,13 +422,12 @@ export class Presenter {
     this.renderNotesDim(now);
   }
 
-  /** Présentation.app's clock: time since the start, and the time of day. */
+  /** Présentation.app's clock: time since the start. */
   private renderClock(now: number): void {
     const t = this.talk.state.timer;
     const timer = $("timer");
     timer.textContent = T.format(T.elapsed(t, now));
     timer.classList.toggle("idle", t.startedAt === null || t.pausedAt !== null);
-    $("wallclock").textContent = T.formatClock(now);
     const stale = this.talk.stale;
     if (stale && !this.stale) toast("The clock has already started. Starting the talk now? Reset it first.", 8000);
     this.stale = stale;
@@ -453,7 +462,15 @@ export class Presenter {
   /** The talk bar: one block per slide with a planned window. */
   private buildTalkbar(): void {
     this.segs = new Map(this.talk.onBar.map((slide) => [slide, el("div", "seg")]));
-    $("talkbar").replaceChildren(el("div", "past"), ...this.segs.values(), el("div", "projected"), el("div", "spent"), el("div", "target"));
+    $("talkbar").replaceChildren(
+      el("div", "past"),
+      ...this.segs.values(),
+      el("div", "projected"),
+      el("div", "spent"),
+      el("div", "target"),
+      el("span", "target-at"),
+      el("span", "finish-at"),
+    );
     this.barScale = 0;
   }
 
@@ -546,6 +563,8 @@ export class Presenter {
       }
       bar.querySelector<HTMLElement>(".target")!.style.left = x(p.target);
       bar.querySelector<HTMLElement>(".past")!.style.left = x(p.target);
+      bar.querySelector<HTMLElement>(".target-at")!.style.left = x(p.target);
+      bar.querySelector<HTMLElement>(".finish-at")!.style.left = x(p.target);
     }
     const tone = `t-${p.started ? p.tone : "on"}`;
     const spent = bar.querySelector<HTMLElement>(".spent")!;
@@ -554,6 +573,26 @@ export class Presenter {
     const projected = bar.querySelector<HTMLElement>(".projected")!;
     projected.style.width = x(p.finish);
     projected.className = `projected ${tone}`;
+    // At the red line, which doesn't move: the target end over it, where the talk would end under it.
+    const [target, end] = this.ends(p, now);
+    bar.querySelector(".target-at")!.textContent = target;
+    const finish = bar.querySelector<HTMLElement>(".finish-at")!;
+    finish.textContent = end;
+    finish.className = `finish-at ${tone}`;
+  }
+
+  /**
+   * The bar's two ends, on the clock, or as times of day. As times of day, the
+   * target end is fixed from the talk's start; where the talk would end runs on
+   * from now, so a pause moves it later.
+   */
+  private ends(p: Progress, now: number): [string, string] {
+    if (!this.settings.timeOfDay) return [T.formatShort(p.target * 1000), T.formatShort(p.finish * 1000)];
+    const started = this.talk.state.timer.startedAt;
+    // Before the clock starts: from the talk's start time if it has one ahead, else from now.
+    const start = started ?? now + T.untilStart(this.deck, now);
+    const finish = started === null ? start + p.finish * 1000 : now + (p.finish - p.at) * 1000;
+    return [T.formatClock(start + p.target * 1000), T.formatClock(finish)];
   }
 
   // Strip and overview

@@ -3,6 +3,23 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.2.2 (2026-10-27)
+
+### Changed
+
+- **The two fullscreen buttons sit together** under the clock, audience over presenter, each lit while on and
+  pressed again to end it. The presenter's has left the toolbar.
+- **`Esc` steps back one thing at a time**, the same in the browser and the Mac app: it closes the help or the
+  overview, then ends black, freeze and the laser, then leaves the presenter's fullscreen. It never takes the audience
+  out of fullscreen. In Chrome and Edge, pdfpcnic has `Esc` in fullscreen too, and holding it down leaves fullscreen.
+- **Early or late is as large as the clock.**
+- **The bar shows its ends at the red line:** the target end over it (`10:00`), and where the talk would end under
+  it, on the clock or, with a click on the bar (or in Settings), as times of day.
+- **The time of day has left the toolbar's corner**: the bar shows it, a click away.
+- **The help sheet leads with what nothing on screen shows:** notes and slide sizes, `Esc`, dragging the dividers,
+  clicking the bar, and dropping a `.pdfpc` file to add notes. The ways to move and the keys the buttons already show
+  follow in short lines, then the pace legend. It fits its window, and the legend no longer runs into its own text.
+
 ## 1.2.1 (2026-10-27)
 
 ### Changed

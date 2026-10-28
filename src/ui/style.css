@@ -23,6 +23,8 @@
      sized with the window, like the clock, not with the column. */
   --talk-row: clamp(14px, 1.25vw, 28px);
   --time-line: clamp(5px, 0.42vw, 10px);
+  /* The talk bar's times. */
+  --when: clamp(13px, 1vw, 16px);
   font-family:
     system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei",
     "Noto Sans CJK SC", sans-serif;
@@ -366,6 +368,7 @@ kbd {
   gap: 8px;
   min-height: 0;
   overflow: hidden;
+  container-type: inline-size;
 }
 /* When the audience isn't seeing your current slide: a card over its middle. */
 .audience-state {
@@ -414,14 +417,19 @@ kbd {
   gap: 14px;
   white-space: nowrap;
 }
+/* The clock and where the talk stands, as large as each other, on one row however narrow the column. */
+.timer,
+.pace-num {
+  font-size: clamp(28px, 3vw, 60px);
+  font-size: min(clamp(28px, 3vw, 60px), 10cqi);
+  line-height: 1;
+}
 .timer {
   padding: 0;
   border: 0;
   background: none;
   cursor: pointer;
-  font-size: clamp(28px, 3vw, 60px);
   font-weight: 300;
-  line-height: 1;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
@@ -474,24 +482,31 @@ kbd {
   border-color: var(--over);
   color: var(--over);
 }
-.audience-bar {
+/* What's on, lit as in the toolbar. */
+.ctl.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* One under the other, whatever their labels say, so neither moves. */
+.screens {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .pace-num {
-  font-size: clamp(22px, 2.1vw, 40px);
   text-align: right;
 }
 /* Against the same clock: the slides as planned, time spent as a thin line
    right under them in the color of the pace, running on lighter to where the
-   talk would end, and the target end as a red line. */
+   talk would end, and the target end as a red line. Over the red line, its
+   time on the clock; under it, where the talk would end on the clock. */
 .talkbar {
   position: relative;
+  cursor: pointer;
   height: calc(var(--talk-row) + var(--time-line));
-  margin-top: 14px;
+  margin: calc(var(--when) + 14px) 0 calc(var(--when) + 8px);
   background: linear-gradient(var(--panel), var(--panel)) top / 100% var(--talk-row) no-repeat;
 }
 .talkbar > * {
@@ -541,6 +556,24 @@ kbd {
   width: 2px;
   margin-left: -1px;
   background: var(--over);
+}
+/* Both end at the red line; the one under it is colored as the pace, after this. */
+.target-at,
+.finish-at {
+  font-size: var(--when);
+  line-height: 1;
+  white-space: nowrap;
+  transform: translateX(-100%);
+}
+.target-at {
+  top: auto;
+  bottom: calc(100% + 7px);
+  color: var(--over);
+}
+.finish-at {
+  top: calc(100% + 6px);
+  bottom: auto;
+  color: #d1d1d6;
 }
 .t-idle {
   color: var(--dim);
@@ -608,13 +641,6 @@ kbd {
 .toolbar kbd {
   font-size: 12px;
 }
-.wallclock {
-  margin-left: auto;
-  color: var(--dim);
-  font-size: 15px;
-  font-variant-numeric: tabular-nums;
-}
-
 .strip {
   grid-area: strip;
   grid-row: 1 / -1;
@@ -757,56 +783,94 @@ kbd {
   margin: 0 0 16px;
   font-weight: 500;
 }
-.help-grid {
+/* What nothing on screen shows, keys and the mouse: first, and larger. */
+.help-top {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
-  gap: 8px 40px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 10px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
 }
-.help-grid h3,
+.help-top li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 15px;
+  line-height: 1.35;
+}
+.help-top :is(kbd, b) {
+  padding: 4px 8px;
+  font-size: 15px;
+  color: var(--accent);
+}
+.help-top b {
+  padding-left: 0;
+  font-weight: 600;
+}
+/* The rest, for reference, smaller: a line of keys under each heading. */
+.help-rest {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 24px;
+}
+.help-rest section {
+  display: grid;
+  grid-template-columns: 10em 1fr;
+  align-items: baseline;
+  gap: 14px;
+}
+.help-rest p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin: 0;
+  color: var(--dim);
+  font-size: 14px;
+}
+.help-rest h3,
 .legend h3 {
-  margin: 8px 0 10px;
+  margin: 0;
   color: var(--accent);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.help-grid dl {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 7px 14px;
-  margin: 0;
-  font-size: 14px;
+.help-rest kbd {
+  margin-right: 4px;
+  font-size: 12px;
+  color: var(--fg);
 }
-.help-grid dt {
-  font-size: 13px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  white-space: nowrap;
+.legend h3 {
+  margin-bottom: 10px;
 }
-.help-grid dd {
-  margin: 0;
-  color: var(--dim);
-}
+/* Two columns, each entry kept whole; the bar keeps its colors with it. */
 .legend dl {
-  display: grid;
-  grid-template-columns: 4.5em 1fr;
-  align-items: center;
-  gap: 7px 14px;
+  columns: 2 320px;
+  column-gap: 40px;
   margin: 0;
   font-size: 14px;
+}
+.legend dl > div {
+  display: grid;
+  grid-template-columns: 7.5em 1fr;
+  align-items: baseline;
+  gap: 7px 14px;
+  margin-bottom: 9px;
+  break-inside: avoid;
 }
 .legend dt {
   display: flex;
   gap: 2px;
-  font-family: inherit;
 }
 .legend dd {
   margin: 0;
   color: var(--dim);
-}
-.legend b {
-  color: var(--fg);
-  font-weight: 500;
 }
 .sw {
   width: 1.4em;

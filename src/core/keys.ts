@@ -119,44 +119,48 @@ export function actionFor(e: KeyPress): Action | null {
   return BINDINGS[keyName(e)] ?? null;
 }
 
-/** Key help, grouped for the cheat sheet. */
+/**
+ * What people open the help for: what nothing on screen shows, keys and the
+ * mouse (`true`). First and largest in the help.
+ */
+export const HELP_TOP: Array<[string, string, mouse?: true]> = [
+  ["+ / −", "notes text size; the laser dot's while the laser is on"],
+  ["[ / ]", "current slide smaller / bigger, for more room for notes"],
+  ["Esc", "one step back: closes help and overview, ends black, freeze and laser, then leaves presenter fullscreen"],
+  ["Drag a divider", "resize the columns, or the slide against its notes; double-click the thumbnails' divider to hide them", true],
+  ["Click the bar", "its times on the clock, or as times of day", true],
+  ["Drop a .pdfpc file", "on the window any time, to add its notes and timing to the deck that's open", true],
+];
+
+/** The rest, for reference: moving about, and the keys the buttons already show. */
 export const HELP: Array<[string, Array<[string, string]>]> = [
   [
     "Move",
     [
       ["→ ↓ PgDn Space Enter", "next step"],
       ["← ↑ PgUp Backspace", "previous (skips back over reveal steps)"],
-      ["Shift+PgDn / PgUp", "next / previous slide"],
-      ["Shift+→ / ←", "10 slides forward / back"],
       ["Home / End", "first / last slide"],
+      ["Shift+PgDn / PgUp", "next / previous slide, past reveal steps"],
+      ["g", "go to a slide by its number"],
+      ["Shift+Backspace / Space", "back / forward after a jump"],
+      ["Shift+→ / ←", "10 slides forward / back"],
       ["Shift+N / Shift+P", "next / previous, including hidden"],
-      ["Shift+Space / Backspace", "history forward / back"],
-      ["g", "go to slide number"],
-      ["Tab", "overview"],
-      ["m / Shift+M", "bookmark / return to bookmark"],
+      ["m / Shift+M", "bookmark / back to it"],
+      ["Ctrl+E", "mark this slide as the end"],
     ],
   ],
   [
-    "Audience",
+    "On the buttons",
     [
       ["o", "open the audience window"],
       ["Shift+W", "audience fullscreen (or present here)"],
-      ["b", "black screen"],
-      ["f", "freeze"],
-      ["2 / 1", "laser pointer on / off"],
-      ["Esc", "leave black, freeze, laser"],
-    ],
-  ],
-  [
-    "Presenter",
-    [
-      ["s / p", "start / pause the clock (or click it)"],
-      ["Ctrl+T or Shift+R", "reset the clock to zero (pause it first)"],
-      ["Ctrl+E", "mark the end slide"],
-      ["+ / −", "notes size (laser size in laser mode)"],
-      ["[ / ]", "current slide smaller / bigger, for room for notes"],
-      [",", "settings: slide, notes and laser sizes"],
       ["w", "presenter fullscreen"],
+      ["b / f", "black screen / freeze"],
+      ["2 / 1", "laser pointer on / off"],
+      ["Tab", "overview"],
+      ["s / p", "start / pause the clock"],
+      ["Shift+R or Ctrl+T", "reset the clock (pause it first)"],
+      [",", "settings"],
       ["?", "this help"],
     ],
   ],

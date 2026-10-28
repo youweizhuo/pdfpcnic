@@ -2,6 +2,20 @@
 
 import type { PresenterWindow } from "../platform.ts";
 
+// Keyboard Lock (Chromium); absent elsewhere.
+declare global {
+  interface Navigator {
+    keyboard?: { lock(keys: string[]): Promise<void> };
+  }
+}
+
+/**
+ * Lets Esc reach a page while it's fullscreen, as it does in the Mac app;
+ * holding Esc down then leaves fullscreen (Chrome, Edge). Elsewhere a press of
+ * Esc leaves fullscreen at once: the browser's own rule.
+ */
+export const lockEscape = (win: Window) => void win.navigator.keyboard?.lock(["Escape"]).catch(() => {});
+
 export const presenterWindow: PresenterWindow = {
   get fullscreen() {
     return !!document.fullscreenElement;
@@ -11,6 +25,7 @@ export const presenterWindow: PresenterWindow = {
       if (document.fullscreenElement) await document.exitFullscreen();
       return;
     }
+    lockEscape(window);
     try {
       await document.documentElement.requestFullscreen();
     } catch (err) {

@@ -42,7 +42,13 @@ next slide: the clock and one bar for the whole talk.
      screen yourself, it goes fullscreen there.
    - **Other browsers**: drag the window to the projector and double-click it for fullscreen, as the yellow button
      says. Only Chrome and Edge can make it fullscreen from the presenter window.
-3. Press `w` to make the presenter fullscreen too, and `→` to start. The clock starts when you leave the first slide.
+3. Press `w` to make the presenter fullscreen too (its button is under the audience's), and `→` to start. The clock
+   starts when you leave the first slide.
+
+`Esc` steps back one thing at a time: it closes the help or the overview, then ends black, freeze and the laser, then
+leaves the presenter's fullscreen. It never takes the audience out of fullscreen; `Shift+W` does. Chrome and Edge let
+pdfpcnic have `Esc` in fullscreen, and holding it down leaves fullscreen. Firefox and Safari leave fullscreen at the
+first press.
 
 If the page reloads mid-talk, **Resume** brings back the deck at the same page, with the clock still running.
 
@@ -99,7 +105,7 @@ The same keys as pdfpc, plus `o` for the audience window. Press `?` (or **Help**
 | `o` | open the audience window |
 | `b` / `f` | black screen / freeze the audience on this slide while you move on (a card over your current slide says so) |
 | `2` / `1` | laser pointer on / off (`+` `-` change its size) |
-| `Esc` | leave black, freeze and laser |
+| `Esc` | one step back: close the help or the overview, then end black, freeze and laser, then leave presenter fullscreen; never the audience's |
 | `s` / `p`, click the clock, or **Start** / **Pause** | start / pause the clock |
 | `Ctrl+T` or `Shift+R`, or **Reset** | reset the clock to zero; the keys only while paused, the button with a second click while it runs |
 | `,` | settings: current slide, notes and laser sizes; pace colors |
@@ -137,7 +143,7 @@ the `.pdfpc` file.
 
 ## Pace
 
-The clock counts up from zero, beside the time of day, as in Présentation.app. It never changes color; the pace bars
+The clock counts up from zero, as in Présentation.app. It never changes color; the pace bars
 under it do that job. **Pause** and **Reset** sit right under it: if you looked through the slides before the talk,
 the clock has been running, so reset it before you start (back on slide 1, Reset turns yellow to remind you). While
 it runs, Reset takes a second click, and the reset keys work only while paused, so a stray click or key can't zero
@@ -169,7 +175,10 @@ Next to the clock, the whole talk:
   isn't on the plan, so there it counts from the last planned slide you were on: a detour shows as late.
 - **The bar** is fixed, with a red line at the target end and some room past it: the slides as planned, this one in
   yellow, and right under them a thin line of time spent, colored like the early or late beside the clock. The line
-  goes on, paler, to where the talk would end, so you see how far it is from the red line.
+  goes on, paler, to where the talk would end, so you see how far it is from the red line. Over the red line is its
+  time on the clock (`10:00`), and under it, where the talk would end on the clock. Click the bar to see both as
+  times of day instead (also in **Settings**): the target end stays fixed from when the talk started, and a pause
+  moves where it would end later.
 
 Late always shows: orange, deep orange from 1 minute (serious) and red from 2 minutes (very serious). Early shows, in
 blue, only past 1 minute. **Settings** (`,`) changes the three levels, in time or as shares of the talk, and how much the notes dim.

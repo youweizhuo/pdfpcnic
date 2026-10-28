@@ -40,17 +40,18 @@ export function audienceStep(a: AudienceStatus, solo: boolean): Step {
         status: solo ? "Presenting in this window. Esc returns to the presenter view." : "",
         ask: false,
       };
+    // Lit while on, as the presenter's fullscreen beside it; pressed again, it ends.
     case "fullscreen":
-      return { action: "audienceFullscreen", label: "Exit audience fullscreen", key: "⇧W", status: `Audience fullscreen${on}.`, ask: false };
+      return { action: "audienceFullscreen", label: "Audience fullscreen", key: "⇧W", status: `Audience fullscreen${on}.`, ask: false };
     case "window": {
       const status = a.refused
         ? "This browser lets only the audience window go fullscreen: double-click it."
         : a.screen
-          ? "Audience window open, not fullscreen yet."
+          ? `Audience window open; it goes fullscreen${on}.`
           : "Audience window open; drag it to the projector, then double-click it for fullscreen.";
       // Where the presenter can't, the button brings the window forward (as o does) and says what to do there.
       if (!a.remote) return { action: "openAudience", label: "Double-click the audience window", key: "", status, ask: a.refused };
-      return { action: "audienceFullscreen", label: `Audience fullscreen${on}`, key: "⇧W", status, ask: a.refused };
+      return { action: "audienceFullscreen", label: "Audience fullscreen", key: "⇧W", status, ask: a.refused };
     }
   }
 }

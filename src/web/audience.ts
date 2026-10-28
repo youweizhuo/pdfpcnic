@@ -5,6 +5,7 @@ import type { Audience, AudienceEvents, Pdf } from "../platform.ts";
 import type { PageCache } from "../ui/page-cache.ts";
 import { SlideView } from "../ui/slide-view.ts";
 import css from "./audience.css?inline";
+import { lockEscape } from "./window.ts";
 
 // Window Management API (Chromium); absent elsewhere, which is fine.
 interface ScreenDetailed extends Screen {
@@ -235,6 +236,8 @@ export class PopupAudience implements Audience {
     // not at the next poll, so the presenter offers to open it again.
     win.addEventListener("pagehide", () => this.detach());
     win.addEventListener("keydown", (e) => this.events.key(e));
+    // Esc goes on to the presenter too, rather than ending the room's fullscreen.
+    lockEscape(win);
     win.addEventListener("message", (e) => {
       if (e.data === FULLSCREEN_MESSAGE && !doc.fullscreenElement) {
         doc.documentElement.requestFullscreen(this.fullscreenOptions()).catch(this.refuse);

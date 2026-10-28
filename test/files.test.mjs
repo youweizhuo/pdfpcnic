@@ -48,6 +48,7 @@ test("the clock counts the time not paused", () => {
   t = T.togglePause(t, 60_000);
   assert.equal(T.elapsed(t, 70_000), 20_000);
   assert.equal(T.format(3_725_000), "1:02:05");
+  assert.deepEqual([600_000, 550_000, 30_000, 3_725_000].map(T.formatShort), ["10:00", "9:10", "0:30", "1:02:05"]);
 });
 
 test("the talk's length: from its end time if set, else its duration", () => {

@@ -12,11 +12,12 @@ test("closed: open it, or say the slides are in this window", () => {
   assert.match(audienceStep(status({ mode: "closed" }), true).status, /^Presenting in this window/);
 });
 
-test("where the presenter can, Shift+W makes it fullscreen, naming the screen", () => {
+test("where the presenter can, Shift+W makes it fullscreen, and the line names the screen", () => {
   const step = audienceStep(status({ screen: "DELL U2720Q" }), false);
   assert.equal(step.action, "audienceFullscreen");
-  assert.equal(step.label, "Audience fullscreen on DELL U2720Q");
+  assert.equal(step.label, "Audience fullscreen");
   assert.equal(step.key, "⇧W");
+  assert.equal(step.status, "Audience window open; it goes fullscreen on DELL U2720Q.");
 });
 
 test("elsewhere, the audience window has to be double-clicked, and Shift+W isn't offered", () => {
@@ -30,9 +31,10 @@ test("elsewhere, the audience window has to be double-clicked, and Shift+W isn't
   assert.equal(refused.ask, true);
 });
 
-test("fullscreen: the audience is ready, and the button takes it back", () => {
+test("fullscreen: the audience is ready, and the same button takes it back", () => {
   const s = status({ mode: "fullscreen", screen: "the other screen" });
-  assert.equal(audienceStep(s, false).label, "Exit audience fullscreen");
+  assert.equal(audienceStep(s, false).action, "audienceFullscreen");
+  assert.equal(audienceStep(s, false).label, "Audience fullscreen");
   assert.equal(audienceStep(s, false).status, "Audience fullscreen on the other screen.");
   assert.equal(audienceReady(s, false), true);
   assert.equal(audienceReady(status(), false), false);

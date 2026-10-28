@@ -1,6 +1,6 @@
 // What the presenter can size and tune, kept on this computer: the columns,
 // the current slide against its notes, the notes and laser sizes, how much the
-// notes dim, and the pace colors' levels. The settings dialog (,) and the drag
+// notes dim, how the bar shows its times, and the pace colors' levels. The settings dialog (,) and the drag
 // handles change them.
 
 import type { Deck } from "../core/deck.ts";
@@ -26,6 +26,8 @@ export class Settings {
   laserSize: number;
   /** How much the covered part of a note dims, 0 for not at all. */
   notesDim: number;
+  /** The bar's times as times of day, rather than on the clock. */
+  timeOfDay: boolean;
   slack: Slack;
   private split = 0.62;
   /** Thumbnail strip width in px: null for the default, 0 when hidden. */
@@ -44,6 +46,7 @@ export class Settings {
     this.notesSize = store.pref<number | null>("notesSize", null) ?? this.deckNotesSize;
     this.laserSize = store.pref("laserSize", 0.035);
     this.notesDim = store.pref("notesDim", 0.5);
+    this.timeOfDay = store.pref("barTimeOfDay", false);
     const saved = store.pref<Slack | null>("paceSlack", null);
     this.slack = saved && saved.unit in SLACK ? { ...SLACK[saved.unit], ...saved } : { ...SLACK.time };
   }
@@ -70,6 +73,12 @@ export class Settings {
     this.notesSize = Math.min(72, Math.max(12, px));
     document.documentElement.style.setProperty("--notes", `${this.notesSize}px`);
     this.store.setPref("notesSize", this.notesSize);
+  }
+
+  setTimeOfDay(on: boolean): void {
+    this.timeOfDay = on;
+    this.store.setPref("barTimeOfDay", on);
+    this.on.pace();
   }
 
   setLaserSize(f: number): void {
@@ -125,6 +134,16 @@ export class Settings {
         { signal },
       );
     }
+    for (const b of document.querySelectorAll<HTMLButtonElement>("#set-times button")) {
+      b.addEventListener(
+        "click",
+        () => {
+          this.setTimeOfDay(b.dataset.times === "day");
+          this.sync();
+        },
+        { signal },
+      );
+    }
     $("set-defaults").addEventListener(
       "click",
       () => {
@@ -134,6 +153,7 @@ export class Settings {
         this.setLaserSize(0.035);
         this.useSlack({ ...SLACK.time });
         this.setNotesDim(0.5);
+        this.setTimeOfDay(false);
         this.applyColumns(0.62, null);
         this.store.setPref("split", this.split);
         this.store.setPref("strip", null);
@@ -226,6 +246,9 @@ export class Settings {
     const t = this.target();
     for (const b of document.querySelectorAll<HTMLButtonElement>("#set-unit button")) {
       b.classList.toggle("on", b.dataset.unit === unit);
+    }
+    for (const b of document.querySelectorAll<HTMLButtonElement>("#set-times button")) {
+      b.classList.toggle("on", (b.dataset.times === "day") === this.timeOfDay);
     }
     for (const key of LEVELS) {
       const v = this.slack[key];

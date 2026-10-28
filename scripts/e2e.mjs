@@ -202,7 +202,7 @@ try {
       const where = () => audience.evaluate(() => ({ x: screenX, w: outerWidth, full: !!document.fullscreenElement }));
       const full = (on) => audience.waitForFunction((on) => !!document.fullscreenElement === on, { timeout: 5000 }, on);
       assert.ok((await where()).x < 1440, "audience not on the presenter's screen");
-      await textMatches("#audience-button", /^Audience fullscreen on /);
+      await textMatches("#audience-status", /it goes fullscreen on /);
       await page.screenshot({ path: `${out}/audience-open.png` });
       await press("Shift+W");
       await full(true);
@@ -239,12 +239,54 @@ try {
     await page.bringToFront();
     await shiftW(page);
     await full(true);
-    await textMatches("#audience-button", /^Exit audience fullscreen/);
+    // Lit while on, as the presenter's button by it; clicked, it ends.
+    await page.waitForSelector("#audience-button.on", { timeout: 3000 });
+    // Whatever the audience's button says, the presenter's and the line under them stay put.
+    const places = await page.evaluate(() => {
+      const button = document.querySelector("#audience-button");
+      const was = button.innerHTML;
+      const at = (sel) => document.querySelector(sel).getBoundingClientRect().top;
+      const places = ["Open audience window <kbd>o</kbd>", "Double-click the audience window", "Audience fullscreen <kbd>⇧W</kbd>"].map(
+        (html) => ((button.innerHTML = html), `${at("#presenter-button")} ${at("#audience-status")}`),
+      );
+      button.innerHTML = was;
+      return places;
+    });
+    assert.equal(new Set(places).size, 1, `the presenter's button moved: ${places}`);
     await page.click("#audience-button");
     await full(false);
     await page.click("#audience-button");
     await full(true);
     await exit();
+  });
+
+  await check("Esc steps back: the help, then the laser, then the presenter's fullscreen; never the audience's", async () => {
+    const full = (p, on) => p.waitForFunction((on) => !!document.fullscreenElement === on, { timeout: 3000 }, on);
+    await press("Shift+W");
+    await full(audience, true);
+    await press("w");
+    await full(page, true);
+    await page.waitForSelector("#presenter-button.on", { timeout: 3000 });
+    await press("2", "?");
+    await press("Escape");
+    assert.equal(await page.$eval("#help", (e) => e.hidden), true, "the help stayed");
+    assert.equal(await page.evaluate(() => !!document.fullscreenElement), true, "the first Esc left fullscreen");
+    await press("Escape");
+    assert.equal((await state()).laser, false);
+    assert.equal(await page.evaluate(() => !!document.fullscreenElement), true, "the second Esc left fullscreen");
+    await press("Escape");
+    await full(page, false);
+    // Pressed in the audience window, the same, and the room keeps its slide.
+    await press("2");
+    await audience.bringToFront();
+    await audience.keyboard.press("Escape");
+    await page.waitForFunction(() => !window.pdfpcnic.state.laser, { timeout: 3000 });
+    await audience.keyboard.press("Escape");
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(await audience.evaluate(() => !!document.fullscreenElement), true, "Esc took the audience out of fullscreen");
+    await audience.evaluate(() => document.exitFullscreen());
+    await full(audience, false);
+    await page.bringToFront();
   });
 
   await check("freeze holds the audience on its slide", async () => {
@@ -338,6 +380,16 @@ try {
     assert.equal(line.gap, 0);
     assert.ok(Math.abs(line.end - 450 / 660) < 0.01, `projected end at ${line.end}`);
     assert.match(await cls("#talkbar .projected"), /t-early/);
+    // As the clock shows time, at the red line, which doesn't move: the target end over it, where the talk would end under it.
+    assert.equal(await text("#talkbar .target-at"), "10:00");
+    assert.match(await text("#talkbar .finish-at"), /^7:(29|30)$/);
+    const ends = () =>
+      page.$eval("#talkbar", (bar) => {
+        const r = (sel) => bar.querySelector(sel).getBoundingClientRect();
+        return { target: r(".target-at").right - r(".target").right, finish: r(".finish-at").right - r(".target").right, above: r(".target-at").bottom <= r(".target").top, below: r(".finish-at").top >= r(".spent").bottom };
+      });
+    const there = await ends();
+    assert.ok(Math.abs(there.target) < 3 && Math.abs(there.finish) < 3 && there.above && there.below, `times off the red line: ${JSON.stringify(there)}`);
     // A minute into its two: half the spoken characters dim, none of the *ref* paragraph.
     await at(450);
     await settle();
@@ -395,6 +447,22 @@ try {
     assert.match(await cls("#pace-slide-text"), /t-severe/);
     assert.match(await text("#pace-all-text"), /^3:0\d late$/);
     assert.match(await fill(), /t-severe/);
+    assert.deepEqual(await ends(), there, "the times moved");
+    assert.match(await text("#talkbar .finish-at"), /^13:0\d$/);
+    await press("p");
+    // Clicked, the bar gives them as times of day: the target end ten minutes after the talk started, where it
+    // would end a minute from now. Clicked again, back on the clock.
+    await page.click("#talkbar");
+    const day = (ms) => page.evaluate((ms) => [0, 2000].map((d) => new Date(ms - d).toTimeString().slice(0, 5)), ms);
+    assert.ok((await day((await state()).timer.startedAt + 600_000)).includes(await text("#talkbar .target-at")), "the target end's time of day");
+    assert.ok((await day(Date.now() + 60_000)).includes(await text("#talkbar .finish-at")), "the time of day the talk would end");
+    assert.deepEqual(await ends(), there, "the times moved");
+    await page.click("#talkbar");
+    assert.equal(await text("#talkbar .target-at"), "10:00");
+    await new Promise((r) => setTimeout(r, 1500));
+    assert.equal(await text("#talkbar .target-at"), "10:00");
+    assert.match(await text("#talkbar .finish-at"), /^13:0\d$/);
+    await press("p");
     await page.screenshot({ path: `${out}/pace-late.png` });
     // A slide keeps its time over visits: on to the end slide for a minute and
     // back, it's still two minutes over, then counts on.

@@ -20,6 +20,10 @@ export interface Platform {
   demo: (() => Promise<{ pdf: ArrayBuffer; pdfpc: string }>) | null;
   /** Hands over files the platform opens itself, such as a PDF double-clicked in the Finder. */
   files?(open: (files: File[]) => void): void;
+  /** Tells when a newer version has installed itself, to open at the next launch. */
+  updated?(show: (version: string) => void): void;
+  /** The `.pdfpc` file beside a PDF the page was given, found by the PDF's name, as pdfpc finds it. */
+  notes?(pdfName: string): Promise<string | null>;
 }
 
 /** A PDF, opened by the platform's engine: pdf.js in the browser, PDFKit on the Mac. */

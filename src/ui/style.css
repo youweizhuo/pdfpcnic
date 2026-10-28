@@ -85,6 +85,10 @@ kbd {
   font-weight: 400;
   letter-spacing: 0;
 }
+/* A newer version, installed, waiting for the next launch. */
+.say.update {
+  color: var(--accent);
+}
 .say {
   margin: 2px 0 0;
   color: #636366;
@@ -172,6 +176,7 @@ kbd {
 .start-foot {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px 18px;
   margin-top: 40px;
   color: #636366;
@@ -179,6 +184,18 @@ kbd {
 }
 .start-foot a {
   color: inherit;
+}
+.start-foot .source {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #aeaeb2;
+  font-size: 15px;
+  text-decoration: none;
+  vertical-align: middle;
+}
+.start-foot .source:hover {
+  color: var(--fg);
 }
 .start-foot span:empty {
   display: none;

@@ -43,21 +43,23 @@ enum Updates {
         return original.takeRetainedValue() as URL
     }
 
-    /// Installs the latest release if it's newer. Quietly, at launch, it says
-    /// nothing; asked from the menu, it says how it went.
-    static func check(quietly: Bool) async {
+    /// Installs the latest release if it's newer, and says which it installed.
+    /// Quietly, at launch, nothing else says so; asked from the menu, it says how it went.
+    static func check(quietly: Bool) async -> String? {
         do {
             let newest = try await latest()
             guard newer(newest, than: version) else {
                 if !quietly { await tell("This is the latest pdfpcnic (\(version)).") }
-                return
+                return nil
             }
             let (zip, response) = try await URLSession.shared.data(from: URL(string: "\(releases)/download/v\(newest)/pdfpcnic-mac.zip")!)
             guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw Failure("pdfpcnic \(newest) didn't download.") }
             try await install(zip, over: location)
             if !quietly { await tell("pdfpcnic \(newest) is installed. It opens the next time you start the app.") }
+            return newest
         } catch {
             if !quietly { await offer(error) }
+            return nil
         }
     }
 

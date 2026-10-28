@@ -53,8 +53,9 @@ final class SmokeTest {
         await check("the presenter page loads") {
             try await until("the page") { try await js("return !!window.pdfpcnic") as? Bool == true }
         }
-        app.open(files)
-        await check("the deck opens as from the Finder, with its notes, and PDFKit draws the slides") {
+        // The PDF alone: its notes come from the .pdfpc file beside it.
+        app.open([files[0]])
+        await check("the deck opens as from the Finder, with the notes beside it, and PDFKit draws the slides") {
             try await until("the deck") { (try await js("return window.pdfpcnic.deck?.slides.length ?? 0") as? Int ?? 0) > 0 }
             try await until("the notes") { (try await js("return document.querySelector('#notes-body').textContent.length") as? Int ?? 0) > 20 }
             try await until("the current slide drawn") { try await js(Self.painted("#current canvas")) as? Bool == true }
@@ -132,7 +133,13 @@ final class SmokeTest {
                 throw Failure("the app there is \(version ?? "not the release's")")
             }
         }
-        await check("after a reload, Resume picks up the talk at its page") {
+        await check("a version that installed itself is named for the next launch") {
+            app.installed("9.9.9")
+            try await until("the hint") {
+                (try await js("return document.querySelector('#update:not([hidden])')?.textContent ?? ''") as? String ?? "").hasPrefix("9.9.9 is installed")
+            }
+        }
+        await check("after a reload, Resume picks up the talk at its page, and the update is still named") {
             try await Task.sleep(nanoseconds: 800_000_000)
             web.reload()
             try await until("the Resume button") {
@@ -140,6 +147,9 @@ final class SmokeTest {
             }
             _ = try await js("document.querySelector('#resume').click(); return null")
             try await until("page 2") { try await page() == 1 }
+            guard (try await js("return document.querySelector('#update:not([hidden])')?.textContent ?? ''") as? String ?? "").hasPrefix("9.9.9 is installed") else {
+                throw Failure("the update's word went with the reload")
+            }
         }
         print(failed == 0 ? "all checks passed (mac)" : "\(failed) checks failed (mac)")
         exit(failed == 0 ? 0 : 1)

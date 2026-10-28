@@ -23,6 +23,8 @@ final class App: NSObject, NSApplicationDelegate {
     /// Files to hand to the page once it's ready for them.
     private var waiting: [URL] = []
     private var ready = false
+    /// The version that installed itself, to open at the next launch: the page says so.
+    private var pending: String?
 
     override init() {
         scheme = PageScheme(pdfs: pdfs)
@@ -39,7 +41,7 @@ final class App: NSObject, NSApplicationDelegate {
         } else {
             Task {
                 try? await Task.sleep(nanoseconds: 5_000_000_000)
-                await Updates.check(quietly: true)
+                if let newest = await Updates.check(quietly: true) { installed(newest) }
             }
         }
     }
@@ -57,9 +59,16 @@ final class App: NSObject, NSApplicationDelegate {
         waiting += urls
         guard ready, !waiting.isEmpty else { return }
         let files = waiting.compactMap { url in (try? Data(contentsOf: url)).map { (url.lastPathComponent, $0) } }
+        presenter.remember(waiting)
         waiting = []
         scheme.opened = files.map(\.1)
         presenter.emit("open", files.map { ["name": $0.0] })
+    }
+
+    /// A newer version is in place, to open at the next launch: the page says so, again after a reload.
+    func installed(_ version: String) {
+        pending = version
+        presenter.emit("updated", version)
     }
 
     /// Each of the page's calls, to the part that answers it.
@@ -73,6 +82,7 @@ final class App: NSObject, NSApplicationDelegate {
         bridge.on("ready") { [unowned self] _ in
             ready = true
             presenter.onChange()
+            if let pending { presenter.emit("updated", pending) }
             open([])
             return nil
         }
@@ -81,6 +91,9 @@ final class App: NSObject, NSApplicationDelegate {
                 throw Failure("The PDF didn't reach the app.")
             }
             return try pdfs.open(data)
+        }
+        bridge.on("notes") { [unowned self] args in
+            presenter.notes(of: args["name"] as? String ?? "")
         }
         bridge.on("closePdf") { [unowned self] args in
             pdfs.close(args.int("id"))
@@ -165,7 +178,7 @@ final class App: NSObject, NSApplicationDelegate {
     }
 
     @objc private func checkForUpdates() {
-        Task { await Updates.check(quietly: false) }
+        Task { if let newest = await Updates.check(quietly: false) { installed(newest) } }
     }
 
     @objc private func openHelp() {

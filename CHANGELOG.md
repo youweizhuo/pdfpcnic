@@ -3,6 +3,20 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.2.9 (2026-10-28)
+
+### Added
+
+- **The Mac app opens a PDF with its notes**: the `.pdfpc` file of the same name beside it, as pdfpc does, whether
+  the PDF comes from the Finder, File › Open, the page's own file chooser or a drop on the window. A `.pdfpc` file
+  chosen or dropped with it still wins.
+- **The Mac app says when it has updated itself**: once a newer version is in place, a line in yellow on the start
+  page, and a word once, that it opens at the next launch. The update itself stays silent.
+
+### Changed
+
+- **The link to the source** on the start page is larger, with GitHub's mark.
+
 ## 1.2.8 (2026-10-28)
 
 ### Added

@@ -17,6 +17,7 @@ export const mac: Platform = {
   // The app's web view keeps the browser's storage, on this Mac.
   store,
   demo: async () => ({ pdf: await (await fetch(demoPdf)).arrayBuffer(), pdfpc: demoPdfpc }),
+  updated: (show) => on<string>("updated", show),
   files(open) {
     // Opened from the Finder or File > Open: the app serves each file's bytes.
     on<Array<{ name: string }>>("open", async (files) =>
@@ -24,4 +25,6 @@ export const mac: Platform = {
     );
     void call("ready");
   },
+  // The app knows where each file came from: opened, chosen or dropped.
+  notes: (name) => call<string | null>("notes", { name }),
 };

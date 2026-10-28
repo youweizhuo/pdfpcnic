@@ -55,10 +55,11 @@ to the right edge; rest on one to see it large in the next slide's place.
 
 ## Mac app
 
-The same presenter, without a browser's limits: the audience window opens behind the presenter, frameless, and
-`Shift+W` puts it fullscreen on the projector at once, with nothing to allow. macOS draws the slides itself, as
-Preview does. Open decks from the Finder. The app updates itself, and the new version opens at the next launch, never
-mid-talk. To install it, paste this into Terminal:
+The same presenter, without a browser's limits: the audience window opens behind the presenter, frameless, and `Shift+W`
+puts it fullscreen on the projector at once, with nothing to allow. macOS draws the slides itself, as Preview does. Open
+a PDF from the Finder, File › Open or by dropping it, and the `.pdfpc` file of the same name beside it comes along, as
+in pdfpc. The app updates itself, and the new version opens at the next launch, never mid-talk. To install it, paste
+this into Terminal:
 
 ```sh
 curl -fsSL https://github.com/youweizhuo/pdfpcnic/releases/latest/download/pdfpcnic-mac.zip -o /tmp/pdfpcnic.zip && ditto -x -k /tmp/pdfpcnic.zip /Applications && open /Applications/pdfpcnic.app

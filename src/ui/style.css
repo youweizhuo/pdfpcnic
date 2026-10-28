@@ -192,7 +192,7 @@ kbd {
   position: fixed;
   inset: 0;
   display: grid;
-  padding: 10px 28px 18px;
+  padding: 4px 28px 18px;
   grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr);
   grid-template-rows: auto auto auto auto minmax(0, 1fr);
   grid-template-areas:
@@ -239,7 +239,6 @@ kbd {
   justify-self: center;
   justify-content: flex-end;
   width: calc(var(--stage) * 100%);
-  margin-top: 0;
 }
 
 .slide-view {
@@ -307,9 +306,11 @@ kbd {
   background: transparent;
   transition: background 0.15s;
 }
+/* As large as the current slide, [ and ] resizing both. */
 #next {
   flex: none;
-  width: 100%;
+  align-self: center;
+  width: calc(var(--stage) * 100%);
   aspect-ratio: var(--aspect);
 }
 #next.empty {
@@ -375,12 +376,11 @@ kbd {
 .notes .ref {
   color: var(--dim);
 }
-/* As much of the next slide's notes as fits under the clock, fading out where it's cut. */
+/* The next slide's notes, under the clock, fading out where they're cut; they scroll. */
 .next-notes {
   flex: 1 1 0;
   min-height: 0;
-  margin-top: 12px;
-  overflow: hidden;
+  margin-top: 4px;
   color: var(--dim);
   mask-image: linear-gradient(to bottom, #000 calc(100% - 1.5em), transparent);
 }
@@ -427,9 +427,17 @@ kbd {
   color: var(--ahead);
 }
 
-/* Start, pause, resume and reset, level with black, freeze and the laser. */
-.toolbar.timer-controls {
+/* Start, pause, resume and reset, level with black, freeze and the laser, both close under their lines. */
+.toolbar:is(.slide-tools, .timer-controls) {
   margin-top: 0;
+  padding-top: 6px;
+}
+/* The talk's target end, the red line's time, over where it would end. */
+.target-at {
+  margin-left: auto;
+  color: var(--over);
+  font-size: var(--when);
+  font-variant-numeric: tabular-nums;
 }
 /* The clock, and where the talk would end: as large as each other, on one row however narrow the column, level
    with the notes' first line as the columns start. */
@@ -438,7 +446,7 @@ kbd {
   align-items: baseline;
   margin-top: calc(10px + 0.75 * var(--notes) - 0.5em);
   font-size: clamp(28px, 3vw, 60px);
-  font-size: min(clamp(28px, 3vw, 60px), calc(100cqi / 8));
+  font-size: min(clamp(28px, 3vw, 60px), calc(100cqi / 11));
   font-variant-numeric: tabular-nums;
   line-height: 1;
   white-space: nowrap;
@@ -446,7 +454,8 @@ kbd {
 .finish {
   margin-left: auto;
 }
-.timer {
+/* Both click: the clock to pause, where the talk would end for how early or late. Neither bold, however late. */
+.clock :is(.timer, .finish) {
   font-size: inherit;
   line-height: 1;
   padding: 0;
@@ -454,6 +463,8 @@ kbd {
   background: none;
   cursor: pointer;
   font-weight: 300;
+}
+.timer {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
@@ -503,11 +514,10 @@ kbd {
 }
 /* The whole talk, as this slide's line: a line along the next slide's foot.
    Time spent in the color of the pace, running on lighter to where the talk
-   would end; this slide's planned part in see-through yellow over them; the
-   target end as a red line, and under it where the talk would end. */
+   would end; this slide's planned part in yellow over them; the target end
+   as a red line. */
 .talkbar {
   position: relative;
-  cursor: pointer;
   height: var(--time-line);
   background: #3a3a3c;
 }
@@ -540,24 +550,13 @@ kbd {
   background: var(--ahead);
 }
 .talkbar .window {
-  background: rgb(255 214 10 / 0.6);
+  background: var(--accent);
 }
 .talkbar .target {
   bottom: -5px;
   width: 2px;
   margin-left: -1px;
   background: var(--over);
-}
-/* Where the talk would end, under the red line, which doesn't move. */
-.talkbar .finish-at {
-  top: calc(100% + 6px);
-  bottom: auto;
-  color: #d1d1d6;
-  font-size: var(--when);
-  font-weight: 400;
-  line-height: 1;
-  white-space: nowrap;
-  transform: translateX(-50%);
 }
 .t-idle {
   color: var(--dim);
@@ -654,7 +653,7 @@ kbd {
   right: 0;
   bottom: 0;
   z-index: 5;
-  width: clamp(220px, 20vw, 360px);
+  width: clamp(140px, 12vw, 220px);
   margin: 0;
   padding: 10px 14px 45vh;
   border-left: 1px solid var(--line);
@@ -810,35 +809,7 @@ kbd {
   font-weight: 500;
 }
 /* What nothing on screen shows, keys and the mouse: first, and larger. */
-.help-top {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 10px;
-  margin: 0 0 20px;
-  padding: 0;
-  list-style: none;
-}
-.help-top li {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  font-size: 15px;
-  line-height: 1.35;
-}
-.help-top :is(kbd, b) {
-  padding: 4px 8px;
-  font-size: 15px;
-  color: var(--accent);
-}
-.help-top b {
-  padding-left: 0;
-  font-weight: 600;
-}
-/* The rest, for reference, smaller: a line of keys under each heading. */
+/* A line of keys under each heading; what nothing on screen shows highlighted. */
 .help-rest {
   display: grid;
   gap: 12px;
@@ -872,6 +843,13 @@ kbd {
   font-size: 12px;
   color: var(--fg);
 }
+.help-rest .highlight {
+  color: var(--fg);
+}
+.help-rest .highlight :is(kbd, b) {
+  color: var(--accent);
+  font-weight: 600;
+}
 .legend h3 {
   margin-bottom: 10px;
 }
@@ -903,7 +881,7 @@ kbd {
   height: 12px;
 }
 .sw.this {
-  background: rgb(255 214 10 / 0.6);
+  background: var(--accent);
 }
 .sw.next {
   background: #3a3a3c;

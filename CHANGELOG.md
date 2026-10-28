@@ -3,6 +3,29 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.2.8 (2026-10-28)
+
+### Added
+
+- **Rest the mouse on a thumbnail to see its slide large**, in the next slide's place; the next slide comes back as
+  the mouse leaves the thumbnails. The audience sees nothing of it.
+- **`t` turns the clocks to times of day**, and back (clicking the talk's line no longer does).
+- **`e`, or a click on where the talk would end, shows how early or late instead**, and back. Its tooltip says which.
+
+### Changed
+
+- **The target end's time** shows in red over where the talk would end, instead of the projected end under the red
+  line.
+- **This slide's planned part is solid yellow** on the talk's line.
+- **`[` and `]` size both slides**, the next with the current, and so do the handle and `0`.
+- **The help** is one set of lists; what nothing on screen shows is highlighted in them.
+- **Neither clock is bold**, however late.
+- **Links on the slide are outlined in magenta**, hyperref's color for links, rather than yellow.
+- **The thumbnails are back to their size before 1.2.7**, in a slightly narrower drawer.
+- **The next slide's notes scroll**, and sit closer to the clock; the buttons sit closer to their lines, and the
+  slides closer to the top.
+- **The README** is shorter.
+
 ## 1.2.7 (2026-10-28)
 
 ### Added

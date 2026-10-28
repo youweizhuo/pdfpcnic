@@ -2,7 +2,7 @@
 // visit left off. It hands each deck to a fresh presenter.
 
 import { buildDeck } from "../core/deck.ts";
-import { HELP, HELP_TOP } from "../core/keys.ts";
+import { HELP } from "../core/keys.ts";
 import { parsePdfpc, PdfpcError, type PdfpcFile } from "../core/pdfpc.ts";
 import { resumes, type SavedSession } from "../core/talk.ts";
 import type { Platform } from "../platform.ts";
@@ -173,17 +173,12 @@ export async function start(platform: Platform): Promise<void> {
     `<a href="https://github.com/youweizhuo/pdfpcnic" target="_blank" rel="noopener">source</a>` +
     (__BUILD__ === "site" ? ` · <a href="./licenses.txt" target="_blank">licenses</a>` : "");
 
-  for (const [keys, what, mouse] of HELP_TOP) {
-    const li = el("li");
-    li.append(el(mouse ? "b" : "kbd", "", keys), el("span", "", what));
-    $("help-top").append(li);
-  }
   for (const [title, rows] of HELP) {
     const section = el("section");
     const line = el("p");
-    for (const [keys, what] of rows) {
-      const span = el("span", "", ` ${what}`);
-      span.prepend(el("kbd", "", keys));
+    for (const [keys, what, highlight] of rows) {
+      const span = el("span", highlight ? "highlight" : "", ` ${what}`);
+      span.prepend(el(highlight === "mouse" ? "b" : "kbd", "", keys));
       line.append(span);
     }
     section.append(el("h3", "", title), line);

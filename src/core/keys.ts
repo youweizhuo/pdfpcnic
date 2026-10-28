@@ -1,5 +1,5 @@
 // pdfpc's default key bindings, plus `o` to open the audience window, `[` `]`
-// to size the current slide and `,` for settings.
+// and `0` for the slides' size, `t` and `e` for the clocks, and `,` for settings.
 
 /** What a key does to the talk itself: where it is, what the audience sees, the clock (see talk.ts). */
 const TALK_ACTIONS = [
@@ -43,6 +43,8 @@ export type ViewAction =
   | "slideSmaller"
   | "slideBigger"
   | "resetLayout"
+  | "timesOfDay"
+  | "earlyLate"
   | "settings";
 
 export type Action = TalkAction | ViewAction;
@@ -103,6 +105,8 @@ const BINDINGS: Record<string, Action> = {
   "[": "slideSmaller",
   "]": "slideBigger",
   "0": "resetLayout",
+  t: "timesOfDay",
+  e: "earlyLate",
   ",": "settings",
 };
 
@@ -122,22 +126,10 @@ export function actionFor(e: KeyPress): Action | null {
 }
 
 /**
- * What people open the help for: what nothing on screen shows, keys and the
- * mouse (`true`). First and largest in the help.
+ * The help: the keys, and what the mouse does. Highlighted, as a key or a
+ * mouse move: what nothing on screen shows, so what people open the help for.
  */
-export const HELP_TOP: Array<[string, string, mouse?: true]> = [
-  ["+ / −", "notes text size; the laser dot's while the laser is on"],
-  ["[ / ]", "current slide smaller / bigger, for more room for notes"],
-  ["0", "the layout as at first: equal columns, the current slide full size"],
-  ["Esc", "one step back: closes help and overview, ends black, freeze and laser, then leaves presenter fullscreen"],
-  ["Drag a divider", "resize the columns, or the slide against its notes", true],
-  ["Mouse to the right edge", "the thumbnails, to jump to a slide", true],
-  ["Click the bar", "its times on the clock, or as times of day", true],
-  ["Drop a .pdfpc file", "on the window any time, to add its notes and timing to the deck that's open", true],
-];
-
-/** The rest, for reference: moving about, and the keys the buttons already show. */
-export const HELP: Array<[string, Array<[string, string]>]> = [
+export const HELP: Array<[string, Array<[string, string, highlight?: "key" | "mouse"]>]> = [
   [
     "Move",
     [
@@ -146,6 +138,7 @@ export const HELP: Array<[string, Array<[string, string]>]> = [
       ["Home / End", "first / last slide"],
       ["Shift+PgDn / PgUp", "next / previous slide, past reveal steps"],
       ["g", "go to a slide by its number"],
+      ["Mouse to the right edge", "the thumbnails: rest on one to see it in the next slide's place, click to jump", "mouse"],
       ["Shift+Backspace / Space", "back / forward after a jump"],
       ["Shift+→ / ←", "10 slides forward / back"],
       ["Shift+N / Shift+P", "next / previous, including hidden"],
@@ -154,16 +147,34 @@ export const HELP: Array<[string, Array<[string, string]>]> = [
     ],
   ],
   [
-    "On the buttons",
+    "Show",
     [
       ["o", "open the audience window"],
       ["Shift+W", "audience fullscreen (or present here)"],
       ["w", "presenter fullscreen"],
       ["b / f", "black screen / freeze"],
       ["2 / 1", "laser pointer on / off"],
+      ["Esc", "one step back: closes help and overview, ends black, freeze and laser, then leaves presenter fullscreen", "key"],
       ["Tab", "overview"],
+    ],
+  ],
+  [
+    "Clock",
+    [
       ["s / p", "start / pause the clock"],
       ["Shift+R or Ctrl+T", "reset the clock (pause it first)"],
+      ["t", "the clocks as times of day, or back", "key"],
+      ["e", "where the talk would end, or how early or late (or click it)", "key"],
+    ],
+  ],
+  [
+    "Layout",
+    [
+      ["+ / −", "notes text size; the laser dot's while the laser is on", "key"],
+      ["[ / ]", "slides smaller / bigger, for more room for notes", "key"],
+      ["0", "the layout as at first: equal columns, the slides full size", "key"],
+      ["Drag a divider", "resize the columns, or the slides against the notes", "mouse"],
+      ["Drop a .pdfpc file", "on the window any time, to add its notes and timing to the deck that's open", "mouse"],
       [",", "settings"],
       ["?", "this help"],
     ],

@@ -19,15 +19,17 @@ const SLACK_RANGE: Record<Slack["unit"], Record<SlackLevel, [number, number, num
 };
 
 export class Settings {
-  /** Current slide width as a share of its column; what it gives up goes to the notes. */
+  /** The slides' width as a share of their columns; what the current one gives up goes to its notes. */
   stage = 1;
   notesSize: number;
   /** Laser dot size, as a share of the slide's height. */
   laserSize: number;
   /** How much the covered part of a note dims, 0 for not at all. */
   notesDim: number;
-  /** The bar's times as times of day, rather than on the clock. */
+  /** The clocks as times of day, rather than on the talk's clock. */
   timeOfDay: boolean;
+  /** Where the talk would end, as how early or late rather than a time. */
+  earlyLate: boolean;
   slack: Slack;
   private split = 0.5;
 
@@ -43,6 +45,7 @@ export class Settings {
     this.laserSize = store.pref("laserSize", 0.035);
     this.notesDim = store.pref("notesDim", 0.5);
     this.timeOfDay = store.pref("barTimeOfDay", false);
+    this.earlyLate = store.pref("earlyLate", false);
     const saved = store.pref<Slack | null>("paceSlack", null);
     this.slack = saved && saved.unit in SLACK ? { ...SLACK[saved.unit], ...saved } : { ...SLACK.time };
   }
@@ -81,6 +84,12 @@ export class Settings {
   setTimeOfDay(on: boolean): void {
     this.timeOfDay = on;
     this.store.setPref("barTimeOfDay", on);
+    this.on.pace();
+  }
+
+  setEarlyLate(on: boolean): void {
+    this.earlyLate = on;
+    this.store.setPref("earlyLate", on);
     this.on.pace();
   }
 
@@ -157,6 +166,7 @@ export class Settings {
         this.useSlack({ ...SLACK.time });
         this.setNotesDim(0.5);
         this.setTimeOfDay(false);
+        this.setEarlyLate(false);
         this.sync();
       },
       { signal },

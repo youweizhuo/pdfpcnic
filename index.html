@@ -77,16 +77,18 @@
         <div
           id="talkbar"
           class="talkbar"
-          title="The whole talk: time spent, colored by the pace, then paler to where the talk would end; this slide's planned part in yellow; the target end in red, and under it where the talk would end. Click for times of day."
+          title="The whole talk: time spent, colored by the pace, then paler to where the talk would end; this slide's planned part in yellow; the target end in red."
         ></div>
-        <!-- Level with black, freeze and the laser, and the clock with the notes' first line, as the columns start. -->
+        <!-- Level with black, freeze and the laser, and the clock with the notes' first line, as the columns start. The
+             target end over where the talk would end. -->
         <nav class="toolbar timer-controls">
           <button id="timer-toggle" class="ctl cta" type="button">Start <kbd>s</kbd></button>
           <button id="timer-reset" class="ctl" type="button" disabled>Reset <kbd>⇧R</kbd></button>
+          <span id="target-at" class="target-at" title="The target end: the red line"></span>
         </nav>
         <div class="clock">
           <button id="timer" class="timer idle" type="button" title="Click to pause or resume (p)">0:00:00</button>
-          <span id="finish" class="finish"></span>
+          <button id="finish" class="finish" type="button" data-action="earlyLate"></button>
         </div>
         <!-- The next slide's notes, in grey: how it starts, as much as fits. -->
         <article id="next-notes" class="notes next-notes"><div id="next-notes-body" class="notes-body"></div></article>
@@ -122,8 +124,6 @@
     <section id="help" class="help" hidden>
       <div class="help-card">
         <h2>Help</h2>
-        <ul id="help-top" class="help-top"></ul>
-        <!-- The rest, for reference: the usual moves, and the keys the buttons show. -->
         <div id="help-rest" class="help-rest"></div>
         <section class="legend">
           <h3>Pace</h3>
@@ -152,7 +152,7 @@
             </div>
             <div>
               <dt><i class="sw target"></i></dt>
-              <dd>Red line: the target end, <code>duration</code>, else where the plan ends. Under it, where the talk would end. Click the line for the clocks as times of day.</dd>
+              <dd>Red line: the target end, <code>duration</code>, else where the plan ends; its time is in red over where the talk would end. <kbd>t</kbd> turns the clocks to times of day; <kbd>e</kbd>, or a click on where the talk would end, shows how early or late instead.</dd>
             </div>
           </dl>
         </section>
@@ -164,7 +164,7 @@
       <form method="dialog">
         <h2>Settings</h2>
         <label class="setting">
-          <span>Current slide</span>
+          <span>Slides</span>
           <input id="set-stage" type="range" min="50" max="100" step="1" />
           <output for="set-stage"></output>
           <kbd>[ ]</kbd>
@@ -183,7 +183,7 @@
         </label>
         <div class="setting">
           <span>Clocks</span>
-          <div id="set-times" class="switch" title="Or click the line under the next slide">
+          <div id="set-times" class="switch" title="Or press t">
             <button type="button" data-times="clock">clock</button>
             <button type="button" data-times="day">time of day</button>
           </div>

@@ -1,7 +1,7 @@
 import type { Pdf } from "../platform.ts";
 
 /** Width in device pixels of overview and strip thumbnails. */
-export const THUMB_WIDTH = 640;
+export const THUMB_WIDTH = 360;
 /** Widest render; beyond this a 4K-and-up screen gets a scaled image. */
 const MAX_WIDTH = 4096;
 

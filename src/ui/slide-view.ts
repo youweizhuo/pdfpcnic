@@ -5,12 +5,12 @@ import { THUMB_WIDTH, type PageCache } from "./page-cache.ts";
 // Each link is a box in percent of the page; these rules (in whichever window
 // the slide is) make them clickable. The PDF's own link borders (hyperref's
 // colored boxes) stay off, as on the drawn slide; `marked` outlines the links
-// instead, for the presenter.
+// instead, for the presenter, in hyperref's magenta.
 const LINK_CSS = `
 .slide-links { position: absolute; pointer-events: none; }
 .slide-links a { position: absolute; pointer-events: auto; cursor: pointer; }
-.slide-links.marked a { outline: 1px solid rgb(255 214 10 / 0.85); outline-offset: -1px; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.45); }
-.slide-links.marked a:hover { background: rgb(255 214 10 / 0.2); outline-color: #ffd60a; }
+.slide-links.marked a { outline: 1px solid rgb(255 0 255 / 0.85); outline-offset: -1px; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.45); }
+.slide-links.marked a:hover { background: rgb(255 0 255 / 0.2); outline-color: #ff00ff; }
 `;
 
 export interface SlideViewOptions {

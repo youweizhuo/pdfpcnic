@@ -270,7 +270,7 @@ export class Talk {
     }
   }
 
-  /** Moves the laser, from the presenter's slide or the audience window. Returns whether there's anything to redraw. */
+  /** Moves the laser, from the presenter's slide. Returns whether there's anything to redraw. */
   point(at: Point | null): boolean {
     const s = this.state;
     if (!s.laser || (at === null && s.laserAt === null)) return false;

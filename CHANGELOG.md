@@ -3,6 +3,14 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.2.3 (2026-10-28)
+
+### Changed
+
+- **The laser follows the mouse over the presenter's slide only**, as in Présentation.app, in the browser and the Mac
+  app. The mouse over the audience window no longer moves it: Firefox on the Mac doesn't report the mouse over a
+  window that isn't the active one, so pointing there showed nothing.
+
 ## 1.2.2 (2026-10-27)
 
 ### Changed

@@ -36,8 +36,6 @@ export interface AudienceEvents {
   key(e: KeyboardEvent): void;
   /** A click (1) or right-click (-1) on the slide. */
   step(delta: 1 | -1): void;
-  /** The pointer over the slide, in fractions of the page, for the laser. */
-  pointer(at: Point | null): void;
   /** A link on the slide was clicked. */
   follow(to: LinkTarget): void;
   /** Its status changed: opened, closed, fullscreen. */

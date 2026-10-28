@@ -42,7 +42,6 @@ export async function start(platform: Platform): Promise<void> {
   const audience = platform.audience({
     key: (e) => presenter?.onKey(e),
     step: (d) => presenter?.act(d > 0 ? "next" : "prev"),
-    pointer: (at) => presenter?.pointAt(at),
     follow: (to) => presenter?.follow(to),
     change: () => presenter?.render(),
   });

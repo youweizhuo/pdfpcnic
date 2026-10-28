@@ -275,13 +275,11 @@ export class PopupAudience implements Audience {
       this.events.step(-1);
     });
     let idle = 0;
-    doc.addEventListener("pointermove", (e) => {
+    doc.addEventListener("pointermove", () => {
       doc.body.classList.remove("idle");
       clearTimeout(idle);
       idle = win.setTimeout(() => doc.body.classList.add("idle"), 2000);
-      this.events.pointer(this.view?.toPage(e.clientX, e.clientY) ?? null);
     });
-    doc.addEventListener("pointerleave", () => this.events.pointer(null));
     win.setTimeout(() => (hint.hidden = true), 6000);
 
     clearInterval(this.poll);

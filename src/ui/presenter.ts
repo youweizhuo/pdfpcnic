@@ -209,8 +209,8 @@ export class Presenter {
     this.render();
   }
 
-  /** Laser position from the presenter's current slide or the audience window. */
-  pointAt(at: Point | null): void {
+  /** Laser position from the slide under the pointer here, as in Présentation.app: the audience window doesn't move it. */
+  private pointAt(at: Point | null): void {
     if (this.talk.point(at)) this.renderLaser();
   }
 

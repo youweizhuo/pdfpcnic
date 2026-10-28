@@ -1,7 +1,7 @@
 import AppKit
 
-/// One slide, fitted and centered on black, with the laser. Clicks, keys and
-/// the pointer go to the page, as they do from the website's audience window.
+/// One slide, fitted and centered on black, with the laser. Clicks and keys go
+/// to the page, as they do from the website's audience window.
 @MainActor
 final class SlideView: NSView {
     var doc: Documents.Doc? { didSet { redraw() } }
@@ -135,17 +135,12 @@ final class SlideView: NSView {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
             if self?.moves == move { NSCursor.setHiddenUntilMouseMoves(true) }
         }
-        if let at = fraction(event) { events("audiencePointer", ["x": Double(at.x), "y": Double(at.y)]) } else { events("audiencePointer", NSNull()) }
-    }
-
-    override func mouseExited(with event: NSEvent) {
-        events("audiencePointer", NSNull())
     }
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let tracking { removeTrackingArea(tracking) }
-        let area = NSTrackingArea(rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self)
+        let area = NSTrackingArea(rect: .zero, options: [.mouseMoved, .activeAlways, .inVisibleRect], owner: self)
         addTrackingArea(area)
         tracking = area
     }

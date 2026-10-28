@@ -310,7 +310,7 @@ try {
     assert.equal(await page.$eval("#audience-state", (e) => e.hidden), true);
   });
 
-  await check("laser follows the mouse onto the audience", async () => {
+  await check("laser follows the presenter's mouse onto the audience; the mouse over the audience window doesn't move it", async () => {
     await press("Home", "2");
     const box = await (await page.$("#current canvas")).boundingBox();
     await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
@@ -321,6 +321,10 @@ try {
     assert.ok(Math.abs(laser.left + laser.w / 2 - (stage.left + stage.w / 2)) < 4, "laser not centered");
     await page.screenshot({ path: `${out}/laser.png` });
     await audience.screenshot({ path: `${out}/audience.png` });
+    const at = (await state()).laserAt;
+    await audience.mouse.move(20, 20);
+    await new Promise((r) => setTimeout(r, 150));
+    assert.deepEqual((await state()).laserAt, at);
     await press("1");
   });
 

@@ -5,7 +5,7 @@ import AppKit
 /// takes over that screen at once, with no animation and no new Space.
 @MainActor
 final class Audience: NSObject, NSWindowDelegate {
-    /// Tells the page: the window's status, and keys, clicks, the pointer and links in it.
+    /// Tells the page: the window's status, and keys, clicks and links in it.
     var emit: (String, Any) -> Void = { _, _ in }
     /// The presenter's window, fullscreen or not: the audience opens behind it,
     /// goes fullscreen off its screen, and gives the keyboard back to it.

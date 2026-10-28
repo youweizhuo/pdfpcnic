@@ -23,7 +23,6 @@ export class MacAudience implements Audience {
     });
     on<KeyPress>("audienceKey", (key) => events.key(new KeyboardEvent("keydown", key)));
     on<1 | -1>("audienceStep", (delta) => events.step(delta));
-    on<Point | null>("audiencePointer", (at) => events.pointer(at));
     on<LinkTarget>("audienceFollow", (to) => events.follow(to));
   }
 

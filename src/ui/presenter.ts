@@ -231,6 +231,17 @@ export class Presenter {
     cur.addEventListener("wheel", wheelStepper((d) => this.act(d > 0 ? "next" : "prev")), { signal, passive: true });
     $("next").addEventListener("click", () => this.act("nextSlide"), { signal });
     $("talkbar").addEventListener("click", () => this.settings.setTimeOfDay(!this.settings.timeOfDay), { signal });
+    // The thumbnails come in once the mouse rests at the right edge, and go once it has left them.
+    const strip = $("strip");
+    let stripTimer = 0;
+    const stripLater = (open: boolean) => {
+      clearTimeout(stripTimer);
+      stripTimer = window.setTimeout(() => strip.classList.toggle("open", open), 300);
+    };
+    $("strip-edge").addEventListener("mouseenter", () => stripLater(true), { signal });
+    $("strip-edge").addEventListener("mouseleave", () => strip.classList.contains("open") || clearTimeout(stripTimer), { signal });
+    strip.addEventListener("mouseenter", () => clearTimeout(stripTimer), { signal });
+    strip.addEventListener("mouseleave", () => stripLater(false), { signal });
     $("timer").addEventListener("click", () => this.act("timerPause"), { signal });
     const toggle = $("timer-toggle");
     toggle.addEventListener(
@@ -331,8 +342,9 @@ export class Presenter {
       ? `Press b to show slide ${(frozen ?? here.slide) + 1}${frozen === null ? "" : " (frozen)"}`
       : `Press f to move it to slide ${here.slide + 1}`;
 
-    // The audience's next step: on the button by the clock, standing out
-    // until the audience sees the slides, and in the line under the slides.
+    // The audience's next step: on the button under the current slide,
+    // standing out until the audience sees the slides, and in the line under
+    // the bar until the talk starts (or when it answers a press).
     const status = this.audience.status;
     const step = audienceStep(status, this.view.solo);
     const ab = $("audience-button");
@@ -340,7 +352,7 @@ export class Presenter {
     ab.classList.toggle("cta", !audienceReady(status, this.view.solo));
     label(ab, step.label, step.key);
     const line = $("audience-status");
-    line.textContent = step.status;
+    line.textContent = this.talk.state.timer.startedAt === null || step.ask ? step.status : "";
     line.classList.toggle("ask", step.ask);
     const extended = this.platform.window.extended;
     const scr = $("screen-status");
@@ -431,26 +443,28 @@ export class Presenter {
     const stale = this.talk.stale;
     if (stale && !this.stale) toast("The clock has already started. Starting the talk now? Reset it first.", 8000);
     this.stale = stale;
-    // The buttons say what state the clock is in, so nothing under it comes and
-    // goes: what to press next stands out, and the rest is in their tooltips.
-    // One button stands out at a time, and the audience's steps come first.
+    // The icon by the clock says what it does next: start, pause, resume.
+    // What to press next stands out: Start before the talk, Reset while paused
+    // or after a rehearsal. One at a time, and the audience's steps come first.
     const ours = audienceReady(this.audience.status, this.view.solo);
     const toggle = $("timer-toggle");
+    const running = t.startedAt !== null && t.pausedAt === null;
+    toggle.classList.toggle("running", running);
     if (t.startedAt === null) {
-      label(toggle, "Start", "s");
+      toggle.ariaLabel = "Start";
       const until = T.untilStart(this.deck, now);
       toggle.title = until
-        ? `The talk starts at ${this.deck.startTime}, in ${T.format(until)}.`
-        : `Starts the clock. It also starts ${this.talk.state.page === 0 ? "when you leave slide 1" : "at your next move"}.`;
+        ? `The talk starts at ${this.deck.startTime}, in ${T.format(until)}. (s starts it now.)`
+        : `Start (s). It also starts ${this.talk.state.page === 0 ? "when you leave slide 1" : "at your next move"}.`;
     } else {
-      label(toggle, t.pausedAt === null ? "Pause" : "Resume", "p");
-      toggle.title = "";
+      toggle.ariaLabel = running ? "Pause" : "Resume";
+      toggle.title = `${toggle.ariaLabel} (p)`;
     }
-    toggle.classList.toggle("cta", ours && (t.startedAt === null || t.pausedAt !== null) && !stale);
+    toggle.classList.toggle("cta", ours && t.startedAt === null && !stale);
     const reset = $<HTMLButtonElement>("timer-reset");
-    reset.title = t.pausedAt === null ? "While the clock runs, click twice." : "";
+    reset.title = running ? "While the clock runs, click twice." : "";
     reset.disabled = t.startedAt === null;
-    reset.classList.toggle("cta", ours && stale && !this.resetArmed);
+    reset.classList.toggle("cta", ours && (stale || t.pausedAt !== null) && !this.resetArmed);
     reset.classList.toggle("confirm", !!this.resetArmed);
     label(reset, this.resetArmed ? "Click again to reset" : "Reset", "⇧R");
   }
@@ -474,10 +488,9 @@ export class Presenter {
     this.barScale = 0;
   }
 
-  /** Dims the part of the note you'd have said by now, its edge fading over a second and a half of the slide's time. */
+  /** Dims the part of the note you'd have said by now. */
   private renderNotesDim(now = Date.now()): void {
-    const used = this.settings.notesDim > 0 ? this.talk.used(now) : null;
-    this.spoken.show(used, used === null ? 0 : 1.5 / this.talk.budget!);
+    this.spoken.show(this.settings.notesDim > 0 ? this.talk.used(now) : null);
   }
 
   /** This slide's line in device pixels, and how far along it is drawn. */
@@ -498,7 +511,7 @@ export class Presenter {
     $("slide-fill").style.transform = `scaleX(${px / width})`;
   }
 
-  /** How soon to look again: when the line is due to move a pixel, at most 25 times a second; 4 times otherwise. */
+  /** How soon to look again: when the line is due to move a pixel or the notes a character, at most 25 times a second; 4 times otherwise. */
   private beatMs = 250;
 
   /** Lays this slide's line exactly along the slide's foot: the slide is drawn in whole pixels, its box isn't. */
@@ -524,15 +537,11 @@ export class Presenter {
     }
     this.target = p.target;
 
-    // This slide, in the line under it. Words only once it's seriously over;
-    // the line says the rest. A slide planned to take no time has no line
-    // (the row keeps its place, so the notes don't jump).
+    // This slide, in the line under it. A slide planned to take no time has
+    // no line (the row keeps its place, so the notes don't jump).
     const own = p.slide;
     $("pace-slide").classList.toggle("none", !own);
     if (own) {
-      const text = $("pace-slide-text");
-      text.textContent = own.tone === "serious" || own.tone === "severe" ? `${span(own.over)} over` : "";
-      text.className = `slidebar-text t-${own.tone}`;
       $("slide-fill").className = `slide-fill t-${own.tone}`;
       $("pace-slide").title = own.plan
         ? `This slide: planned ${mark(own.plan.start)}–${mark(own.plan.end)}, ${span(own.budget)}`
@@ -541,7 +550,7 @@ export class Presenter {
     this.renderFill(now);
     const budget = this.talk.budget;
     const moving = budget !== null && this.talk.state.timer.pausedAt === null && (this.talk.used(now) ?? 1) < 1;
-    this.beatMs = moving ? Math.min(250, Math.max(40, (budget * 1000) / Math.max(1, this.fillPixels))) : 250;
+    this.beatMs = moving ? Math.min(250, Math.max(40, (budget * 1000) / Math.max(1, this.fillPixels, this.spoken.total))) : 250;
 
     // All slides: a little early is simply on time here, and on time needs no words.
     const all = $("pace-all-text");

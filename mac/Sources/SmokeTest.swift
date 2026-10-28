@@ -78,8 +78,8 @@ final class SmokeTest {
         await check("Shift+W makes the audience fullscreen, and the presenter knows") {
             try await press("W", shift: true)
             try await until("fullscreen") { app.audience.view.isInFullScreenMode }
-            try await until("the status line, and its button lit") {
-                try await js("return /^Audience fullscreen/.test(document.querySelector('#audience-status').textContent) && document.querySelector('#audience-button.on') !== null") as? Bool == true
+            try await until("its button lit") {
+                try await js("return document.querySelector('#audience-button.on') !== null") as? Bool == true
             }
             try await until("the slide, fullscreen") { Self.painted(app.audience.view) }
         }

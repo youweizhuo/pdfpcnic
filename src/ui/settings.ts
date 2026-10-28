@@ -29,11 +29,7 @@ export class Settings {
   /** The bar's times as times of day, rather than on the clock. */
   timeOfDay: boolean;
   slack: Slack;
-  private split = 0.62;
-  /** Thumbnail strip width in px: null for the default, 0 when hidden. */
-  private stripWidth: number | null = null;
-  /** The width to bring a hidden strip back to. */
-  private stripOpen: number | null = null;
+  private split = 0.5;
 
   constructor(
     private store: Store,
@@ -54,7 +50,7 @@ export class Settings {
   /** Lays the presenter out as last left. */
   apply(): void {
     document.documentElement.style.setProperty("--notes", `${this.notesSize}px`);
-    this.applyColumns(this.store.pref("split", 0.62), this.store.pref<number | null>("strip", null));
+    this.applyColumns(this.store.pref("split", 0.5));
     this.applyStage(this.store.pref("stage", 1));
     Spoken.setDim(this.notesDim);
   }
@@ -154,20 +150,19 @@ export class Settings {
         this.useSlack({ ...SLACK.time });
         this.setNotesDim(0.5);
         this.setTimeOfDay(false);
-        this.applyColumns(0.62, null);
+        this.applyColumns(0.5);
         this.store.setPref("split", this.split);
-        this.store.setPref("strip", null);
         this.sync();
       },
       { signal },
     );
 
-    // Columns, the current slide against its notes, and the thumbnails can all be dragged.
+    // The columns, and the current slide against its notes, can be dragged.
     draggable($("split"), signal, {
       move: (e) => {
         const left = $("notes").getBoundingClientRect().left;
-        const right = $("strip-split").getBoundingClientRect().left - $("split").offsetWidth;
-        this.applyColumns((e.clientX - left) / (right - left), this.stripWidth);
+        const right = $("next").parentElement!.getBoundingClientRect().right - $("split").offsetWidth;
+        this.applyColumns((e.clientX - left) / (right - left));
       },
       end: () => this.store.setPref("split", this.split),
     });
@@ -177,23 +172,6 @@ export class Settings {
       move: (e) => this.applyStage((from.stage * (from.height + e.clientY - from.y)) / from.height),
       end: () => this.store.setPref("stage", this.stage),
     });
-    draggable($("strip-split"), signal, {
-      move: (e) => {
-        const right = $("presenter").getBoundingClientRect().right;
-        const width = right - e.clientX - $("strip-split").offsetWidth / 2;
-        // Dragged nearly shut, the thumbnails go away.
-        this.applyColumns(this.split, width < 70 ? 0 : Math.min(420, width));
-      },
-      end: () => this.store.setPref("strip", this.stripWidth),
-    });
-    $("strip-split").addEventListener(
-      "dblclick",
-      () => {
-        this.applyColumns(this.split, this.stripWidth === 0 ? (this.stripOpen ?? null) : 0);
-        this.store.setPref("strip", this.stripWidth);
-      },
-      { signal },
-    );
   }
 
   /** Notes size the .pdfpc file asks for, in px. */
@@ -201,14 +179,9 @@ export class Settings {
     return this.deck.noteFontSize ? Math.round((this.deck.noteFontSize * 4) / 3) : 24;
   }
 
-  private applyColumns(split: number, strip: number | null): void {
-    this.split = Math.min(0.8, Math.max(0.4, split || 0.62));
-    if (strip !== 0) this.stripOpen = strip;
-    this.stripWidth = strip;
-    $("strip").hidden = strip === 0;
-    $("strip-split").classList.toggle("collapsed", strip === 0);
-    $("presenter").style.gridTemplateColumns =
-      `minmax(0, ${this.split}fr) 28px minmax(0, ${1 - this.split}fr) 14px ${strip === null ? "clamp(120px, 12vw, 220px)" : `${strip}px`}`;
+  private applyColumns(split: number): void {
+    this.split = Math.min(0.8, Math.max(0.4, split || 0.5));
+    $("presenter").style.gridTemplateColumns = `minmax(0, ${this.split}fr) 28px minmax(0, ${1 - this.split}fr)`;
   }
 
   private applyStage(f: number): void {

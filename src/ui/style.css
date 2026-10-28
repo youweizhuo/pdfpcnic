@@ -6,7 +6,10 @@
   --faint: #48484a;
   --line: #2c2c2e;
   --panel: #1c1c1e;
+  /* What's on. */
   --accent: #ffd60a;
+  /* What to press next. */
+  --next: #bf5af2;
   --ahead: #64d2ff;
   --behind: #ff9f0a;
   --over: #ff453a;
@@ -185,21 +188,22 @@ kbd {
 }
 
 /* Presenter: Présentation.app's layout. The current slide with its notes
-   under it, the next slide beside it with the clock and pace below, and
-   thumbnails down the right edge. */
+   under it, the next slide beside it with the clock and pace below; the
+   thumbnails come in from the right edge. */
 
 .presenter {
   position: fixed;
   inset: 0;
   display: grid;
-  padding: 18px 0 18px 28px;
-  grid-template-columns: minmax(0, 62fr) 28px minmax(0, 38fr) 14px clamp(120px, 12vw, 220px);
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  padding: 18px 28px;
+  grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
   grid-template-areas:
-    "current split side ssplit strip"
-    "slidebar split side ssplit strip"
-    "hsplit split side ssplit strip"
-    "notes split side ssplit strip";
+    "current split side"
+    "slidebar split side"
+    "tools split side"
+    "hsplit split side"
+    "notes split side";
 }
 /* This slide's time: a line along the foot of the slide, as wide, as thick
    as the time line of the talk bar. The script lines it up with the slide as
@@ -232,14 +236,13 @@ kbd {
 .slide-fill.t-severe {
   background: var(--severe);
 }
-.slidebar-text {
-  position: absolute;
-  top: calc(var(--time-line) + 3px);
-  right: 0;
-  pointer-events: none;
-  font-size: clamp(13px, 1vw, 16px);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+/* The audience's step, black, freeze and the laser, at the slide's right edge. */
+.slide-tools {
+  grid-area: tools;
+  justify-self: center;
+  justify-content: flex-end;
+  width: calc(var(--stage) * 100%);
+  margin-top: 0;
 }
 
 .slide-view {
@@ -288,16 +291,6 @@ kbd {
 .hsplit:hover::after,
 .hsplit.dragging::after {
   background: var(--faint);
-}
-.strip-split {
-  grid-area: ssplit;
-}
-.strip-split::after {
-  left: 6px;
-}
-/* With the thumbnails hidden, the handle stays in view to bring them back. */
-.strip-split.collapsed::after {
-  background: var(--line);
 }
 /* Between the current slide and its notes. */
 .hsplit {
@@ -432,7 +425,6 @@ kbd {
 }
 .clock {
   display: flex;
-  justify-content: space-between;
   align-items: baseline;
   gap: 14px;
   white-space: nowrap;
@@ -441,8 +433,30 @@ kbd {
 .timer,
 .pace-num {
   font-size: clamp(28px, 3vw, 60px);
-  font-size: min(clamp(28px, 3vw, 60px), 10cqi);
+  font-size: min(clamp(28px, 3vw, 60px), 8.5cqi);
   line-height: 1;
+}
+/* Start, pause, resume: an icon by the digits, sized with them. */
+.clock .clock-toggle {
+  align-self: center;
+  justify-content: center;
+  width: 1.1em;
+  height: 0.9em;
+  padding: 0;
+  font-size: clamp(28px, 3vw, 60px);
+  font-size: min(clamp(28px, 3vw, 60px), 8.5cqi);
+}
+.clock-toggle svg {
+  width: 0.42em;
+  height: 0.42em;
+  fill: currentColor;
+}
+.clock-toggle .pause,
+.clock-toggle.running .play {
+  display: none;
+}
+.clock-toggle.running .pause {
+  display: block;
 }
 .timer {
   padding: 0;
@@ -455,12 +469,6 @@ kbd {
 }
 .timer.idle {
   color: var(--dim);
-}
-/* One row that keeps its height, whatever the clock is doing. */
-.timer-controls {
-  display: flex;
-  gap: 8px;
-  margin: 10px 0 12px;
 }
 /* Buttons beside the clock and for the audience: in plain sight, unlike keys. */
 .ctl {
@@ -487,10 +495,10 @@ kbd {
 .ctl kbd {
   font-size: 12px;
 }
-/* What to do next: the audience not yet fullscreen, the clock paused. */
+/* What to do next: the audience's step, starting the clock, a reset. */
 .ctl.cta {
-  border-color: var(--accent);
-  background: var(--accent);
+  border-color: var(--next);
+  background: var(--next);
   color: #000;
   font-weight: 600;
 }
@@ -507,15 +515,8 @@ kbd {
   border-color: var(--accent);
   color: var(--accent);
 }
-/* One under the other, whatever their labels say, so neither moves. */
-.screens {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-}
-
 .pace-num {
+  margin-left: auto;
   text-align: right;
 }
 /* Against the same clock: the slides as planned, time spent as a thin line
@@ -623,6 +624,12 @@ kbd {
 .hintline:empty {
   display: none;
 }
+/* The audience's next step: as plain as the buttons. */
+.guide {
+  color: #c7c7cc;
+  font-size: 14px;
+  font-weight: 600;
+}
 .hintline.warn {
   color: var(--behind);
 }
@@ -661,15 +668,36 @@ kbd {
 .toolbar kbd {
   font-size: 12px;
 }
+/* The thumbnails, for jumping: off the right edge, and in over the page while
+   the mouse is there or over them. */
 .strip {
-  grid-area: strip;
-  grid-row: 1 / -1;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  width: clamp(150px, 14vw, 250px);
   margin: 0;
-  padding: 0 14px 45vh 0;
+  padding: 18px 14px 45vh;
+  border-left: 1px solid var(--line);
+  background: var(--bg);
   list-style: none;
   overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.12s;
   scrollbar-width: thin;
   scrollbar-color: #3a3a3c transparent;
+}
+.strip.open {
+  transform: none;
+}
+.strip-edge {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  width: 10px;
 }
 .strip li {
   display: grid;
@@ -1076,15 +1104,16 @@ kbd {
   .presenter {
     padding: 12px 16px;
     grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
-    grid-template-areas: "current" "slidebar" "notes" "side";
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+    grid-template-areas: "current" "slidebar" "tools" "notes" "side";
   }
   #current {
     width: 100%;
   }
   .split,
   .hsplit,
-  .strip {
+  .strip,
+  .strip-edge {
     display: none;
   }
   #next {

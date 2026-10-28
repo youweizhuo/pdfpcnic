@@ -157,12 +157,14 @@ try {
 
   await page.screenshot({ path: `${out}/ready.png` });
 
-  await check("timer starts on leaving the first slide", async () => {
+  await check("timer starts on leaving the first slide; the line under the bar has said what to do with the audience until then", async () => {
     assert.equal((await state()).timer.startedAt, null);
+    if (mode === "site") await textMatches("#audience-status", /it goes fullscreen on /);
     await press("ArrowRight");
     const s = await state();
     assert.equal(s.page, 1);
     assert.ok(s.timer.startedAt > 0);
+    assert.equal(await text("#audience-status"), "");
   });
 
   await check("reveal steps: step forward, Shift+PageDown skips, back jumps to first step", async () => {
@@ -214,12 +216,10 @@ try {
       const where = () => audience.evaluate(() => ({ x: screenX, w: outerWidth, full: !!document.fullscreenElement }));
       const full = (on) => audience.waitForFunction((on) => !!document.fullscreenElement === on, { timeout: 5000 }, on);
       assert.ok((await where()).x < 1440, "audience not on the presenter's screen");
-      await textMatches("#audience-status", /it goes fullscreen on /);
       await page.screenshot({ path: `${out}/audience-open.png` });
       await press("Shift+W");
       await full(true);
       assert.deepEqual(await where(), { x: 1440, w: 1920, full: true });
-      await textMatches("#audience-status", /^Audience fullscreen on /);
       await audience.evaluate(() => document.exitFullscreen());
       await full(false);
       // Out of fullscreen, it stays on that screen rather than going back behind the presenter.
@@ -253,18 +253,18 @@ try {
     await full(true);
     // Lit while on, as the presenter's button by it; clicked, it ends.
     await page.waitForSelector("#audience-button.on", { timeout: 3000 });
-    // Whatever the audience's button says, the presenter's and the line under them stay put.
+    // Whatever the audience's button says, the buttons beside it and the line under the bar stay put.
     const places = await page.evaluate(() => {
       const button = document.querySelector("#audience-button");
       const was = button.innerHTML;
-      const at = (sel) => document.querySelector(sel).getBoundingClientRect().top;
+      const at = (sel) => JSON.stringify(document.querySelector(sel).getBoundingClientRect());
       const places = ["Open audience window <kbd>o</kbd>", "Double-click the audience window", "Audience fullscreen <kbd>⇧W</kbd>"].map(
-        (html) => ((button.innerHTML = html), `${at("#presenter-button")} ${at("#audience-status")}`),
+        (html) => ((button.innerHTML = html), `${at('.slide-tools [data-action="blank"]')} ${at("#presenter-button")} ${at("#audience-status")}`),
       );
       button.innerHTML = was;
       return places;
     });
-    assert.equal(new Set(places).size, 1, `the presenter's button moved: ${places}`);
+    assert.equal(new Set(places).size, 1, `a button moved: ${places}`);
     await page.click("#audience-button");
     await full(false);
     await page.click("#audience-button");
@@ -381,8 +381,7 @@ try {
     // on time, with its two minutes ahead and the plan's 30 s of spare time:
     // moving on now would end 2:30 early.
     await reach(390);
-    // Under the slide, just a line until you're seriously over.
-    assert.equal(await text("#pace-slide-text"), "");
+    // Under the slide, just a line.
     assert.match(await text("#pace-all-text"), /^2:(29|30) early$/);
     assert.match(await cls("#pace-all-text"), /t-early/);
     assert.match(await fill(), /t-early/);
@@ -409,18 +408,16 @@ try {
     // A minute into its two: half the spoken characters dim, none of the *ref* paragraph.
     await at(450);
     await settle();
-    // The edge fades: fully dim, then spoken-5 to spoken-1, each a sixth less.
+    // The edge is sharp, as a typewriter's: one highlight, no shades.
     const dim = () =>
       page.evaluate(() => {
-        const text = (name) => [...(CSS.highlights.get(name) ?? [])].map((r) => r.toString()).join("").replace(/\s/g, "");
-        const said = ["spoken", ...[5, 4, 3, 2, 1].map((j) => `spoken-${j}`)].map(text);
-        if (!said.join("")) return null;
+        const said = [...(CSS.highlights.get("spoken") ?? [])].map((r) => r.toString()).join("").replace(/\s/g, "");
+        if (!said) return null;
         const first = document.querySelector("#notes-body p").textContent.replace(/\s/g, "");
-        const share = said.reduce((n, t, k) => n + (t.length * (6 - k)) / 6, 0) / first.length;
-        return { share, inFirst: first.startsWith(said.join("")) };
+        return { share: said.length / first.length, inFirst: first.startsWith(said), shades: CSS.highlights.size };
       });
     const half = await dim();
-    assert.ok(half && Math.abs(half.share - 0.5) < 0.05 && half.inFirst, `notes dimmed: ${JSON.stringify(half)}`);
+    assert.ok(half && Math.abs(half.share - 0.5) < 0.05 && half.inFirst && half.shades === 1, `notes dimmed: ${JSON.stringify(half)}`);
     // This slide's line moves on several times a second, not once, and stops with the clock.
     const widths = async () => {
       const seen = new Set();
@@ -445,22 +442,19 @@ try {
     // Reached 1:30 into its window: moving on now ends a minute early, which
     // is within the minute of slack, so on time, which needs no words.
     await reach(480);
-    assert.equal(await text("#pace-slide-text"), "");
     assert.equal(await text("#pace-all-text"), "");
     assert.match(await cls("#pace-all-text"), /t-on/);
     // 2:30 on it: the slide is 30 s over; the talk would end 1:30 late, serious
     // (the levels are 1 and 2 minutes).
     await at(630);
     await settle();
-    assert.equal(await text("#pace-slide-text"), "");
     assert.match(await cls("#slide-fill"), /t-late/);
     assert.match(await text("#pace-all-text"), /^1:3\d late$/);
     assert.match(await cls("#pace-all-text"), /t-serious/);
     // 4:00 on it: two minutes over, very serious; the talk would end 3:00 late.
     await at(720);
     await settle();
-    assert.match(await text("#pace-slide-text"), /^2:0\d over$/);
-    assert.match(await cls("#pace-slide-text"), /t-severe/);
+    assert.match(await cls("#slide-fill"), /t-severe/);
     assert.match(await text("#pace-all-text"), /^3:0\d late$/);
     assert.match(await fill(), /t-severe/);
     assert.deepEqual(await ends(), there, "the times moved");
@@ -487,7 +481,7 @@ try {
     await press("Shift+PageUp");
     await at(790);
     await settle();
-    assert.match(await text("#pace-slide-text"), /^2:1\d over$/);
+    assert.match(await cls("#slide-fill"), /t-severe/);
     // A backup slide runs against its own length and isn't on the plan: the
     // talk would go on from slide 5, so the detour counts as late.
     await press("g");
@@ -503,7 +497,7 @@ try {
     // Back on slide 5, its own time picks up where it stopped.
     await press("Shift+Backspace");
     await settle();
-    assert.match(await text("#pace-slide-text"), /^2:1\d over$/);
+    assert.match(await cls("#slide-fill"), /t-severe/);
     // Fixed scale: 10:00 plus 10% room, so the target sits at 1/1.1 and the
     // last slide (08:30–09:30) where planned.
     const where = await page.$eval("#talkbar", (bar) => {
@@ -534,21 +528,24 @@ try {
   });
 
   const cta = (sel) => page.$eval(sel, (e) => e.classList.contains("cta"));
+  const toggle = () => page.$eval("#timer-toggle", (e) => e.ariaLabel);
   const ctaIs = (sel, on) => page.waitForFunction((sel, on) => document.querySelector(sel).classList.contains("cta") === on, { timeout: 5000 }, sel, on);
 
-  await check("the clock, and the button under it, pause and resume the timer", async () => {
-    assert.match(await text("#timer-toggle"), /^Pause/);
+  await check("the clock, and the icon by it, pause and resume the timer", async () => {
+    assert.equal(await toggle(), "Pause");
     await page.click("#timer");
     assert.ok((await state()).timer.pausedAt > 0);
-    assert.match(await text("#timer-toggle"), /^Resume/);
-    // One button stands out at a time: the audience's step first, then the clock's.
-    assert.equal(await cta("#timer-toggle"), false);
+    assert.equal(await toggle(), "Resume");
+    // One button stands out at a time: the audience's step first, then Reset while paused.
+    assert.equal(await cta("#timer-reset"), false);
     assert.equal(await cta("#audience-button"), true);
     await press("Shift+W");
-    await ctaIs("#timer-toggle", true);
+    await ctaIs("#timer-reset", true);
     assert.equal(await cta("#audience-button"), false);
+    assert.equal(await cta("#timer-toggle"), false);
     await page.click("#timer-toggle");
     assert.equal((await state()).timer.pausedAt, null);
+    await ctaIs("#timer-reset", false);
     await page.click("#timer-toggle");
     assert.ok((await state()).timer.pausedAt > 0);
     await page.click("#timer");
@@ -570,7 +567,7 @@ try {
     assert.equal((await state()).timer.startedAt, null);
     assert.equal(await text("#timer"), "0:00:00");
     assert.match(await text("#toast"), /next move/);
-    assert.match(await text("#timer-toggle"), /^Start/);
+    assert.equal(await toggle(), "Start");
     assert.equal(await cta("#timer-toggle"), true, "Start doesn't stand out before the talk");
     assert.equal(await page.$eval("#timer-reset", (e) => e.disabled), true);
     assert.equal(await barTop(), runningTop);
@@ -686,14 +683,22 @@ try {
     await flush();
     await drag("#stage-split", 0, 200);
     assert.equal(await height(), before);
-    const strip = () => page.$eval("#strip", (e) => (e.hidden ? 0 : e.getBoundingClientRect().width));
-    const wide = await strip();
-    await drag("#strip-split", -60, 0);
-    assert.ok((await strip()) > wide + 40, "the thumbnails didn't widen");
-    await page.click("#strip-split", { count: 2 });
-    assert.equal(await strip(), 0);
-    await page.click("#strip-split", { count: 2 });
-    assert.ok((await strip()) > wide + 40, "the thumbnails didn't come back at their width");
+    // The thumbnails stay off the right edge until the mouse rests there, stay while it's over them, and go once it leaves.
+    const shown = () => page.$eval("#strip", (e) => e.getBoundingClientRect().left < innerWidth - 50);
+    const [w, h] = await page.evaluate(() => [innerWidth, innerHeight]);
+    assert.equal(await shown(), false);
+    await page.mouse.move(w - 3, h / 2);
+    await page.waitForFunction(() => document.querySelector("#strip").getBoundingClientRect().left < innerWidth - 100, { timeout: 2000 });
+    await page.mouse.move(w - 60, h / 2, { steps: 5 });
+    await new Promise((r) => setTimeout(r, 700));
+    assert.equal(await shown(), true, "the thumbnails went while the mouse was over them");
+    await page.mouse.move(w / 2, h - 5, { steps: 5 });
+    await page.waitForFunction(() => document.querySelector("#strip").getBoundingClientRect().left >= innerWidth - 1, { timeout: 2000 });
+    // Passing by the edge doesn't bring them in.
+    await page.mouse.move(w - 3, h / 2);
+    await page.mouse.move(w / 2, h - 5);
+    await new Promise((r) => setTimeout(r, 700));
+    assert.equal(await shown(), false, "the thumbnails came in as the mouse passed");
   });
 
   await check("help sheet", async () => {

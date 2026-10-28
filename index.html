@@ -57,11 +57,17 @@
     <main id="presenter" class="presenter" hidden>
       <div id="current"></div>
       <div id="audience-state" class="audience-state" hidden><strong></strong><span></span></div>
-      <!-- This slide's planned time, filling as you spend it; words only once seriously over. -->
+      <!-- This slide's planned time, filling as you spend it. -->
       <div id="pace-slide" class="slidebar">
         <div class="slidebar-track"><div id="slide-fill" class="slide-fill"></div></div>
-        <span id="pace-slide-text" class="slidebar-text"></span>
       </div>
+      <!-- What the audience sees, under the slide it shows. -->
+      <nav class="toolbar slide-tools">
+        <button type="button" id="audience-button" class="ctl cta" data-action="openAudience">Open audience window <kbd>o</kbd></button>
+        <button type="button" data-action="blank">Black <kbd>b</kbd></button>
+        <button type="button" data-action="freeze">Freeze <kbd>f</kbd></button>
+        <button type="button" data-action="laserMode">Laser <kbd>2</kbd></button>
+      </nav>
       <div id="split" class="split" role="separator" aria-orientation="vertical" title="Drag to resize the columns"></div>
       <div id="stage-split" class="hsplit" role="separator" aria-orientation="horizontal" title="Drag to trade slide size for notes"></div>
       <article id="notes" class="notes"><div id="notes-body" class="notes-body"></div></article>
@@ -71,11 +77,11 @@
         <section class="time">
           <div class="clock">
             <button id="timer" class="timer idle" type="button" title="Click to pause or resume (p)">0:00:00</button>
+            <button id="timer-toggle" class="ctl cta clock-toggle" type="button" aria-label="Start">
+              <svg class="play" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.2v11.6L13.5 8z" /></svg>
+              <svg class="pause" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 2.5h3.2v11H3.5zm5.8 0h3.2v11H9.3z" /></svg>
+            </button>
             <span id="pace-all-text" class="pace-num"></span>
-          </div>
-          <div class="timer-controls">
-            <button id="timer-toggle" class="ctl cta" type="button">Start <kbd>s</kbd></button>
-            <button id="timer-reset" class="ctl" type="button" disabled>Reset <kbd>⇧R</kbd></button>
           </div>
           <div
             id="talkbar"
@@ -83,31 +89,21 @@
             title="The slides as planned, this one yellow. The line under them: time spent, colored like the early/late by the clock, then paler to where the talk would end. Red line: the target end. Over it, its time; under it, where the talk would end: on the clock, or as times of day. Click to switch."
           ></div>
         </section>
-        <!-- Both windows' fullscreen, together; each lit while on. -->
-        <div class="screens">
-          <button type="button" id="audience-button" class="ctl cta" data-action="openAudience">Open audience window <kbd>o</kbd></button>
-          <button type="button" id="presenter-button" class="ctl" data-action="fullscreen">Presenter fullscreen <kbd>w</kbd></button>
-          <p id="audience-status" class="hintline"></p>
-        </div>
         <p id="screen-status" class="hintline"></p>
+        <!-- The audience's next step, until the talk starts. -->
+        <p id="audience-status" class="hintline guide"></p>
         <nav class="toolbar">
-          <button type="button" data-action="blank">Black <kbd>b</kbd></button>
-          <button type="button" data-action="freeze">Freeze <kbd>f</kbd></button>
-          <button type="button" data-action="laserMode">Laser <kbd>2</kbd></button>
           <button type="button" data-action="overview">Overview <kbd>Tab</kbd></button>
+          <button type="button" id="presenter-button" class="ctl" data-action="fullscreen">Presenter fullscreen <kbd>w</kbd></button>
           <button type="button" data-action="settings">Settings <kbd>,</kbd></button>
           <button type="button" data-action="help">Help <kbd>?</kbd></button>
           <button type="button" id="open-files">Open…</button>
+          <button id="timer-reset" class="ctl" type="button" disabled>Reset <kbd>⇧R</kbd></button>
         </nav>
       </aside>
 
-      <div
-        id="strip-split"
-        class="split strip-split"
-        role="separator"
-        aria-orientation="vertical"
-        title="Drag to resize the thumbnails; double-click to hide or show them"
-      ></div>
+      <!-- The thumbnails, in over the page while the mouse is at the right edge or over them. -->
+      <div id="strip-edge" class="strip-edge"></div>
       <ol id="strip" class="strip"></ol>
     </main>
 

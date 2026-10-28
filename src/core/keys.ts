@@ -127,7 +127,8 @@ export const HELP_TOP: Array<[string, string, mouse?: true]> = [
   ["+ / −", "notes text size; the laser dot's while the laser is on"],
   ["[ / ]", "current slide smaller / bigger, for more room for notes"],
   ["Esc", "one step back: closes help and overview, ends black, freeze and laser, then leaves presenter fullscreen"],
-  ["Drag a divider", "resize the columns, or the slide against its notes; double-click the thumbnails' divider to hide them", true],
+  ["Drag a divider", "resize the columns, or the slide against its notes", true],
+  ["Mouse to the right edge", "the thumbnails, to jump to a slide", true],
   ["Click the bar", "its times on the clock, or as times of day", true],
   ["Drop a .pdfpc file", "on the window any time, to add its notes and timing to the deck that's open", true],
 ];

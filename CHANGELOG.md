@@ -3,6 +3,25 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.2.5 (2026-10-28)
+
+### Changed
+
+- **The notes dim like a typewriter:** a character at a time, with a sharp edge instead of a soft fade. Long notes
+  still move on one character at a time.
+- **The clock's button is an icon beside it:** ▶ starts or resumes the clock, ❚❚ pauses it. **Reset** moved to the
+  foot of the column, away from them.
+- **Purple is what to press next, yellow is what's on.** The audience's next step, Start, and Reset (while the clock
+  is paused, or back on slide 1 after a rehearsal) turn purple, one at a time. Black, Freeze, the laser and
+  fullscreen light yellow while on.
+- **Under the current slide: the audience's button, Black, Freeze and Laser**, everything about what the audience
+  sees. Presenter fullscreen joined Overview, Settings, Help, Open… and Reset at the foot of the right column.
+- **Until the talk starts, the line under the talk bar says what to do with the audience window**, in bold. After
+  that it only answers a key, such as `Shift+W` in Firefox.
+- **The thumbnails come in from the right edge:** rest the mouse there and they slide in over the page; they go once
+  it leaves them. The two columns share the window equally by default.
+- **No "over" time under the current slide's line:** its color says so, and the early or late by the clock.
+
 ## 1.2.4 (2026-10-28)
 
 ### Changed

@@ -83,6 +83,8 @@ try {
       assert.ok(await painted(page, "#current canvas"), "current slide is blank");
       assert.ok(await painted(page, "#next canvas"), "next slide is blank");
       assert.match(await page.$eval("#notes", (e) => e.textContent), /Welcome/);
+      // Until the talk starts, the line under the bar says what to do with the audience window.
+      await page.waitForFunction(() => /drag it to the projector/.test(document.querySelector("#audience-status").textContent), { timeout: 5000 });
     });
 
     await check(`${build}: keys step through, the clock runs, pace shows`, async () => {
@@ -98,7 +100,6 @@ try {
       const pages = await browser.pages();
       const audience = pages.at(-1);
       assert.notEqual(audience, page, "no audience window");
-      assert.match(await page.$eval("#audience-status", (e) => e.textContent), /drag it to the projector/);
       // Only the audience window can make itself fullscreen here, so no Shift+W: the button says what to do.
       assert.equal(await page.$eval("#audience-button", (e) => e.textContent), "Double-click the audience window");
       await page.keyboard.press("ArrowRight");

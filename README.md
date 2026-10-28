@@ -11,8 +11,8 @@ anywhere.
 It's a pdfpc-style presenter for PDF slides that runs in the browser. Use it from the website, carry it as **one HTML
 file** for machines with no network, host it yourself, or install the **Mac app**. Its layout follows
 [Présentation.app](https://iihm.imag.fr/blanch/software/osx-presentation/): black and frameless, with the current
-slide and its notes on the left, the next slide beside them, and thumbnails down the edge. All the time sits under the
-next slide: the clock and one bar for the whole talk.
+slide and its notes on the left, the next slide beside them, and the thumbnails a mouse move away at the right edge.
+All the time sits under the next slide: the clock and one bar for the whole talk.
 
 **Open it:** <https://youweizhuo.github.io/pdfpcnic/> · **Offline copy:** `pdfpcnic.html` from the
 [latest release](https://github.com/youweizhuo/pdfpcnic/releases/latest) · **Mac app:** `pdfpcnic-mac.zip`, same place
@@ -35,7 +35,8 @@ next slide: the clock and one bar for the whole talk.
    both at once. The `.pdfpc` file is optional; it brings notes, timing, hidden slides and reveal steps. The deck
    shows on the page, with its slides and length: press **Present** (or `Enter`).
 2. Present opens the presenter and, in the same click, the audience window; press `Shift+W` to make it fullscreen.
-   By the clock, one button at a time is yellow, the next thing to press: the audience's steps first, then **Start**.
+   One button at a time is purple, the next thing to press: the audience's, under the current slide, first, then
+   **Start** (▶ by the clock). Yellow means on: black, freeze, the laser, fullscreen.
    - **If the browser blocked the window** (pop-ups blocked for the page): allow them, then press `o`. If you close
      the audience window, `o` brings it back too.
    - **Chrome and Edge** ask once to manage windows. Allow it, and `Shift+W` puts the audience fullscreen on another
@@ -43,7 +44,9 @@ next slide: the clock and one bar for the whole talk.
      screen yourself, it goes fullscreen there.
    - **Other browsers**: drag the window to the projector and double-click it for fullscreen, as the yellow button
      says. Only Chrome and Edge can make it fullscreen from the presenter window.
-3. Press `w` to make the presenter fullscreen too (its button is under the audience's), and `→` to start. The clock
+
+   Until the talk starts, the line under the talk bar says what to do with the audience window.
+3. Press `w` to make the presenter fullscreen too (its button is at the foot of the right column), and `→` to start. The clock
    starts when you leave the first slide.
 
 `Esc` steps back one thing at a time: it closes the help or the overview, then ends black, freeze and the laser, then
@@ -107,7 +110,7 @@ The same keys as pdfpc, plus `o` for the audience window. Press `?` (or **Help**
 | `b` / `f` | black screen / freeze the audience on this slide while you move on (a card over your current slide says so) |
 | `2` / `1` | laser pointer on / off (`+` `-` change its size) |
 | `Esc` | one step back: close the help or the overview, then end black, freeze and laser, then leave presenter fullscreen; never the audience's |
-| `s` / `p`, click the clock, or **Start** / **Pause** | start / pause the clock |
+| `s` / `p`, click the clock, or ▶ / ❚❚ by it | start / pause the clock |
 | `Ctrl+T` or `Shift+R`, or **Reset** | reset the clock to zero; the keys only while paused, the button with a second click while it runs |
 | `,` | settings: current slide, notes and laser sizes; pace colors |
 | `+` / `-` | notes text size |
@@ -145,8 +148,9 @@ the `.pdfpc` file.
 ## Pace
 
 The clock counts up from zero, as in Présentation.app. It never changes color; the pace bars
-under it do that job. **Pause** and **Reset** sit right under it: if you looked through the slides before the talk,
-the clock has been running, so reset it before you start (back on slide 1, Reset turns yellow to remind you). While
+under it do that job. Beside it, ▶ starts or resumes it and ❚❚ pauses it. **Reset** sits at the foot of the column,
+away from them, and turns purple while the clock is paused: if you looked through the slides before the talk, the
+clock has been running, so reset it before you start (back on slide 1, Reset turns purple to remind you). While
 it runs, Reset takes a second click, and the reset keys work only while paused, so a stray click or key can't zero
 the clock mid-talk. After a reset the clock starts again at your next move.
 
@@ -162,10 +166,10 @@ Reveal steps repeat their slide's line, or carry windows of their own; then each
 (after `endSlide`) can say just how long it takes, `**45 s**`. TokenSlides, a Typst theme built on Touying, writes
 these lines from the speaker notes, and marks the slides after `#show: appendix` as backup.
 
-Along the foot of the current slide, a line fills as you spend its planned time, then turns the late colors; once
-you're seriously over, it says by how much. A slide keeps its time over your visits: come back to it and the line
-goes on where it stopped. The notes dim along with it, character by character, so the dimmed part is roughly what
-you'd have said by now (paragraphs that open with *ref* don't count).
+Along the foot of the current slide, a line fills as you spend its planned time, then turns the late colors. A
+slide keeps its time over your visits: come back to it and the line goes on where it stopped. The notes dim along
+with it, a character at a time, like a typewriter, so the dimmed part is roughly what you'd have said by now
+(paragraphs that open with *ref* don't count).
 
 Next to the clock, the whole talk:
 
@@ -184,8 +188,9 @@ Next to the clock, the whole talk:
 Late always shows: orange, deep orange from 1 minute (serious) and red from 2 minutes (very serious). Early shows, in
 blue, only past 1 minute. **Settings** (`,`) changes the three levels, in time or as shares of the talk, and how much the notes dim.
 
-Drag the handle between the current slide and its notes to trade one for the other, the line between the columns to
-resize them, and the left edge of the thumbnails to resize them; double-click that edge to hide or show the thumbnails.
+Drag the handle between the current slide and its notes to trade one for the other, and the line between the columns
+to resize them. Rest the mouse at the window's right edge and the thumbnails come in over the page, to jump to a
+slide; they go once the mouse leaves them. **Overview** (`Tab`) shows every slide at once.
 
 Without timing lines, the talk's length is split evenly over the slides (pdfpc's even pace). **Help** (`?`) has a key
 to the colors.

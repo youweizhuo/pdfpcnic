@@ -159,12 +159,12 @@ try {
 
   await check("timer starts on leaving the first slide; the line under the bar has said what to do with the audience until then", async () => {
     assert.equal((await state()).timer.startedAt, null);
-    if (mode === "site") await textMatches("#audience-status", /it goes fullscreen on /);
+    if (mode === "site") await textMatches("#guide", /^Press ⇧W to make the audience window fullscreen on /);
     await press("ArrowRight");
     const s = await state();
     assert.equal(s.page, 1);
     assert.ok(s.timer.startedAt > 0);
-    assert.equal(await text("#audience-status"), "");
+    assert.equal(await text("#guide"), "");
   });
 
   await check("reveal steps: step forward, Shift+PageDown skips, back jumps to first step", async () => {
@@ -259,7 +259,7 @@ try {
       const was = button.innerHTML;
       const at = (sel) => JSON.stringify(document.querySelector(sel).getBoundingClientRect());
       const places = ["Open audience window <kbd>o</kbd>", "Double-click the audience window", "Audience fullscreen <kbd>⇧W</kbd>"].map(
-        (html) => ((button.innerHTML = html), `${at("#timer-reset")} ${at("#presenter-button")} ${at('.foot [data-action="overview"]')} ${at("#audience-status")}`),
+        (html) => ((button.innerHTML = html), `${at("#timer-reset")} ${at("#presenter-button")} ${at('.foot [data-action="overview"]')} ${at("#guide")}`),
       );
       button.innerHTML = was;
       return places;
@@ -538,11 +538,18 @@ try {
   const toggle = () => page.$eval("#timer-toggle", (e) => e.firstChild.textContent.trim());
   const ctaIs = (sel, on) => page.waitForFunction((sel, on) => document.querySelector(sel).classList.contains("cta") === on, { timeout: 5000 }, sel, on);
 
-  await check("the clock, and the button by it, pause and resume the timer", async () => {
+  await check("the clock, and the button by it, pause and resume the timer; paused, the guide says how to go on", async () => {
     assert.equal(await toggle(), "Pause");
+    const notesHeight = () => page.$eval("#next-notes", (e) => e.getBoundingClientRect().height);
+    const running = await notesHeight();
     await page.click("#timer");
     assert.ok((await state()).timer.pausedAt > 0);
     assert.equal(await toggle(), "Resume");
+    assert.match(await text("#guide"), /^Paused: /);
+    assert.equal(await page.$eval("#guide", (e) => e.classList.contains("hint")), true);
+    assert.equal(await page.$eval("#timer", (e) => e.classList.contains("paused")), true);
+    // The guide's line is kept while empty: the next notes over it keep their size.
+    assert.equal(await notesHeight(), running);
     // One button stands out at a time: the audience's step first, then Reset while paused.
     assert.equal(await cta("#timer-reset"), false);
     assert.equal(await cta("#audience-button"), true);
@@ -592,7 +599,8 @@ try {
   await check("back on slide 1 with time on the clock, Reset is offered", async () => {
     assert.equal(await cta("#timer-reset"), false);
     await press("Home");
-    assert.match(await text("#toast"), /Reset it first/);
+    assert.match(await text("#guide"), /from a rehearsal: click Reset/);
+    assert.equal(await page.$eval("#guide", (e) => e.classList.contains("next")), true);
     assert.equal(await cta("#timer-reset"), true);
     assert.equal(await cta("#timer-toggle"), false);
     assert.equal(await barTop(), runningTop);

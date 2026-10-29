@@ -3,6 +3,29 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.2.10 (2026-10-28)
+
+### Changed
+
+- **One line over the buttons, colored by what it says:** yellow for the next thing to do, as the outlined button it
+  names; orange for something in the way; purple for a hint; grey for a fact. It used to be two lines in two styles,
+  saying what was going on rather than what to do.
+  - Before the talk: the audience window's next step, then "Ready: press s to start the clock", after where the
+    audience is fullscreen or, with a start time in the `.pdfpc` file, how long until it.
+  - After a rehearsal: click Reset before the talk (it was a passing note).
+  - One screen only: the keys for a second one on this system (Mac, Windows or Linux), not only Windows'.
+  - Paused, and with the laser on, the keys to go on; on the last planned slide, that backup slides follow.
+  - Its line is kept while empty, so the next slide's notes over it keep their size.
+- **The clock is purple while paused.**
+- **The thumbnail under the mouse is outlined in purple** at once, and the space under each thumbnail counts as its
+  own, so the outline doesn't blink between them.
+- **The thumbnails' drawer is narrower around the same thumbnails**, and comes in within 64 px of the right edge (was
+  40).
+
+### Fixed
+
+- **Starting the clock on slide 1 no longer asks to reset it**, as if after a rehearsal.
+
 ## 1.2.9 (2026-10-28)
 
 ### Added

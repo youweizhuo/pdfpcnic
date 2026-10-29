@@ -4,7 +4,7 @@
 // the talk (src/core/) and the presenter page (src/ui/).
 
 import type { Deck, LinkTarget, OutlineEntry, PageInfo } from "./core/deck.ts";
-import type { AudienceStatus } from "./core/guide.ts";
+import type { AudienceStatus, System } from "./core/guide.ts";
 import type { Point, SavedSession } from "./core/talk.ts";
 import type { PageCache } from "./ui/page-cache.ts";
 
@@ -72,6 +72,8 @@ export interface PresenterWindow {
   setFullscreen(on: boolean): Promise<void>;
   /** False when the platform sees only one screen (displays mirrored), undefined when it can't tell. */
   readonly extended: boolean | undefined;
+  /** The system it runs on, for the keys that extend the displays. */
+  readonly system: System;
   /** Calls back when fullscreen or the screens change. */
   onChange(cb: () => void, signal: AbortSignal): void;
 }

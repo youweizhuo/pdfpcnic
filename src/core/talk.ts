@@ -286,11 +286,12 @@ export class Talk {
   }
 
   /**
-   * Back on slide 1 with time on the clock: likely a look through the slides
-   * before the talk, which would throw its pace off. Reset is the way out.
+   * Back on slide 1 with time on the clock, after other slides: likely a look
+   * through the slides before the talk, which would throw its pace off. Reset
+   * is the way out. Not when the clock was started on slide 1 itself.
    */
   get stale(): boolean {
-    return this.state.timer.startedAt !== null && this.slide === 0;
+    return this.state.timer.startedAt !== null && this.slide === 0 && [...this.spent.keys()].some((key) => parseInt(key) !== 0);
   }
 
   // Pace

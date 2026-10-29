@@ -8,6 +8,8 @@
   --panel: #1c1c1e;
   /* What's on, filled; what to press next, outlined. */
   --accent: #ffd60a;
+  /* Hints, and the clock while paused. */
+  --hint: #a855f7;
   --ahead: #64d2ff;
   --behind: #ff9f0a;
   --over: #ff453a;
@@ -488,6 +490,9 @@ kbd {
 .timer.idle {
   color: var(--dim);
 }
+.timer.paused {
+  color: var(--hint);
+}
 /* Buttons beside the clock and for the audience: in plain sight, unlike keys. */
 .ctl {
   display: inline-flex;
@@ -594,27 +599,28 @@ kbd {
 .t-over {
   color: var(--over);
 }
-.hintline {
+/* The guide's line over the buttons, as plain as they are, colored by what it says (core/guide.ts): yellow, the next
+   thing to do, as the outlined button; orange, something in the way; purple, a hint; grey, a fact. Kept while empty,
+   so the next notes over it keep their size. */
+.guide {
+  min-height: 1.4em;
   margin: 8px 0 0;
   color: var(--dim);
-  font-size: clamp(15px, 1.1vw, 18px);
-  line-height: 1.4;
-}
-.hintline:empty {
-  display: none;
-}
-/* The audience's next step: as plain as the buttons. */
-.guide {
-  color: #c7c7cc;
   font-size: 14px;
   font-weight: 600;
+  line-height: 1.4;
 }
-.hintline.warn {
+.guide.next {
+  color: var(--accent);
+}
+.guide.blocked {
   color: var(--behind);
 }
-/* What to do, after the browser said no. */
-.hintline.ask {
-  color: var(--fg);
+.guide.hint {
+  color: var(--hint);
+}
+.guide .fact {
+  color: var(--dim);
 }
 .toolbar {
   display: flex;
@@ -663,7 +669,8 @@ kbd {
   font-size: 12px;
 }
 /* The thumbnails, for jumping: off the right edge, and in over the page while
-   the mouse is there or over them. */
+   the mouse is there or over them. The width is the number and thumbnail's;
+   the padding around them stays tight. */
 .strip {
   position: fixed;
   top: 0;
@@ -672,7 +679,7 @@ kbd {
   z-index: 5;
   width: clamp(140px, 12vw, 220px);
   margin: 0;
-  padding: 10px 14px 45vh;
+  padding: 10px 6px 45vh;
   border-left: 1px solid var(--line);
   background: var(--bg);
   list-style: none;
@@ -690,7 +697,8 @@ kbd {
   grid-template-columns: var(--digits, 2ch) minmax(0, 1fr);
   gap: 6px;
   align-items: start;
-  margin-bottom: 12px;
+  /* Padding, not margin: the mouse is always over one of them, so the hovered one doesn't blink between them. */
+  padding-bottom: 12px;
   font-size: 14px;
   cursor: pointer;
 }
@@ -706,6 +714,13 @@ kbd {
   width: 100%;
   background: var(--panel);
   outline: 1px solid var(--line);
+}
+/* Under the mouse, at once, in the hints' purple; the current and the frozen slides keep their colors. */
+.strip li:hover:not(.divider, .current, .frozen) canvas {
+  outline: 2px solid var(--hint);
+}
+.strip li:hover:not(.divider, .current, .frozen) .num {
+  color: var(--hint);
 }
 .strip li.current canvas {
   outline: 3px solid var(--accent);
@@ -723,7 +738,8 @@ kbd {
   content: "audience";
   position: absolute;
   right: 4px;
-  bottom: 4px;
+  /* Over the thumbnail's corner, above the space under it. */
+  bottom: 16px;
   padding: 1px 6px;
   border-radius: 5px;
   background: var(--ahead);

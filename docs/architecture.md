@@ -33,8 +33,8 @@ void start(mac); // src/mac/main.ts
   label, notes and links from the PDF engine, as plain data.
 - `talk.ts` is the talk: where it stands (`TalkState`), what each key does to it (`act`), what the room sees
   (`audience`), and how it keeps to its plan (`progress`). It saves and resumes itself.
-- `guide.ts` says what the yellow button and the line under the slides tell the presenter, from what the platform
-  reports about the audience window.
+- `guide.ts` says what the audience's button and the line over the buttons tell the presenter, and in which color:
+  from what the platform reports about the audience window and the screens, and where the talk stands.
 - `pace.ts`, `timer.ts` and `keys.ts` hold the timing lines, the clock and pdfpc's keys.
 
 ## The ports
@@ -45,7 +45,7 @@ void start(mac); // src/mac/main.ts
 | --- | --- | --- | --- |
 | `openPdf` → `Pdf` | reads each page's size, label, notes and links; draws a page as a picture | pdf.js (`pdfjs.ts`) | PDFKit reads, Quartz draws, as Preview does (`pdf.ts`, `Documents.swift`) |
 | `audience` → `Audience` | the room's window: opens it, makes it fullscreen on the projector, shows a slide | a popup this page draws into (`audience.ts`), within each browser's limits | a frameless window that draws the slide itself, fullscreen on the chosen screen (`audience.ts`, `Audience.swift`, `SlideView.swift`) |
-| `window` → `PresenterWindow` | the presenter's own fullscreen; whether there's a second screen | the Fullscreen API (`window.ts`) | the window's view takes the screen, as in Présentation.app (`window.ts`, `Presenter.swift`) |
+| `window` → `PresenterWindow` | the presenter's own fullscreen; whether there's a second screen, and the system's name | the Fullscreen API (`window.ts`) | the window's view takes the screen, as in Présentation.app (`window.ts`, `Presenter.swift`) |
 | `store` → `Store` | the last deck, where its talk stood, the settings | IndexedDB and localStorage (`store.ts`) | the same: the app's web view keeps both |
 | `demo` | the demo deck | fetched on the site, left out of the offline file | carried in the page |
 | `files` | files the platform opens itself | none | from the Finder or File › Open (`App.swift`) |

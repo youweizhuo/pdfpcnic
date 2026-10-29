@@ -39,9 +39,10 @@ to take anywhere.
 2. `Shift+W` puts the audience fullscreen on the projector, `w` the presenter.
 3. `→` to begin. The clock starts when you leave the first slide.
 
-The button outlined in yellow is the next one to press; filled yellow means on. Set the displays to **Extend**, not
-mirror. If the browser blocked the audience window, allow pop-ups and press `o`. For the thumbnails, move the mouse
-to the right edge; rest on one to see it large in the next slide's place.
+The button outlined in yellow is the next one to press; filled yellow means on. The line over the buttons says what to
+do next in yellow, what's in the way in orange, and hints in purple. Set the displays to **Extend**, not mirror. If the
+browser blocked the audience window, allow pop-ups and press `o`. For the thumbnails, move the mouse to the right
+edge; rest on one to see it large in the next slide's place.
 
 | Key | |
 | --- | --- |

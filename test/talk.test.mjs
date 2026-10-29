@@ -80,6 +80,10 @@ test("back on slide 1 with time on the clock, the talk looks stale", () => {
   talk.act("next", sec(0));
   talk.act("prev", sec(30));
   assert.equal(talk.stale, true);
+  // Started on slide 1 itself, it isn't: that's the talk starting.
+  const started = new Talk(deck(["1", "2"]), undefined, T0);
+  started.act("timerStart", sec(0));
+  assert.equal(started.stale, false);
 });
 
 /** Three slides planned for 1, 2 and 1 minutes. */

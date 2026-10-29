@@ -14,6 +14,7 @@ export const presenterWindow: PresenterWindow = {
   get extended() {
     return state.extended;
   },
+  system: "mac",
   async setFullscreen(full) {
     await call("presenterFullscreen", { on: full });
   },

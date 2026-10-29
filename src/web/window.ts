@@ -1,12 +1,20 @@
 // The presenter's own browser window: fullscreen, and how many screens there are.
 
+import type { System } from "../core/guide.ts";
 import type { PresenterWindow } from "../platform.ts";
 
-// Keyboard Lock (Chromium); absent elsewhere.
+// Keyboard Lock and the system's name (Chromium); absent elsewhere.
 declare global {
   interface Navigator {
     keyboard?: { lock(keys: string[]): Promise<void> };
+    userAgentData?: { platform: string };
   }
+}
+
+/** Chromium names the system; elsewhere the older platform string tells it well enough. */
+function system(): System {
+  const name = navigator.userAgentData?.platform ?? navigator.platform;
+  return /^mac/i.test(name) ? "mac" : /^win/i.test(name) ? "windows" : /linux/i.test(name) ? "linux" : null;
 }
 
 /**
@@ -36,6 +44,7 @@ export const presenterWindow: PresenterWindow = {
   get extended() {
     return screen.isExtended;
   },
+  system: system(),
   onChange(cb, signal) {
     document.addEventListener("fullscreenchange", cb, { signal });
     // Chromium tells when a screen is plugged in or out.

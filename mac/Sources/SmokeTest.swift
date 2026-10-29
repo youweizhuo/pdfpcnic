@@ -69,7 +69,9 @@ final class SmokeTest {
             else { throw Failure("it isn't behind the presenter") }
             try await until("the slide in it") { Self.painted(app.audience.view) }
             try await until("the guide's next step") {
-                (try await js("return document.querySelector('#audience-status').textContent") as? String ?? "").hasPrefix("Audience window open; it goes fullscreen on")
+                // On a machine with one screen, the line says to connect the projector first.
+                let line = try await js("return document.querySelector('#guide').textContent") as? String ?? ""
+                return line.hasPrefix("Press ⇧W to make the audience window fullscreen on") || line.hasPrefix("One screen only:")
             }
         }
         await check("keys step through the slides") {

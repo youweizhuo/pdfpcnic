@@ -3,7 +3,7 @@
 // the platform's windows: its own and the audience's.
 
 import type { Deck, LinkTarget } from "../core/deck.ts";
-import { audienceReady, audienceStep } from "../core/guide.ts";
+import { audienceButton, audienceReady, guideLine } from "../core/guide.ts";
 import { actionFor, isTalkAction, type Action } from "../core/keys.ts";
 import { mark, span } from "../core/pace.ts";
 import { Talk, type Point, type Progress, type SavedSession } from "../core/talk.ts";
@@ -245,7 +245,7 @@ export class Presenter {
     );
     cur.addEventListener("wheel", wheelStepper((d) => this.act(d > 0 ? "next" : "prev")), { signal, passive: true });
     $("next").addEventListener("click", () => this.act("nextSlide"), { signal });
-    // The thumbnails come in once the mouse rests within 40 px of the right
+    // The thumbnails come in once the mouse rests within 64 px of the right
     // edge, and go once it has left them. Watched from the mouse's position, so
     // nothing over the edge takes the clicks meant for what's under it.
     const strip = $("strip");
@@ -259,7 +259,7 @@ export class Presenter {
       "mousemove",
       (e) => {
         if (strip.classList.contains("open")) return;
-        if (e.clientX < innerWidth - 40) stay();
+        if (e.clientX < innerWidth - 64) stay();
         else if (!stripTimer) stripLater(true);
       },
       { signal },
@@ -376,21 +376,14 @@ export class Presenter {
       : `Press f to move it to slide ${here.slide + 1}`;
 
     // The audience's next step: on its button at the foot of the column,
-    // standing out until the audience sees the slides, and in the line under
-    // the bar until the talk starts (or when it answers a press).
+    // standing out until the audience sees the slides (and in the guide's line,
+    // drawn with the clock).
     const status = this.audience.status;
-    const step = audienceStep(status, this.view.solo);
+    const button = audienceButton(status);
     const ab = $("audience-button");
-    ab.dataset.action = step.action;
+    ab.dataset.action = button.action;
     ab.classList.toggle("cta", !audienceReady(status, this.view.solo));
-    label(ab, step.label, step.key);
-    const line = $("audience-status");
-    line.textContent = this.talk.state.timer.startedAt === null || step.ask ? step.status : "";
-    line.classList.toggle("ask", step.ask);
-    const extended = this.platform.window.extended;
-    const scr = $("screen-status");
-    scr.textContent = extended === false ? "One screen only. For a projector, set displays to Extend (on Windows: Win+P)." : "";
-    scr.classList.toggle("warn", extended === false);
+    label(ab, button.label, button.key);
 
     const on: Partial<Record<Action, boolean>> = {
       laserMode: s.laser,
@@ -442,8 +435,6 @@ export class Presenter {
   private beat = "";
   /** Set while Reset waits for its second click. */
   private resetArmed = 0;
-  /** On slide 1 with time on the clock, as last drawn. */
-  private stale = false;
   /** The talk's target length in seconds, as last drawn; settings show the levels against it. */
   private target = 0;
 
@@ -472,10 +463,9 @@ export class Presenter {
     const t = this.talk.state.timer;
     const timer = $("timer");
     timer.textContent = this.settings.timeOfDay ? T.formatClock(now) : T.format(T.elapsed(t, now));
-    timer.classList.toggle("idle", t.startedAt === null || t.pausedAt !== null);
+    timer.classList.toggle("idle", t.startedAt === null);
+    timer.classList.toggle("paused", t.pausedAt !== null);
     const stale = this.talk.stale;
-    if (stale && !this.stale) toast("The clock has already started. Starting the talk now? Reset it first.", 8000);
-    this.stale = stale;
     // The button by the clock says what it does next: start, pause, resume.
     // What to press next stands out: Start before the talk, Reset while paused
     // or after a rehearsal. One at a time, and the audience's steps come first.
@@ -499,6 +489,27 @@ export class Presenter {
     reset.classList.toggle("cta", ours && (stale || t.pausedAt !== null) && !this.resetArmed);
     reset.classList.toggle("confirm", !!this.resetArmed);
     label(reset, this.resetArmed ? "Click again to reset" : "Reset", "⇧R");
+    this.renderGuide(now);
+  }
+
+  /** The guide's line over the buttons: what to do next, or a hint or a fact, colored by which (core/guide.ts). */
+  private renderGuide(now: number): void {
+    const s = this.talk.state;
+    const until = T.untilStart(this.deck, now);
+    const line = guideLine({
+      audience: this.audience.status,
+      solo: this.view.solo,
+      oneScreen: this.platform.window.extended === false,
+      system: this.platform.window.system,
+      clock: s.timer.startedAt === null ? "idle" : s.timer.pausedAt === null ? "running" : "paused",
+      stale: this.talk.stale,
+      startsAt: until ? { time: this.deck.startTime!, in: T.format(until) } : null,
+      laser: s.laser,
+      lastPlanned: this.talk.slide === s.endSlide && s.endSlide < this.deck.slides.length - 1,
+    });
+    const p = $("guide");
+    p.className = `guide ${line?.kind ?? ""}`;
+    p.replaceChildren(...(line?.fact ? [el("span", "fact", `${line.fact} · `)] : []), line?.text ?? "");
   }
 
   /** The talk bar's scale, as last laid out. */

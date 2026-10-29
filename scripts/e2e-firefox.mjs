@@ -84,7 +84,7 @@ try {
       assert.ok(await painted(page, "#next canvas"), "next slide is blank");
       assert.match(await page.$eval("#notes", (e) => e.textContent), /Welcome/);
       // Until the talk starts, the line under the bar says what to do with the audience window.
-      await page.waitForFunction(() => /drag it to the projector/.test(document.querySelector("#audience-status").textContent), { timeout: 5000 });
+      await page.waitForFunction(() => /^Drag the audience window to the projector, then double-click it/.test(document.querySelector("#guide").textContent), { timeout: 5000 });
     });
 
     await check(`${build}: keys step through, the clock runs, pace shows`, async () => {
@@ -111,7 +111,7 @@ try {
       await page.keyboard.down("Shift");
       await page.keyboard.press("W");
       await page.keyboard.up("Shift");
-      await page.waitForFunction(() => /only the audience window go fullscreen: double-click it/.test(document.querySelector("#audience-status").textContent));
+      await page.waitForFunction(() => /can.t make it fullscreen from here: double-click the audience window/.test(document.querySelector("#guide").textContent));
       assert.equal(await page.$eval("#error", (e) => e.hidden), true);
       await page.screenshot({ path: `${out}/${build}-ask.png` });
       await audience.screenshot({ path: `${out}/${build}-audience.png` });

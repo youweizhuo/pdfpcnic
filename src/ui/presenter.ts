@@ -2,6 +2,7 @@
 // (core/talk.ts). It turns keys and clicks into the talk's actions, and runs
 // the platform's windows: its own and the audience's.
 
+import { runFile, runName } from "../core/compare.ts";
 import type { Deck, LinkTarget } from "../core/deck.ts";
 import { audienceButton, audienceReady, guideLine } from "../core/guide.ts";
 import { actionFor, isTalkAction, type Action } from "../core/keys.ts";
@@ -9,6 +10,7 @@ import { mark, span } from "../core/pace.ts";
 import { Talk, type Point, type Progress, type SavedSession } from "../core/talk.ts";
 import * as T from "../core/timer.ts";
 import type { Audience, Pdf, Platform } from "../platform.ts";
+import { Comparison, compareLines } from "./compare.ts";
 import { $, el, label, reportError, toast, wheelStepper } from "./dom.ts";
 import { renderNote } from "./notes.ts";
 import { PageCache } from "./page-cache.ts";
@@ -61,6 +63,12 @@ export class Presenter {
   private preview: number | null = null;
   private previewTimer = 0;
   private spoken = new Spoken();
+  /** The other `.pdfpc` file the deck's plan is compared with, while it is. */
+  private comparison: Comparison | null = null;
+  /** On the next slide while comparing: says so, and a click ends it. */
+  private compareBadge = el("button", "compare-badge", "Comparing ✕");
+  /** When the run whose times were last saved started, so the guide stops asking. */
+  private savedRun: number | null = null;
 
   constructor(
     private platform: Platform,
@@ -83,6 +91,9 @@ export class Presenter {
     this.current.onLayout = () => this.fitSlidebar();
     this.next = new SlideView($("next"), deck, this.cache, 2, { align: "start" });
     this.next.onLayout = () => this.fitLine($("talkbar"), this.next.canvas);
+    this.compareBadge.type = "button";
+    this.compareBadge.hidden = true;
+    $("next").append(this.compareBadge);
     this.cache.onRender((page) => this.thumbs.get(page)?.forEach((t) => t.draw()));
     audience.bind(deck, pdf, this.cache);
 
@@ -112,7 +123,9 @@ export class Presenter {
     this.current.dispose();
     this.next.dispose();
     this.solo?.dispose();
+    this.comparison?.dispose();
     this.cache.dispose();
+    $("presenter").classList.remove("comparing");
     $("solo").hidden = true;
     $("overview").hidden = true;
     $("help").hidden = true;
@@ -176,6 +189,8 @@ export class Presenter {
         this.settings.resetLayout();
         toast("Equal columns, and the slides at full size.", 1500);
         return;
+      case "saveRun":
+        return void this.saveRun();
     }
   }
 
@@ -245,6 +260,14 @@ export class Presenter {
     );
     cur.addEventListener("wheel", wheelStepper((d) => this.act(d > 0 ? "next" : "prev")), { signal, passive: true });
     $("next").addEventListener("click", () => this.act("nextSlide"), { signal });
+    this.compareBadge.addEventListener(
+      "click",
+      (e) => {
+        e.stopPropagation();
+        this.compareWith(null);
+      },
+      { signal },
+    );
     // The thumbnails come in once the mouse rests within 64 px of the right
     // edge, and go once it has left them. Watched from the mouse's position, so
     // nothing over the edge takes the clicks meant for what's under it.
@@ -347,12 +370,16 @@ export class Presenter {
       $("notes").scrollTop = 0;
       this.spoken.index(body);
     }
-    // Under the next slide, its notes: nothing when they're this slide's again, a reveal step's say.
-    const nextNote = next === null || d.pages[next].note === here.note ? "" : d.pages[next].note;
-    if (this.nextNote !== nextNote) {
-      this.nextNote = nextNote;
-      renderNote($("next-notes-body"), nextNote, d.markdown);
-      $("next-notes").scrollTop = 0;
+    // Under the next slide, its notes: nothing when they're this slide's again, a reveal step's say. While
+    // comparing, the other file's note for this slide.
+    if (this.comparison) this.comparison.renderNotes(s.page, d.markdown);
+    else {
+      const nextNote = next === null || d.pages[next].note === here.note ? "" : d.pages[next].note;
+      if (this.nextNote !== nextNote) {
+        this.nextNote = nextNote;
+        renderNote($("next-notes-body"), nextNote, d.markdown);
+        $("next-notes").scrollTop = 0;
+      }
     }
 
     if (this.stripSlide !== here.slide) {
@@ -506,10 +533,15 @@ export class Presenter {
       startsAt: until ? { time: this.deck.startTime!, in: T.format(until) } : null,
       laser: s.laser,
       lastPlanned: this.talk.slide === s.endSlide && s.endSlide < this.deck.slides.length - 1,
+      finished: this.talk.finished && this.savedRun !== s.timer.startedAt,
+      comparing: this.comparison?.name ?? null,
     });
     const p = $("guide");
-    p.className = `guide ${line?.kind ?? ""}`;
+    p.className = `guide ${line?.kind ?? ""}${line?.action ? " act" : ""}`;
     p.replaceChildren(...(line?.fact ? [el("span", "fact", `${line.fact} · `)] : []), line?.text ?? "");
+    p.title = line ? `${line.fact ? `${line.fact} · ` : ""}${line.text}` : "";
+    const action = line?.action;
+    p.onclick = action ? () => this.act(action) : null;
   }
 
   /** The talk bar's scale, as last laid out. */
@@ -517,13 +549,13 @@ export class Presenter {
 
   /** The talk bar's parts, back to front. */
   private buildTalkbar(): void {
-    $("talkbar").replaceChildren(el("div", "past"), el("div", "projected"), el("div", "spent"), el("div", "window"), el("div", "target"));
+    $("talkbar").replaceChildren(el("div", "past"), el("div", "projected"), el("div", "spent"), el("div", "window"), el("div", "target"), compareLines(true));
     this.barScale = 0;
   }
 
   /** Dims the part of the note you'd have said by now. */
   private renderNotesDim(now = Date.now()): void {
-    this.spoken.show(this.settings.notesDim > 0 ? this.talk.used(now) : null);
+    this.spoken.show(this.settings.notesDim > 0 && !this.comparison ? this.talk.used(now) : null);
   }
 
   /** This slide's line in device pixels, and how far along it is drawn. */
@@ -568,6 +600,11 @@ export class Presenter {
   }
 
   private renderPace(now: number): void {
+    if (this.comparison) {
+      this.comparison.renderTimes(this.talk.slide, this.talk.state.endSlide);
+      this.beatMs = 250;
+      return;
+    }
     const p = this.talk.progress(now, this.settings.slack);
     for (const id of ["pace-slide", "finish", "talkbar", "target-at"]) $(id).hidden = !p.planned;
     if (!p.planned) {
@@ -823,6 +860,45 @@ export class Presenter {
       this.platform.window.setFullscreen(false).catch(() => {});
     }
     this.render();
+  }
+
+  /** The other `.pdfpc` file the deck's plan is compared with, or null. */
+  get comparing(): { name: string; text: string } | null {
+    return this.comparison?.file ?? null;
+  }
+
+  /**
+   * Compares the deck's plan with another `.pdfpc` file (ui/compare.ts), or
+   * stops. Meanwhile, moving through the slides doesn't start the clock.
+   */
+  compareWith(other: { name: string; text: string } | null): void {
+    const was = this.comparison;
+    // Parsed first: a file that isn't a .pdfpc changes nothing.
+    this.comparison = other && new Comparison(this.deck, this.opened.source.pdfpc?.name ?? "the deck", other);
+    was?.dispose();
+    this.talk.review = !!other;
+    $("presenter").classList.toggle("comparing", !!other);
+    this.compareBadge.hidden = !other;
+    this.compareBadge.title = other ? `Comparing with ${other.name}. Click to end the comparison.` : "";
+    this.nextNote = null;
+    this.render();
+  }
+
+  /** Saves the run's times as a `.pdfpc` file of timing lines, to compare with the plan (core/compare.ts). */
+  private async saveRun(): Promise<void> {
+    const t = this.talk;
+    const started = t.state.timer.startedAt;
+    if (started === null) return toast("No run to save yet: the clock hasn't started.");
+    const now = Date.now();
+    const name = runName(this.deck.name, new Date(now));
+    try {
+      const where = await this.platform.save(name, runFile(this.deck, t.state.endSlide, t.spentBySlide(now)), this.deck.name);
+      this.savedRun = started;
+      toast(`${where ? `Saved ${where}` : `Downloaded ${name}`}. Drop it on this window to compare it with the plan.`, 8000);
+      this.renderGuide(now);
+    } catch (err) {
+      reportError(err);
+    }
   }
 
   private save(): void {

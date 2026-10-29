@@ -332,6 +332,11 @@ kbd {
   width: calc(var(--stage) * 100%);
   aspect-ratio: var(--aspect);
 }
+/* A little dimmer than the current slide, as in Présentation.app (a touch less): what's coming, not what's shown.
+   Over the black page, opacity dims as a brightness filter would. */
+#next canvas {
+  opacity: 0.85;
+}
 #next.empty {
   display: grid;
   place-items: center;
@@ -599,12 +604,112 @@ kbd {
 .t-over {
   color: var(--over);
 }
+/* Comparing two plans (ui/compare.ts). Where this slide's line and the talk's are, two lines in one: the deck's
+   plan over the other file's, in purple; this slide's part of the talk in yellow on each. At their foot, in place of
+   the target end, the two times and the difference. Where the next slide's notes are, the other file's note for this
+   slide, in full, and in both notes the words the other doesn't have, marked as a word diff marks them. */
+.compare-lines,
+.compare-times {
+  display: none;
+}
+.presenter.comparing :is(.slidebar-track, .target-at),
+.presenter.comparing .talkbar > :not(.compare-lines) {
+  display: none;
+}
+.presenter.comparing .finish {
+  visibility: hidden;
+}
+.presenter.comparing .compare-lines {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: var(--time-line);
+  background: #3a3a3c;
+}
+.talkbar .compare-lines {
+  right: 0;
+  left: 0;
+  height: auto;
+}
+.compare-lines > div {
+  position: relative;
+  height: calc((100% - 1px) / 2);
+}
+.compare-lines i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+}
+.compare-lines .span {
+  background: #d1d1d6;
+}
+.compare-lines .b .span {
+  background: var(--hint);
+}
+.compare-lines .window {
+  background: var(--accent);
+}
+.presenter.comparing .compare-times {
+  display: flex;
+  gap: 0.6em;
+  align-items: baseline;
+  font-size: var(--when);
+  font-variant-numeric: tabular-nums;
+}
+#compare-slide {
+  margin-right: auto;
+}
+#compare-talk {
+  margin-left: auto;
+}
+.compare-times .a {
+  color: #d1d1d6;
+}
+.compare-times .b {
+  color: var(--hint);
+}
+.presenter.comparing .next-notes {
+  color: var(--fg);
+  mask-image: none;
+}
+/* On the next slide while comparing, as the backup slides' badge, in purple: a click ends the comparison. */
+.compare-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--hint);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.compare-badge:hover {
+  background: #9333ea;
+}
+::highlight(removed) {
+  background-color: rgb(255 69 58 / 0.3);
+  text-decoration: line-through;
+}
+::highlight(added) {
+  background-color: rgb(48 209 88 / 0.3);
+}
 /* The guide's line over the buttons, as plain as they are, colored by what it says (core/guide.ts): yellow, the next
    thing to do, as the outlined button; orange, something in the way; purple, a hint; grey, a fact. Kept while empty,
    so the next notes over it keep their size. */
 .guide {
   min-height: 1.4em;
   margin: 8px 0 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   color: var(--dim);
   font-size: 14px;
   font-weight: 600;
@@ -621,6 +726,13 @@ kbd {
 }
 .guide .fact {
   color: var(--dim);
+}
+/* A line that says to click does it, underlined under the mouse as a link is. */
+.guide.act {
+  cursor: pointer;
+}
+.guide.act:hover {
+  text-decoration: underline;
 }
 .toolbar {
   display: flex;

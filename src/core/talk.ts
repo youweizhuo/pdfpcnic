@@ -4,7 +4,7 @@
 
 import type { Deck, LinkTarget } from "./deck.ts";
 import type { TalkAction } from "./keys.ts";
-import { grade, type Grade, type Plan, type Slack } from "./pace.ts";
+import { grade, slidePlans, type Grade, type Plan, type Slack } from "./pace.ts";
 import * as T from "./timer.ts";
 
 export interface Point {
@@ -76,6 +76,8 @@ export class Talk {
   readonly state: TalkState;
   /** The slides on the talk bar. */
   onBar: number[] = [];
+  /** Looking through the slides rather than presenting them, as when comparing two plans: moving doesn't start the clock. */
+  review = false;
   /** Each slide's planned window, from its first step's start to its last step's end. */
   private plans: Array<Plan | null> = [];
   /** Whether any note has a timing line. */
@@ -155,7 +157,7 @@ export class Talk {
     }
     // As in pdfpc, the clock starts when the talk leaves its title page, or
     // at the first move after a reset.
-    if (s.timer.startedAt === null) s.timer = T.start(s.timer, now);
+    if (s.timer.startedAt === null && !this.review) s.timer = T.start(s.timer, now);
     s.page = page;
     this.book(now);
   }
@@ -294,6 +296,22 @@ export class Talk {
     return this.state.timer.startedAt !== null && this.slide === 0 && [...this.spent.keys()].some((key) => parseInt(key) !== 0);
   }
 
+  /**
+   * On the end slide or past it, after time on the clock on other slides: the
+   * end of a run through the talk, whose times are worth keeping.
+   */
+  get finished(): boolean {
+    const slide = this.slide;
+    return this.state.timer.startedAt !== null && slide >= this.state.endSlide && [...this.spent.keys()].some((key) => parseInt(key) !== slide);
+  }
+
+  /** Seconds spent on each slide by `now`, over all its visits: a run's times. */
+  spentBySlide(now: number): number[] {
+    const out = this.deck.slides.map(() => 0);
+    for (const [key, seconds] of Object.entries(this.save(now).spent ?? {})) out[parseInt(key)] += seconds;
+    return out;
+  }
+
   // Pace
 
   /** How the talk keeps to its plan at `now`. */
@@ -392,10 +410,7 @@ export class Talk {
   /** Works out the plan: at the start, and again when the end slide moves. */
   private replan(): void {
     const d = this.deck;
-    this.plans = d.slides.map((pages) => {
-      const own = pages.flatMap((p) => d.pages[p].plan ?? []);
-      return own.length ? { start: Math.min(...own.map((p) => p.start)), end: Math.max(...own.map((p) => p.end)) } : null;
-    });
+    this.plans = slidePlans(d.pages.map((p) => p.plan), d.slides);
     this.timed = this.plans.some(Boolean);
     const main = this.plans.slice(0, this.state.endSlide + 1);
     this.planned = Math.max(0, ...main.map((p) => p?.end ?? 0));

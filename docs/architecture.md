@@ -35,6 +35,8 @@ void start(mac); // src/mac/main.ts
   (`audience`), and how it keeps to its plan (`progress`). It saves and resumes itself.
 - `guide.ts` says what the audience's button and the line over the buttons tell the presenter, and in which color:
   from what the platform reports about the audience window and the screens, and where the talk stands.
+- `compare.ts` lays another `.pdfpc` file's plan beside the deck's, slide by slide, writes a run's times as one, and
+  finds the words two notes don't share.
 - `pace.ts`, `timer.ts` and `keys.ts` hold the timing lines, the clock and pdfpc's keys.
 
 ## The ports
@@ -49,6 +51,7 @@ void start(mac); // src/mac/main.ts
 | `store` → `Store` | the last deck, where its talk stood, the settings | IndexedDB and localStorage (`store.ts`) | the same: the app's web view keeps both |
 | `demo` | the demo deck | fetched on the site, left out of the offline file | carried in the page |
 | `files` | files the platform opens itself | none | from the Finder or File › Open (`App.swift`) |
+| `save` | a file the presenter makes, a run's times | the browser's downloads (`platform.ts`) | beside the PDF (`Presenter.swift`) |
 
 Each port says what, never how. The audience's status, for one, is a mode (closed, window, fullscreen), the screen's
 name, and whether the presenter can make it fullscreen (`remote`). The guide words its advice from that alone. In
@@ -64,6 +67,8 @@ the audience window. The Mac app can always place its windows, so it never needs
 - `slide-view.ts` shows one slide in a box, with its links and the laser. `page-cache.ts` keeps the pictures the
   platform draws, and draws the next ones ahead.
 - `settings.ts` holds the sizes and pace levels, with their dialog and drag handles.
+- `compare.ts` draws a comparison of two plans in the presenter's own places: the lines, the times under them, the
+  other file's notes and the marked words.
 - `start.ts` is the start page: files, the demo, resume. It hands each deck to a fresh `Presenter`.
 
 ## The Mac app

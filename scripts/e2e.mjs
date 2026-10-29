@@ -7,7 +7,7 @@
 //   CHROME_PATH=/path/to/chrome npm run e2e -- https://youweizhuo.github.io/pdfpcnic/
 
 import assert from "node:assert/strict";
-import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -279,7 +279,7 @@ try {
     await press("w");
     await full(page, true);
     await page.waitForSelector("#presenter-button.on", { timeout: 3000 });
-    await press("2", "?");
+    await press("l", "?");
     await press("Escape");
     assert.equal(await page.$eval("#help", (e) => e.hidden), true, "the help stayed");
     assert.equal(await page.evaluate(() => !!document.fullscreenElement), true, "the first Esc left fullscreen");
@@ -288,7 +288,7 @@ try {
     assert.equal(await page.evaluate(() => !!document.fullscreenElement), true, "the second Esc left fullscreen");
     await press("Escape");
     await full(page, false);
-    // Pressed in the audience window, the same, and the room keeps its slide.
+    // Pressed in the audience window, the same, and the room keeps its slide. (On with pdfpc's 2, this time.)
     await press("2");
     await audience.bringToFront();
     await audience.keyboard.press("Escape");
@@ -323,7 +323,7 @@ try {
   });
 
   await check("laser follows the presenter's mouse onto the audience; the mouse over the audience window doesn't move it", async () => {
-    await press("Home", "2");
+    await press("Home", "l");
     const box = await (await page.$("#current canvas")).boundingBox();
     await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
     await new Promise((r) => setTimeout(r, 150));
@@ -614,6 +614,77 @@ try {
     await press("Enter");
     assert.equal((await state()).page, 6);
     assert.equal(await cta("#timer-reset"), false);
+  });
+
+  await check("at the end of a run, a click on the line saves its times; dropped back, the plan is compared with them, and nothing moves", async () => {
+    const downloads = resolve(out, "downloads");
+    rmSync(downloads, { recursive: true, force: true });
+    mkdirSync(downloads, { recursive: true });
+    const cdp = await browser.target().createCDPSession();
+    await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: downloads });
+    // Where the buttons, the clock and the guide's line are: a comparison moves none of them.
+    const spots = () =>
+      page.$$eval(".slide-tools button, .timer-controls button, .foot button, #timer, #guide", (els) =>
+        els.map((e) => [e.id || e.textContent, Math.round(e.getBoundingClientRect().x), Math.round(e.getBoundingClientRect().y)]),
+      );
+    await press("End");
+    await textMatches("#guide", /^Click here to save this run's times, to compare with the plan\.$/);
+    assert.equal(await page.$eval("#guide", (e) => e.className), "guide hint act");
+    const before = await spots();
+    await page.click("#guide");
+    let saved;
+    for (let i = 0; i < 50 && !saved; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+      saved = readdirSync(downloads).find((f) => /^demo-\d{8}-\d{4}\.pdfpc$/.test(f));
+    }
+    assert.ok(saved, `no run file in ${readdirSync(downloads)}`);
+    const run = JSON.parse(readFileSync(join(downloads, saved), "utf8"));
+    assert.equal(run.endSlide, 6);
+    // Timing lines only: a window, a slide that took no time, a backup slide's length.
+    for (const p of run.pages) if (p.note) assert.match(p.note, /^\*\*(\d\d:\d\d → \d\d:\d\d\*\* · \d+ s|\d\d:\d\d\*\*|\d+ s\*\*)$/);
+    assert.ok(run.pages.some((p) => p.note?.includes("→")), "no slide took time");
+    assert.equal(await text("#guide"), "Last planned slide: backup slides follow.", "saved, the guide stops asking");
+
+    await input.uploadFile(join(downloads, saved));
+    await page.waitForSelector("#presenter.comparing", { timeout: 5000 });
+    assert.equal(await text("#guide"), `Comparing with ${saved}.`);
+    assert.equal(await page.$eval(".compare-badge", (e) => !e.hidden && getComputedStyle(e).display !== "none"), true, "no badge");
+    assert.match(await text("#compare-slide"), /^1:00 [\d:]+( s)? [+−]/, `the end slide: planned 1:00, then the run's, then the difference: ${await text("#compare-slide")}`);
+    assert.match(await text("#compare-talk"), /^9:30 /);
+    assert.equal(await text("#next-notes"), "", "times only: no notes");
+    assert.deepEqual(await spots(), before);
+    await page.screenshot({ path: `${out}/compare-run.png` });
+
+    // Another export of the notes: the words each note doesn't share, marked.
+    const v2 = JSON.parse(readFileSync("demo/demo.pdfpc", "utf8"));
+    v2.pages[8].note = v2.pages[8].note.replace("The counter shows", "The clock shows");
+    writeFileSync(`${out}/demo-v2.pdfpc`, JSON.stringify(v2));
+    await input.uploadFile(`${out}/demo-v2.pdfpc`);
+    await textMatches("#guide", /^Comparing with demo-v2\.pdfpc\.$/);
+    await textMatches("#next-notes", /The clock shows/);
+    const marked = () =>
+      page.evaluate(() => ["removed", "added"].map((name) => [...(CSS.highlights.get(name) ?? [])].map((r) => r.toString())));
+    assert.deepEqual(await marked(), [["counter"], ["clock"]]);
+    assert.equal(await text("#compare-slide"), "1:00 1:00 same");
+    await page.screenshot({ path: `${out}/compare-notes.png` });
+
+    // A new export of the deck's own file keeps the comparison; Esc doesn't end it, the badge does.
+    await input.uploadFile(resolve("demo/demo.pdfpc"));
+    await textMatches("#guide", /^Comparing with demo-v2\.pdfpc\.$/);
+    assert.deepEqual(await marked(), [["counter"], ["clock"]]);
+    await press("Escape");
+    assert.notEqual(await page.$("#presenter.comparing"), null, "Esc ended the comparison");
+    await page.click(".compare-badge");
+    assert.equal(await page.$("#presenter.comparing"), null);
+    assert.equal(await page.$eval(".compare-badge", (e) => e.hidden), true);
+    assert.deepEqual(await marked(), [[], []]);
+    assert.match(await text("#next-notes"), /^Backup material/, "the next slide's notes are back");
+    assert.equal((await state()).page, 8, "the badge's click didn't step to the next slide");
+    assert.deepEqual(await spots(), before);
+    await press("g");
+    await page.keyboard.type("5");
+    await press("Enter");
+    assert.equal((await state()).page, 6);
   });
 
   await check("an error stays, its text selectable, until closed", async () => {

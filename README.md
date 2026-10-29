@@ -49,7 +49,7 @@ edge; rest on one to see it large in the next slide's place.
 | `→` `Space` click / `←` right-click | next / back |
 | `g` / `Tab` | go to a slide / overview |
 | `b` / `f` | black / freeze the audience |
-| `2` / `1` | laser pointer on / off |
+| `l` | laser pointer on / off (`2` / `1` too, as in pdfpc) |
 | `s` / `p` | start / pause the clock |
 | `w` / `Shift+W` | presenter / audience fullscreen |
 | `?` | every key, and what the colors mean |
@@ -82,6 +82,12 @@ pdfpcnic takes the line off the note and draws it. Under the current slide, a li
 time, then turns orange as it runs over. Under the next slide, the whole talk: the time spent, where it would end at
 this pace, and a red line at the target. Orange, deeper from a minute late, means hurry; blue, more than a minute
 early, means slow down. Without these lines, the `.pdfpc` file's `duration` is split evenly over the slides.
+
+After a run-through, on the end slide, the line over the buttons offers to save the times you took, as a `.pdfpc`
+file of timing lines: click it. Drop that file on the window, or any `.pdfpc` file with another name than the deck's (an earlier export, say), to compare the two:
+each line splits in two, the deck's plan over the other in purple, with the difference under it, and the other file's
+notes take the next slide's place, the changed words marked. A purple badge on the next slide says it's on; click it to
+end the comparison.
 
 <details>
 <summary>The rules for the line</summary>

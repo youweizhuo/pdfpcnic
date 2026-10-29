@@ -34,6 +34,21 @@ export function splitPlan(note: string): { plan: Plan | null; length: number | n
   return { plan: { start, end }, length: null, note: rest(m) };
 }
 
+/** Each slide's planned window, from its first step's start to its last step's end; null for a slide without one. */
+export function slidePlans(plans: Array<Plan | null>, slides: number[][]): Array<Plan | null> {
+  return slides.map((pages) => {
+    const own = pages.flatMap((p) => plans[p] ?? []);
+    return own.length ? { start: Math.min(...own.map((p) => p.start)), end: Math.max(...own.map((p) => p.end)) } : null;
+  });
+}
+
+/** A slide's timing line, as the notes write it: its window from the start of the talk, or a backup slide's length. */
+export function timingLine(plan: Plan | null, length: number): string {
+  if (!plan) return `**${Math.round(length)} s**`;
+  const own = Math.round(plan.end - plan.start);
+  return own ? `**${mark(plan.start)} → ${mark(plan.end)}** · ${own} s` : `**${mark(plan.start)}**`;
+}
+
 /** A span of seconds: "12 s" or "1:20". */
 export function span(seconds: number): string {
   const s = Math.round(Math.abs(seconds));

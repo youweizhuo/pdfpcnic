@@ -1,5 +1,6 @@
-// pdfpc's default key bindings, plus `o` to open the audience window, `[` `]`
-// and `0` for the slides' size, `t` and `e` for the clocks, and `,` for settings.
+// pdfpc's default key bindings, plus `l` for the laser, `o` to open the
+// audience window, `[` `]` and `0` for the slides' size, `t` and `e` for the
+// clocks, and `,` for settings.
 
 /** What a key does to the talk itself: where it is, what the audience sees, the clock (see talk.ts). */
 const TALK_ACTIONS = [
@@ -45,6 +46,8 @@ export type ViewAction =
   | "resetLayout"
   | "timesOfDay"
   | "earlyLate"
+  // A click on the guide's line at the end of a run; no key.
+  | "saveRun"
   | "settings";
 
 export type Action = TalkAction | ViewAction;
@@ -84,6 +87,8 @@ const BINDINGS: Record<string, Action> = {
   g: "goto",
   m: "bookmark",
   "Shift+m": "toBookmark",
+  l: "laserMode",
+  // pdfpc's: normal mode and the pointer.
   "1": "normalMode",
   "2": "laserMode",
   "+": "bigger",
@@ -153,7 +158,7 @@ export const HELP: Array<[string, Array<[string, string, highlight?: "key" | "mo
       ["Shift+W", "audience fullscreen (or present here)"],
       ["w", "presenter fullscreen"],
       ["b / f", "black screen / freeze"],
-      ["2 / 1", "laser pointer on / off"],
+      ["l", "laser pointer on / off (or 2 / 1, as in pdfpc)"],
       ["Esc", "one step back: closes help and overview, ends black, freeze and laser, then leaves presenter fullscreen", "key"],
       ["Tab", "overview"],
     ],
@@ -174,7 +179,7 @@ export const HELP: Array<[string, Array<[string, string, highlight?: "key" | "mo
       ["[ / ]", "slides smaller / bigger, for more room for notes", "key"],
       ["0", "the layout as at first: equal columns, the slides full size", "key"],
       ["Drag a divider", "resize the columns, or the slides against the notes", "mouse"],
-      ["Drop a .pdfpc file", "on the window any time, to add its notes and timing to the deck that's open", "mouse"],
+      ["Drop a .pdfpc file", "its notes and timing, any time; with another name than the deck's, compared with it", "mouse"],
       [",", "settings"],
       ["?", "this help"],
     ],

@@ -3,6 +3,32 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.3.0 (2026-10-28)
+
+### Added
+
+- **Save a run's times:** at the end of a run through the talk, on the end slide or past it, the line over the
+  buttons offers in purple to save them: a click saves the times you took as a `.pdfpc` file of timing lines, each
+  slide's window as long as it took, named for the PDF and the time, as `talk-20261028-1430.pdfpc`. The browser
+  downloads it; the Mac app puts it beside the PDF.
+- **Compare two plans:** a `.pdfpc` file with another name than the deck's, dropped on the window or chosen with the
+  deck, is compared with the deck's plan instead of replacing it. A saved run, say, or an earlier export.
+  - This slide's line and the talk's each split in two, the deck's plan over the other in purple. Under them, both
+    times and the difference: longer in orange, shorter in blue.
+  - The other file's note for this slide takes the next slide's notes' place. The words either note doesn't have are
+    marked, as a word diff marks them: struck in red in the deck's, green in the other.
+  - A purple badge on the next slide says it's on, and a click on it ends it. Moving through the slides doesn't start
+    the clock.
+  - Another file of another name dropped then is compared instead; a new export of the deck's own file keeps the
+    comparison.
+- **docs/roadmap.md** says what's being weighed and what was left out, and why.
+
+### Changed
+
+- **`l` turns the laser on and off**, as its button says, and the demo deck says so. pdfpc's `2` and `1` still work.
+- **The next slide is a little dimmer than the current one**, as in Présentation.app, a touch less.
+- **The line over the buttons never wraps**: what doesn't fit ends in "…", and its tooltip has it all.
+
 ## 1.2.10 (2026-10-28)
 
 ### Changed

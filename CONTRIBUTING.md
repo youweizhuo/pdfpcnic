@@ -15,7 +15,8 @@ Security problems go to a private report instead; see [SECURITY.md](SECURITY.md)
 
 For anything beyond a small fix, open an issue first so we can agree on the behavior before you write the code. What
 fits: what pdfpc and Présentation.app do, in the browser, and pace display for timed talks. What doesn't: editing
-slides, transitions, video, and anything that sends a deck off the machine.
+slides, transitions, video, and anything that sends a deck off the machine. [docs/roadmap.md](docs/roadmap.md) has
+what's being weighed and what was left out, and why.
 
 ## Development
 

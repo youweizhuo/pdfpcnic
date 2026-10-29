@@ -62,12 +62,16 @@
       <!-- This slide's planned time, filling as you spend it. -->
       <div id="pace-slide" class="slidebar">
         <div class="slidebar-track"><div id="slide-fill" class="slide-fill"></div></div>
+        <!-- Comparing two plans: this slide's time in each, the deck's over the other's. -->
+        <div class="compare-lines"><div class="a"><i class="span"></i></div><div class="b"><i class="span"></i></div></div>
       </div>
       <!-- What the audience sees, under the slide it shows. -->
       <nav class="toolbar slide-tools">
+        <!-- Comparing two plans: this slide's time in each, and the difference. -->
+        <span id="compare-slide" class="compare-times"></span>
         <button type="button" data-action="blank">Black <kbd>b</kbd></button>
         <button type="button" data-action="freeze">Freeze <kbd>f</kbd></button>
-        <button type="button" data-action="laserMode">Laser <kbd>2</kbd></button>
+        <button type="button" data-action="laserMode">Laser <kbd>l</kbd></button>
       </nav>
       <div id="split" class="split" role="separator" aria-orientation="vertical" title="Drag to resize the columns"></div>
       <div id="stage-split" class="hsplit" role="separator" aria-orientation="horizontal" title="Drag to trade slide size for notes"></div>
@@ -87,6 +91,7 @@
           <button id="timer-toggle" class="ctl cta" type="button">Start <kbd>s</kbd></button>
           <button id="timer-reset" class="ctl" type="button" disabled>Reset <kbd>⇧R</kbd></button>
           <span id="target-at" class="target-at" title="The target end: the red line"></span>
+          <span id="compare-talk" class="compare-times"></span>
         </nav>
         <div class="clock">
           <button id="timer" class="timer idle" type="button" title="Click to pause or resume (p)">0:00:00</button>

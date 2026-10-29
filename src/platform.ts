@@ -24,6 +24,8 @@ export interface Platform {
   updated?(show: (version: string) => void): void;
   /** The `.pdfpc` file beside a PDF the page was given, found by the PDF's name, as pdfpc finds it. */
   notes?(pdfName: string): Promise<string | null>;
+  /** Saves a file the presenter makes, a run's times: beside the PDF where the platform can, and says where; null for the browser's downloads. */
+  save(name: string, text: string, pdfName: string): Promise<string | null>;
 }
 
 /** A PDF, opened by the platform's engine: pdf.js in the browser, PDFKit on the Mac. */

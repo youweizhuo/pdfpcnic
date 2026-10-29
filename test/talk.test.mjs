@@ -86,6 +86,26 @@ test("back on slide 1 with time on the clock, the talk looks stale", () => {
   assert.equal(started.stale, false);
 });
 
+test("on the end slide after other slides, a run is over; looking through the slides doesn't start the clock", () => {
+  const talk = new Talk(deck(["1", "2", "3", "4"], { meta: { pages: [], endSlide: 2 } }), undefined, T0);
+  talk.act("next", sec(0));
+  assert.equal(talk.finished, false);
+  talk.act("next", sec(60));
+  assert.equal(talk.finished, true, "on the end slide, after time on slide 2");
+  talk.act("next", sec(70));
+  assert.equal(talk.finished, true, "and past it, on a backup slide");
+  talk.act("first", sec(80));
+  assert.equal(talk.finished, false);
+  // Started on the end slide itself, nothing has been run.
+  const there = new Talk(deck(["1", "2"]), undefined, T0);
+  there.go(1, false, sec(0));
+  assert.equal(there.finished, false);
+  const review = new Talk(deck(["1", "2"]), undefined, T0);
+  review.review = true;
+  review.act("next", sec(0));
+  assert.equal(review.state.timer.startedAt, null);
+});
+
 /** Three slides planned for 1, 2 and 1 minutes. */
 const timed = () =>
   deck(["1", "2", "3"], { meta: pdfpc({ 0: "**00:00 → 01:00**", 1: "**01:00 → 03:00**", 2: "**03:00 → 04:00**" }) });

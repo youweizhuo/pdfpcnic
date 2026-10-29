@@ -15,12 +15,15 @@ const stem = (name: string) => name.replace(/\.[^.]+$/, "");
 const GITHUB_MARK =
   '<svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>';
 
-async function readFiles(files: Iterable<File>): Promise<Partial<Source>> {
-  const out: Partial<Source> = {};
+type PdfpcText = NonNullable<Source["pdfpc"]>;
+
+/** Files given at once: a PDF, and `.pdfpc` files (the deck's own, and one to compare with it). */
+async function readFiles(files: Iterable<File>): Promise<{ pdf?: Source["pdf"]; pdfpcs: PdfpcText[] }> {
+  const out: { pdf?: Source["pdf"]; pdfpcs: PdfpcText[] } = { pdfpcs: [] };
   for (const f of files) {
     const name = f.name.toLowerCase();
     if (name.endsWith(".pdfpc") || name.endsWith(".json")) {
-      out.pdfpc = { name: f.name, text: await f.text() };
+      out.pdfpcs.push({ name: f.name, text: await f.text() });
     } else if (name.endsWith(".pdf") || f.type === "application/pdf") {
       out.pdf = { name: f.name, data: await f.arrayBuffer() };
     } else if (new TextDecoder().decode(await f.slice(0, 5).arrayBuffer()) === "%PDF-") {
@@ -32,9 +35,15 @@ async function readFiles(files: Iterable<File>): Promise<Partial<Source>> {
   return out;
 }
 
+/** `.pdfpc` files, the deck's own first: the one named as its PDF, as pdfpc finds it, else the first given. */
+const deckFirst = (pdfpcs: PdfpcText[], pdfName: string) =>
+  [...pdfpcs].sort((a, b) => Number(stem(b.name) === stem(pdfName)) - Number(stem(a.name) === stem(pdfName)));
+
 /** A deck read from its files, with what to say about them. */
 interface Prepared extends Opened {
   notices: string[];
+  /** Another `.pdfpc` file, to compare the deck's plan with. */
+  other?: PdfpcText;
 }
 
 interface OpenOptions {
@@ -92,7 +101,7 @@ export async function start(platform: Platform): Promise<void> {
   }
 
   /** Hands a deck to a fresh presenter, with the audience window. */
-  async function present({ notices, ...opened }: Prepared, { saved, keep = true, track = true }: OpenOptions = {}): Promise<void> {
+  async function present({ notices, other, ...opened }: Prepared, { saved, keep = true, track = true }: OpenOptions = {}): Promise<void> {
     const { source } = opened;
     const previous = presenter;
     presenter = null;
@@ -100,6 +109,7 @@ export async function start(platform: Platform): Promise<void> {
     await previous?.opened.pdf.close();
     presenter = new Presenter(platform, audience, opened, saved, track);
     openAudience();
+    if (other) compare(other);
     if (keep) {
       void platform.store.saveDeck({ pdfName: source.pdf.name, pdf: source.pdf.data, pdfpcName: source.pdfpc?.name, pdfpc: source.pdfpc?.text });
     }
@@ -109,14 +119,24 @@ export async function start(platform: Platform): Promise<void> {
 
   const openSource = async (source: Source, options?: OpenOptions) => present(await prepare(source), options);
 
+  /** Compares the open deck's plan with another `.pdfpc` file; one that can't be read is said, and changes nothing. */
+  function compare(other: PdfpcText): void {
+    try {
+      presenter?.compareWith(other);
+    } catch (err) {
+      report(`${other.name}: ${reasonOf(err)}`);
+    }
+  }
+
   /** The deck on the start page, waiting for Present. */
   let ready: Prepared | null = null;
   function showReady(p: Prepared): void {
-    void ready?.pdf.close();
+    if (ready && ready.pdf !== p.pdf) void ready.pdf.close();
     ready = p;
     const { source, deck } = p;
     const n = deck.slides.length;
-    $("ready-name").textContent = source.pdfpc ? `${source.pdf.name} + ${source.pdfpc.name}` : source.pdf.name;
+    $("ready-name").textContent =
+      (source.pdfpc ? `${source.pdf.name} + ${source.pdfpc.name}` : source.pdf.name) + (p.other ? `, compared with ${p.other.name}` : "");
     $("ready-info").textContent = `${n} slide${n === 1 ? "" : "s"}` + (deck.duration ? ` · ${deck.duration} min` : "");
     $("drop").hidden = $("actions").hidden = true;
     $("ready").hidden = false;
@@ -131,31 +151,43 @@ export async function start(platform: Platform): Promise<void> {
     const status = $("start-error");
     try {
       const got = await readFiles(files);
-      // A PDF alone brings the notes beside it, where the platform can look (the Mac app), as in pdfpc.
-      if (got.pdf && !got.pdfpc) {
-        const text = await platform.notes?.(got.pdf.name);
-        if (text) got.pdfpc = { name: `${got.pdf.name.replace(/\.pdf$/i, "")}.pdfpc`, text };
-      }
       if (got.pdf) {
+        let [pdfpc, other] = deckFirst(got.pdfpcs, got.pdf.name);
+        // A PDF brings the notes beside it, where the platform can look (the Mac app), as in pdfpc; a .pdfpc file
+        // of another name given with it is then compared with them.
+        if (!pdfpc || (!other && stem(pdfpc.name) !== stem(got.pdf.name))) {
+          const text = await platform.notes?.(got.pdf.name);
+          if (text) [pdfpc, other] = [{ name: `${stem(got.pdf.name)}.pdfpc`, text }, pdfpc];
+        }
         status.hidden = false;
         status.textContent = `Opening ${got.pdf.name}…`;
-        const source = { pdf: got.pdf, pdfpc: got.pdfpc };
-        if (now) await openSource(source);
-        else showReady(await prepare(source));
+        const prepared = { ...(await prepare({ pdf: got.pdf, pdfpc })), other };
+        if (now) await present(prepared);
+        else showReady(prepared);
         status.hidden = true;
-      } else if (got.pdfpc && presenter) {
-        // Notes added to the deck already open: keep the place and the clock.
+      } else if (got.pdfpcs.length && presenter) {
         const p = presenter;
+        const [pdfpc, other] = deckFirst(got.pdfpcs, p.deck.name);
+        const own = p.opened.source.pdfpc;
+        // Another name than the deck's own .pdfpc file: compared with it, in place of any other. The same name, a new
+        // export say, or a deck without one: its notes and timing, keeping the place, the clock and any comparison.
+        if (own && !other && pdfpc.name !== own.name) return compare(pdfpc);
+        const kept = p.comparing;
         const s = p.talk.state;
         await openSource(
-          { pdf: p.opened.source.pdf, pdfpc: got.pdfpc },
+          { pdf: p.opened.source.pdf, pdfpc },
           // Kept and tracked as the deck was: notes dropped on the demo don't make it the deck to resume.
           { saved: { pdfName: p.deck.name, page: s.page, timer: s.timer, bookmark: s.bookmark, savedAt: Date.now() }, keep: p.track, track: p.track },
         );
-        toast(`Loaded notes from ${got.pdfpc.name}.`);
-      } else if (got.pdfpc && ready) {
-        showReady(await prepare({ pdf: ready.source.pdf, pdfpc: got.pdfpc }));
-      } else if (got.pdfpc) {
+        toast(`Loaded notes from ${pdfpc.name}.`);
+        const again = other ?? kept;
+        if (again) compare(again);
+      } else if (got.pdfpcs.length && ready) {
+        const [pdfpc, other] = deckFirst(got.pdfpcs, ready.source.pdf.name);
+        const own = ready.source.pdfpc;
+        if (own && !other && pdfpc.name !== own.name) showReady({ ...ready, other: pdfpc });
+        else showReady({ ...(await prepare({ pdf: ready.source.pdf, pdfpc })), other });
+      } else if (got.pdfpcs.length) {
         throw new Error("That's the .pdfpc file. Add the PDF too (you can select both at once).");
       }
     } catch (err) {

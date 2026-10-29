@@ -1,7 +1,8 @@
 // What the presenter is told to do: the audience's button at the foot of the
 // column, and the one line over the buttons, colored by what it says. Yellow is
 // the next thing to do, as the outlined button it names; orange, something in
-// the way that no button fixes; purple, a hint; grey, a fact.
+// the way that no button fixes; purple, a hint; grey, a fact. While two plans
+// are compared, it names the other file.
 //
 // It goes by what the platform can do with the audience window, never by which
 // browser this is: where the presenter can make it fullscreen (Chrome, Edge,
@@ -44,6 +45,10 @@ export interface Situation {
   laser: boolean;
   /** On the last planned slide, with backup slides after it. */
   lastPlanned: boolean;
+  /** At the end of a run through the talk, its times not saved yet. */
+  finished: boolean;
+  /** The other `.pdfpc` file's name, while comparing the deck's plan with it. */
+  comparing: string | null;
 }
 
 export interface Line {
@@ -51,6 +56,8 @@ export interface Line {
   text: string;
   /** Where things stand, in grey before it. */
   fact?: string;
+  /** What a click on the line does, when it says to click. */
+  action?: "saveRun";
 }
 
 /** Whether the audience sees the slides: fullscreen, or presented in the presenter's window (solo). */
@@ -84,6 +91,8 @@ function audienceStep(a: AudienceStatus): string {
 export function guideLine(s: Situation): Line | null {
   const a = s.audience;
   const ready = audienceReady(a, s.solo);
+  // Looking through the plans, not presenting: nothing else matters.
+  if (s.comparing) return { kind: "hint", text: `Comparing with ${s.comparing}.` };
   // In the way, whenever it is.
   if (s.oneScreen && !ready) return { kind: "blocked", text: `One screen only: ${EXTEND[s.system ?? "other"]}.` };
   if (a.mode === "window" && a.refused) {
@@ -101,8 +110,9 @@ export function guideLine(s: Situation): Line | null {
         : undefined;
     return { kind: "next", text: "Ready: press s to start the clock.", fact };
   }
+  if (s.finished) return { kind: "hint", text: "Click here to save this run's times, to compare with the plan.", action: "saveRun" };
   if (s.clock === "paused") return { kind: "hint", text: "Paused: p or a click on the clock resumes; ⇧R resets." };
-  if (s.laser) return { kind: "hint", text: "Laser on: + and − size the dot; 1 turns it off." };
+  if (s.laser) return { kind: "hint", text: "Laser on: + and − size the dot; l turns it off." };
   if (s.lastPlanned) return { kind: "fact", text: "Last planned slide: backup slides follow." };
   return null;
 }

@@ -95,6 +95,9 @@ final class App: NSObject, NSApplicationDelegate {
         bridge.on("notes") { [unowned self] args in
             presenter.notes(of: args["name"] as? String ?? "")
         }
+        bridge.on("save") { [unowned self] args in
+            try presenter.save(args["name"] as? String ?? "", args["text"] as? String ?? "", beside: args["pdfName"] as? String ?? "")
+        }
         bridge.on("closePdf") { [unowned self] args in
             pdfs.close(args.int("id"))
             return nil

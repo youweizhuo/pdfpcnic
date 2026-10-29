@@ -49,7 +49,7 @@
 
 #pagebreak()
 #slide[Laser pointer][
-  Press #box(stroke: 1pt, inset: 4pt, radius: 3pt)[2] and move the mouse over the current slide.
+  Press #box(stroke: 1pt, inset: 4pt, radius: 3pt)[l] and move the mouse over the current slide.
   #v(1em)
   #align(center, grid(columns: 3, gutter: 1.2cm,
     circle(radius: 1.6cm, fill: rgb("#e0a458")),

@@ -14,6 +14,8 @@ const at = (s = {}) => ({
   startsAt: null,
   laser: false,
   lastPlanned: false,
+  finished: false,
+  comparing: null,
   ...s,
 });
 
@@ -74,8 +76,19 @@ test("during the talk: paused and the laser in purple, the last planned slide in
   const talk = (s) => guideLine(at({ audience: status({ mode: "fullscreen" }), clock: "running", ...s }));
   assert.equal(talk({}), null);
   assert.deepEqual(talk({ clock: "paused", laser: true }), { kind: "hint", text: "Paused: p or a click on the clock resumes; ⇧R resets." });
-  assert.deepEqual(talk({ laser: true, lastPlanned: true }), { kind: "hint", text: "Laser on: + and − size the dot; 1 turns it off." });
+  assert.deepEqual(talk({ laser: true, lastPlanned: true }), { kind: "hint", text: "Laser on: + and − size the dot; l turns it off." });
   assert.deepEqual(talk({ lastPlanned: true }), { kind: "fact", text: "Last planned slide: backup slides follow." });
   // An audience window closed mid-talk is left to its button.
   assert.equal(guideLine(at({ audience: status({ mode: "closed" }), clock: "running" })), null);
+});
+
+test("at the end of a run, in purple, a click on the line saves its times", () => {
+  const end = (s) => guideLine(at({ audience: status({ mode: "fullscreen" }), clock: "running", finished: true, ...s }));
+  assert.deepEqual(end({ lastPlanned: true }), { kind: "hint", text: "Click here to save this run's times, to compare with the plan.", action: "saveRun" });
+  assert.equal(end({ clock: "paused" }).action, "saveRun", "paused at the end, saving comes first");
+});
+
+test("comparing two plans, the line names the other file, before anything else", () => {
+  const line = guideLine(at({ oneScreen: true, comparing: "talk-20261028-1405.pdfpc" }));
+  assert.deepEqual(line, { kind: "hint", text: "Comparing with talk-20261028-1405.pdfpc." });
 });

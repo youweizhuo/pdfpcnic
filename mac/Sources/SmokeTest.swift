@@ -4,9 +4,9 @@ import WebKit
 /// `pdfpcnic --smoke-test deck.pdf deck.pdfpc out/ pdfpcnic-mac.zip`, for CI.
 /// It opens the deck as the Finder would, with the audience window behind the
 /// presenter, steps through it, makes both windows fullscreen, checks that both
-/// drew the slide and what Esc leaves, installs the zip as an update would,
-/// reloads to check the talk resumes, saves screenshots, and quits: status 1 if
-/// anything failed.
+/// drew the slide and what Esc leaves, saves a run's times beside the PDF,
+/// installs the zip as an update would, reloads to check the talk resumes,
+/// saves screenshots, and quits: status 1 if anything failed.
 @MainActor
 final class SmokeTest {
     private let files: [URL]
@@ -106,7 +106,7 @@ final class SmokeTest {
         await check("Esc steps back, the laser first, then the presenter's fullscreen; never the audience's") {
             func laser() async throws -> Bool { try await js("return window.pdfpcnic.state.laser") as? Bool ?? false }
             try await press("w")
-            try await press("2")
+            try await press("l")
             try await until("fullscreen, with the laser") {
                 let on = try await laser()
                 return on && app.presenter.fullscreen
@@ -119,6 +119,28 @@ final class SmokeTest {
             try await press("Escape")
             try await Task.sleep(nanoseconds: 300_000_000)
             guard app.audience.view.isInFullScreenMode else { throw Failure("Esc took the audience out of fullscreen") }
+        }
+        await check("at the end of the run, a click on the guide's line saves its times beside the PDF") {
+            let folder = files[0].deletingLastPathComponent()
+            let stem = files[0].deletingPathExtension().lastPathComponent
+            func runs() -> [URL] {
+                ((try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? [])
+                    .filter { $0.lastPathComponent.range(of: "^\(stem)-\\d{8}-\\d{4}(-\\d+)?\\.pdfpc$", options: .regularExpression) != nil }
+            }
+            for url in runs() { try? FileManager.default.removeItem(at: url) }
+            try await press("End")
+            try await until("the line's offer") {
+                (try await js("return document.querySelector('#guide').textContent") as? String ?? "").hasPrefix("Click here to save this run's times")
+            }
+            _ = try await js("document.querySelector('#guide').click(); return null")
+            try await until("the file") { !runs().isEmpty }
+            // Back where the reload's check expects the talk.
+            try await press("Home")
+            try await press("ArrowRight")
+            try await until("page 2") { try await page() == 1 }
+            let text = try String(contentsOf: runs()[0], encoding: .utf8)
+            for url in runs() { try? FileManager.default.removeItem(at: url) }
+            guard text.contains("\"pdfpcFormat\": 2"), text.contains("→") else { throw Failure("it isn't a run's timing lines: \(text.prefix(200))") }
         }
         await check("GitHub says which release is the latest") {
             let latest = try await Updates.latest()

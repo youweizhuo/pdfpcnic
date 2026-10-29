@@ -27,4 +27,6 @@ export const mac: Platform = {
   },
   // The app knows where each file came from: opened, chosen or dropped.
   notes: (name) => call<string | null>("notes", { name }),
+  // Beside the PDF, as the notes are; the app says where it went.
+  save: (name, text, pdfName) => call<string>("save", { name, text, pdfName }),
 };

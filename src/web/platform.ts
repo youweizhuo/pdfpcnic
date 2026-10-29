@@ -13,4 +13,13 @@ export const web: Platform = {
   window: presenterWindow,
   store,
   demo: demoDeck,
+  // To the browser's downloads: it says where.
+  async save(name, text) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+    return null;
+  },
 };

@@ -115,6 +115,29 @@ final class Presenter: NSObject, WKNavigationDelegate, WKUIDelegate, NSWindowDel
         return try? String(contentsOf: pdf.deletingPathExtension().appendingPathExtension("pdfpc"), encoding: .utf8)
     }
 
+    /// A file the page makes, a run's times: beside the PDF it came from (in Downloads for the demo), never over
+    /// another file. Returns where it went.
+    func save(_ name: String, _ text: String, beside pdfName: String) throws -> String {
+        let fm = FileManager.default
+        let folder = paths[pdfName]?.deletingLastPathComponent() ?? fm.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
+        let file = URL(fileURLWithPath: name).lastPathComponent
+        let stem = (file as NSString).deletingPathExtension
+        let ext = (file as NSString).pathExtension
+        var url = folder.appendingPathComponent(file)
+        var n = 2
+        while fm.fileExists(atPath: url.path) {
+            url = folder.appendingPathComponent("\(stem)-\(n).\(ext)")
+            n += 1
+        }
+        do {
+            try Data(text.utf8).write(to: url)
+        } catch {
+            throw Failure("\(file) couldn't be saved in \(folder.path): \(error.localizedDescription)")
+        }
+        remember([url])
+        return url.path
+    }
+
     /// If the page's process ever dies, it comes back; Resume picks up the talk.
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         webView.reload()

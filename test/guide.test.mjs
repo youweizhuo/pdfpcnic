@@ -82,10 +82,10 @@ test("during the talk: paused and the laser in purple, the last planned slide in
   assert.equal(guideLine(at({ audience: status({ mode: "closed" }), clock: "running" })), null);
 });
 
-test("at the end of a run, in purple, a click on the line saves its times", () => {
+test("at the end of a run, in purple, the button that saves its times", () => {
   const end = (s) => guideLine(at({ audience: status({ mode: "fullscreen" }), clock: "running", finished: true, ...s }));
-  assert.deepEqual(end({ lastPlanned: true }), { kind: "hint", text: "Click here to save this run's times, to compare with the plan.", action: "saveRun" });
-  assert.equal(end({ clock: "paused" }).action, "saveRun", "paused at the end, saving comes first");
+  assert.deepEqual(end({ lastPlanned: true }), { kind: "hint", text: "Click Save run to keep this run's times, to compare with the plan." });
+  assert.match(end({ clock: "paused" }).text, /^Click Save run/, "paused at the end, saving comes first");
 });
 
 test("comparing two plans, the line names the other file, before anything else", () => {

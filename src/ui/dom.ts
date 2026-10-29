@@ -17,6 +17,27 @@ export function label(b: HTMLElement, text: string, key = ""): void {
   b.replaceChildren(text, ...(key ? [el("kbd", "", key)] : []));
 }
 
+/**
+ * A button that takes turns at a few labels, as wide as the widest: all are in
+ * it, in one place, and all but the one shown invisible, so a change of label
+ * moves nothing beside it.
+ */
+export function steadyLabel(b: HTMLElement, labels: Array<[text: string, key: string]>, shown: number): void {
+  const all = labels.map((l) => l.join("\n")).join("\n\n");
+  if (b.dataset.steady !== all) {
+    b.dataset.steady = all;
+    b.classList.add("steady");
+    b.replaceChildren(
+      ...labels.map(([text, key]) => {
+        const span = el("span");
+        span.append(text, ...(key ? [el("kbd", "", key)] : []));
+        return span;
+      }),
+    );
+  }
+  [...b.children].forEach((c, i) => c.classList.toggle("off", i !== shown));
+}
+
 let toastTimer = 0;
 /** A note at the bottom that goes away on its own, out of the way of clicks. */
 export function toast(message: string, ms = 4500): void {

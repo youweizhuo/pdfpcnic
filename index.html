@@ -62,8 +62,6 @@
       <!-- This slide's planned time, filling as you spend it. -->
       <div id="pace-slide" class="slidebar">
         <div class="slidebar-track"><div id="slide-fill" class="slide-fill"></div></div>
-        <!-- Comparing two plans: this slide's time in each, the deck's over the other's. -->
-        <div class="compare-lines"><div class="a"><i class="span"></i></div><div class="b"><i class="span"></i></div></div>
       </div>
       <!-- What the audience sees, under the slide it shows. -->
       <nav class="toolbar slide-tools">
@@ -90,6 +88,8 @@
         <nav class="toolbar timer-controls">
           <button id="timer-toggle" class="ctl cta" type="button">Start <kbd>s</kbd></button>
           <button id="timer-reset" class="ctl" type="button" disabled>Reset <kbd>⇧R</kbd></button>
+          <!-- Saves the run's times, to compare with the plan; while comparing, ends the comparison. -->
+          <button id="save-run" class="ctl" type="button" data-action="saveRun" disabled>Save run</button>
           <span id="target-at" class="target-at" title="The target end: the red line"></span>
           <span id="compare-talk" class="compare-times"></span>
         </nav>
@@ -144,7 +144,7 @@
             </div>
             <div>
               <dt>Notes</dt>
-              <dd>What you'd have said by now, at this slide's planned pace, dims character by character; <em>ref</em> paragraphs don't count (set how much in Settings).</dd>
+              <dd>What you'd have said by now, at this slide's planned pace, dims character by character; <em>ref</em> paragraphs don't count (turn it off in Settings).</dd>
             </div>
             <div>
               <dt><i class="sw this"></i><i class="sw next"></i></dt>
@@ -217,11 +217,13 @@
           <input id="set-severe" type="range" min="1" max="30" step="1" />
           <output for="set-severe"></output>
         </label>
-        <label class="setting">
+        <div class="setting">
           <span>Dim notes as time passes</span>
-          <input id="set-dim" type="range" min="0" max="80" step="10" />
-          <output for="set-dim"></output>
-        </label>
+          <div id="set-dim" class="switch">
+            <button type="button" data-dim="off">off</button>
+            <button type="button" data-dim="on">on</button>
+          </div>
+        </div>
         <p class="settings-foot">Late always shows, in <span class="t-late">orange</span>, <span class="t-serious">deep orange</span> and <span class="t-severe">red</span>; early only past its level, in <span class="t-early">blue</span>. Shares are of the talk's length (its <code>duration</code>, else the planned total).</p>
         <p class="settings-foot">Saved in this browser. While the laser is on, <kbd>+</kbd> and <kbd>−</kbd> size its dot instead of the notes.</p>
         <div class="settings-actions">

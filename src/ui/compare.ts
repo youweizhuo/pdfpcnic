@@ -1,18 +1,37 @@
 // Comparing the deck's plan with another `.pdfpc` file (core/compare.ts), in
-// the presenter's own places: where this slide's line and the talk's are, two
-// lines, the deck's over the other's in purple, with the difference under
-// each; where the next slide's notes are, the other file's note for this
-// slide, and in both notes the words the other doesn't have, marked. A badge
-// on the next slide says it's on, and ends it.
+// the presenter's own places. This slide's line and the talk's show the talk
+// run again in the other file's times, as they would stand at the end of this
+// slide, in the pace's colors; so do the thumbnails' lines, each its slide's.
+// Under the lines, both times and the difference. Where the next slide's notes
+// are, the other file's note for this slide, and in both notes the words the
+// other doesn't have, marked.
 
 import { otherPages, plansOf, wordDiff, words, type Plans } from "../core/compare.ts";
 import type { Deck, Page } from "../core/deck.ts";
-import { span } from "../core/pace.ts";
+import { grade, span, type Grade, type Plan, type Slack } from "../core/pace.ts";
 import { parsePdfpc } from "../core/pdfpc.ts";
 import { $, el } from "./dom.ts";
 import { renderNote } from "./notes.ts";
 
 const marks = typeof CSS !== "undefined" && "highlights" in CSS;
+
+/** A slide's line at the end of the slide, run in the other file's times: how far it fills, in which color. */
+export interface SlideLine {
+  share: number;
+  tone: Grade;
+}
+
+/** The talk's line at the end of this slide, likewise: as the live line draws it (presenter.ts). */
+export interface TalkLine {
+  scale: number;
+  target: number;
+  /** Time spent by then, and where the talk would end with the slides after it as planned. */
+  at: number;
+  finish: number;
+  tone: Grade;
+  /** This slide's planned window. */
+  window: Plan | null;
+}
 
 export class Comparison {
   /** The other file's name. */
@@ -45,41 +64,52 @@ export class Comparison {
     this.theirs = plansOf(this.name, this.pages, this.deck, endSlide, 0);
   }
 
-  /** The two lines and their differences, for `slide`. */
-  renderTimes(slide: number, endSlide: number): void {
+  /**
+   * This slide's line and the talk's, run in the other file's times; under
+   * them, both times and the difference, in the lines' colors.
+   */
+  renderTimes(slide: number, endSlide: number, slack: Slack): { slide: SlideLine | null; talk: TalkLine } {
     this.plan(endSlide);
     const [a, b] = [this.ours, this.theirs];
+    const target = this.target;
+    const own = this.slideLine(slide, slack);
+    const [la, lb] = [a.lengths[slide], b.lengths[slide]];
+    $("pace-slide").title = `This slide: ${span(la)} in ${a.name}, ${span(lb)} in ${b.name}`;
+    times($("compare-slide"), own ? [la, lb] : null, own?.tone ?? "on");
 
-    // This slide: its length in each, on one scale.
-    const la = a.lengths[slide];
-    const lb = b.lengths[slide];
-    const most = Math.max(la, lb);
-    const line = $("pace-slide");
-    line.hidden = false;
-    line.classList.toggle("none", !most);
-    line.title = `This slide: ${span(la)} in ${a.name}, ${span(lb)} in ${b.name}`;
-    const rows = line.querySelectorAll<HTMLElement>(".compare-lines .span");
-    rows[0].style.width = share(la, most);
-    rows[1].style.width = share(lb, most);
-    times($("compare-slide"), most ? [la, lb] : null);
-
-    // The whole talk: each plan's span, this slide's window in yellow on each.
-    const bar = $("talkbar");
-    bar.hidden = false;
-    const scale = Math.max(a.end, b.end) * 1.05;
-    bar.querySelectorAll<HTMLElement>(".compare-lines > div").forEach((row, i) => {
-      const side = i ? b : a;
-      row.querySelector<HTMLElement>(".span")!.style.width = share(side.end, scale);
-      const slot = row.querySelector<HTMLElement>(".window")!;
-      const w = side.windows[slide];
-      slot.hidden = !w || !scale;
-      if (w && scale) {
-        slot.style.left = share(w.start, scale);
-        slot.style.width = share(w.end - w.start, scale);
-      }
-    });
-    times($("compare-talk"), a.end || b.end ? [a.end, b.end] : null);
+    // Where the talk stands at the end of this slide in each (a backup slide goes by the end slide), and where it would
+    // end with the slides after it as planned.
+    const s = Math.min(slide, endSlide);
+    const at = endOf(b, s);
+    const finish = a.end + at - endOf(a, s);
+    const total = Math.round(b.end) - Math.round(a.end);
+    times($("compare-talk"), a.end || b.end ? [a.end, b.end] : null, total > 0 ? grade(total, target, slack) : total < 0 ? "early" : "on");
     $("compare-talk").title = `The talk: ${span(a.end)} in ${a.name}, ${span(b.end)} in ${b.name}`;
+    const talk = { scale: Math.max(target * 1.1, a.end), target, at, finish, tone: grade(finish - target, target, slack), window: a.windows[slide] };
+    return { slide: own, talk };
+  }
+
+  /** Each slide's line, for the thumbnails. */
+  slideLines(endSlide: number, slack: Slack): Array<SlideLine | null> {
+    this.plan(endSlide);
+    return this.deck.slides.map((_, slide) => this.slideLine(slide, slack));
+  }
+
+  /**
+   * A slide's line, had it taken the other file's time: filled that far
+   * against its planned time, longer in the late colors, shorter in blue;
+   * none for a slide neither gives any time.
+   */
+  private slideLine(slide: number, slack: Slack): SlideLine | null {
+    const [la, lb] = [this.ours.lengths[slide], this.theirs.lengths[slide]];
+    if (!la && !lb) return null;
+    const d = Math.round(lb) - Math.round(la);
+    return { share: la ? Math.min(1, lb / la) : 1, tone: d > 0 ? grade(d, this.target, slack) : d < 0 ? "early" : "on" };
+  }
+
+  /** The talk's target end: its set length, else where the deck's plan ends. */
+  private get target(): number {
+    return this.deck.duration * 60 || this.ours.end;
   }
 
   /** The other file's note for `page` where the next slide's notes go, and the words each note doesn't share marked. */
@@ -107,26 +137,19 @@ export class Comparison {
   }
 }
 
-/** Two lines in one, the deck's over the other's, each a span from the left; with `windows`, this slide's part on each. */
-export function compareLines(windows: boolean): HTMLElement {
-  const lines = el("div", "compare-lines");
-  for (const side of ["a", "b"]) {
-    const row = el("div", side);
-    row.append(el("i", "span"), ...(windows ? [el("i", "window")] : []));
-    lines.append(row);
-  }
-  return lines;
+/** Where a side's plan stands at the end of `slide`: its window's end, or the last one before it. */
+function endOf(side: Plans, slide: number): number {
+  for (let s = slide; s >= 0; s--) if (side.windows[s]) return side.windows[s]!.end;
+  return 0;
 }
 
-const share = (part: number, whole: number) => `${whole ? ((Math.max(0, part) / whole) * 100).toFixed(3) : 0}%`;
-
-/** The deck's time, the other's in purple, and how much longer or shorter it is. */
-function times(target: HTMLElement, pair: [number, number] | null): void {
+/** The deck's time, the other's, and how much longer or shorter it is; the other's two in the color of its line. */
+function times(target: HTMLElement, pair: [number, number] | null, tone: Grade): void {
   if (!pair) return target.replaceChildren();
   const [a, b] = pair;
   const d = Math.round(b) - Math.round(a);
-  const diff = d > 0 ? el("span", "t-late", `+${span(d)}`) : d < 0 ? el("span", "t-early", `−${span(d)}`) : el("span", "t-idle", "same");
-  target.replaceChildren(el("span", "a", span(a)), " ", el("span", "b", span(b)), " ", diff);
+  const diff = d > 0 ? `+${span(d)}` : d < 0 ? `−${span(d)}` : "same";
+  target.replaceChildren(el("span", "a", span(a)), " ", el("span", `t-${tone}`, span(b)), " ", el("span", d ? `t-${tone}` : "t-idle", diff));
 }
 
 /** The marked words as runs: words next to each other in the same text, one mark over them and the space between. */

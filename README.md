@@ -83,11 +83,11 @@ time, then turns orange as it runs over. Under the next slide, the whole talk: t
 this pace, and a red line at the target. Orange, deeper from a minute late, means hurry; blue, more than a minute
 early, means slow down. Without these lines, the `.pdfpc` file's `duration` is split evenly over the slides.
 
-After a run-through, on the end slide, the line over the buttons offers to save the times you took, as a `.pdfpc`
-file of timing lines: click it. Drop that file on the window, or any `.pdfpc` file with another name than the deck's (an earlier export, say), to compare the two:
-each line splits in two, the deck's plan over the other in purple, with the difference under it, and the other file's
-notes take the next slide's place, the changed words marked. A purple badge on the next slide says it's on; click it to
-end the comparison.
+**Save run**, by the clock, saves the times you took as a `.pdfpc` file of timing lines. Drop that file on the window,
+or any `.pdfpc` file with another name than the deck's (an earlier export, say), to compare the two. The lines, and
+each thumbnail's, then show the talk run again in the other file's times: blue where a slide is shorter, orange to red
+where longer, with both times and the difference under them. The other file's notes take the next slide's notes'
+place, the changed words marked. Meanwhile the clock stands still; **End comparison**, in Save run's place, ends it.
 
 <details>
 <summary>The rules for the line</summary>

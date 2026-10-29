@@ -10,8 +10,8 @@ import { mark, span } from "../core/pace.ts";
 import { Talk, type Point, type Progress, type SavedSession } from "../core/talk.ts";
 import * as T from "../core/timer.ts";
 import type { Audience, Pdf, Platform } from "../platform.ts";
-import { Comparison, compareLines } from "./compare.ts";
-import { $, el, label, reportError, toast, wheelStepper } from "./dom.ts";
+import { Comparison } from "./compare.ts";
+import { $, el, label, reportError, steadyLabel, toast, wheelStepper } from "./dom.ts";
 import { renderNote } from "./notes.ts";
 import { PageCache } from "./page-cache.ts";
 import { Settings } from "./settings.ts";
@@ -51,6 +51,8 @@ export class Presenter {
   private thumbs = new Map<number, Thumb[]>();
   private stripItems: HTMLElement[] = [];
   private overviewItems: HTMLElement[] = [];
+  /** Each thumbnail's slide line, by slide, shown while comparing. */
+  private thumbLines: { strip: HTMLElement[]; overview: HTMLElement[] } = { strip: [], overview: [] };
   private observers = new Map<HTMLElement, IntersectionObserver>();
   private abort = new AbortController();
   private stopTicking = () => {};
@@ -65,8 +67,6 @@ export class Presenter {
   private spoken = new Spoken();
   /** The other `.pdfpc` file the deck's plan is compared with, while it is. */
   private comparison: Comparison | null = null;
-  /** On the next slide while comparing: says so, and a click ends it. */
-  private compareBadge = el("button", "compare-badge", "Comparing ✕");
   /** When the run whose times were last saved started, so the guide stops asking. */
   private savedRun: number | null = null;
 
@@ -91,9 +91,6 @@ export class Presenter {
     this.current.onLayout = () => this.fitSlidebar();
     this.next = new SlideView($("next"), deck, this.cache, 2, { align: "start" });
     this.next.onLayout = () => this.fitLine($("talkbar"), this.next.canvas);
-    this.compareBadge.type = "button";
-    this.compareBadge.hidden = true;
-    $("next").append(this.compareBadge);
     this.cache.onRender((page) => this.thumbs.get(page)?.forEach((t) => t.draw()));
     audience.bind(deck, pdf, this.cache);
 
@@ -135,6 +132,8 @@ export class Presenter {
 
   act(action: Action): void {
     if (action === "escape" && this.escape()) return;
+    // Comparing, the clock stands still, and its keys leave it as it is.
+    if (this.comparison && (action === "timerStart" || action === "timerPause" || action === "timerReset")) return;
     if (isTalkAction(action)) {
       const said = this.talk.act(action);
       if (said) toast(said);
@@ -191,6 +190,8 @@ export class Presenter {
         return;
       case "saveRun":
         return void this.saveRun();
+      case "endCompare":
+        return this.compareWith(null);
     }
   }
 
@@ -260,14 +261,6 @@ export class Presenter {
     );
     cur.addEventListener("wheel", wheelStepper((d) => this.act(d > 0 ? "next" : "prev")), { signal, passive: true });
     $("next").addEventListener("click", () => this.act("nextSlide"), { signal });
-    this.compareBadge.addEventListener(
-      "click",
-      (e) => {
-        e.stopPropagation();
-        this.compareWith(null);
-      },
-      { signal },
-    );
     // The thumbnails come in once the mouse rests within 64 px of the right
     // edge, and go once it has left them. Watched from the mouse's position, so
     // nothing over the edge takes the clicks meant for what's under it.
@@ -474,7 +467,7 @@ export class Presenter {
     const now = Date.now();
     if (this.beatAt(now) !== this.beat) this.renderTimer();
     // In between, this slide's line and the notes move on, each redrawn only once it has changed.
-    else if (this.talk.budget !== null) {
+    else if (this.talk.budget !== null && !this.comparison) {
       this.renderFill(now);
       this.renderNotesDim(now);
     }
@@ -501,23 +494,29 @@ export class Presenter {
     // What to press next stands out: Start before the talk, Reset while paused
     // or after a rehearsal. One at a time, and the audience's steps come first.
     const ours = audienceReady(this.audience.status, this.view.solo);
-    const toggle = $("timer-toggle");
+    const toggle = $<HTMLButtonElement>("timer-toggle");
     const running = t.startedAt !== null && t.pausedAt === null;
+    // Start, Pause or Resume, the button as wide as the widest, so Reset beside it stays put.
+    steadyLabel(toggle, [["Start", "s"], ["Pause", "p"], ["Resume", "p"]], t.startedAt === null ? 0 : running ? 1 : 2);
     if (t.startedAt === null) {
-      label(toggle, "Start", "s");
       const until = T.untilStart(this.deck, now);
       toggle.title = until
         ? `The talk starts at ${this.deck.startTime}, in ${T.format(until)}.`
         : `Starts the clock. It also starts ${this.talk.state.page === 0 ? "when you leave slide 1" : "at your next move"}.`;
-    } else {
-      label(toggle, running ? "Pause" : "Resume", "p");
-      toggle.title = "";
-    }
-    toggle.classList.toggle("cta", ours && t.startedAt === null && !stale);
+    } else toggle.title = "";
+    const comparing = !!this.comparison;
+    toggle.disabled = comparing;
+    toggle.classList.toggle("cta", ours && t.startedAt === null && !stale && !comparing);
     const reset = $<HTMLButtonElement>("timer-reset");
     reset.title = running ? "While the clock runs, click twice." : "";
-    reset.disabled = t.startedAt === null;
-    reset.classList.toggle("cta", ours && (stale || t.pausedAt !== null) && !this.resetArmed);
+    reset.disabled = t.startedAt === null || comparing;
+    reset.classList.toggle("cta", ours && (stale || t.pausedAt !== null) && !this.resetArmed && !comparing);
+    // Save run, once the clock has run; while comparing, the same place ends the comparison.
+    const save = $<HTMLButtonElement>("save-run");
+    save.dataset.action = comparing ? "endCompare" : "saveRun";
+    label(save, comparing ? "End comparison" : "Save run");
+    save.disabled = !comparing && t.startedAt === null;
+    save.title = comparing ? "" : "Saves the times this run took as a .pdfpc file, to compare with the plan: drop it on this window.";
     reset.classList.toggle("confirm", !!this.resetArmed);
     label(reset, this.resetArmed ? "Click again to reset" : "Reset", "⇧R");
     this.renderGuide(now);
@@ -541,25 +540,23 @@ export class Presenter {
       comparing: this.comparison?.name ?? null,
     });
     const p = $("guide");
-    p.className = `guide ${line?.kind ?? ""}${line?.action ? " act" : ""}`;
+    p.className = `guide ${line?.kind ?? ""}`;
     p.replaceChildren(...(line?.fact ? [el("span", "fact", `${line.fact} · `)] : []), line?.text ?? "");
     p.title = line ? `${line.fact ? `${line.fact} · ` : ""}${line.text}` : "";
-    const action = line?.action;
-    p.onclick = action ? () => this.act(action) : null;
   }
 
-  /** The talk bar's scale, as last laid out. */
-  private barScale = 0;
+  /** The talk bar's scale and target, as last laid out. */
+  private barScale = "";
 
   /** The talk bar's parts, back to front. */
   private buildTalkbar(): void {
-    $("talkbar").replaceChildren(el("div", "past"), el("div", "projected"), el("div", "spent"), el("div", "window"), el("div", "target"), compareLines(true));
-    this.barScale = 0;
+    $("talkbar").replaceChildren(el("div", "past"), el("div", "projected"), el("div", "spent"), el("div", "window"), el("div", "target"), );
+    this.barScale = "";
   }
 
   /** Dims the part of the note you'd have said by now. */
   private renderNotesDim(now = Date.now()): void {
-    this.spoken.show(this.settings.notesDim > 0 && !this.comparison ? this.talk.used(now) : null);
+    this.spoken.show(this.settings.dimNotes && !this.comparison ? this.talk.used(now) : null);
   }
 
   /** This slide's line in device pixels, and how far along it is drawn. */
@@ -605,7 +602,16 @@ export class Presenter {
 
   private renderPace(now: number): void {
     if (this.comparison) {
-      this.comparison.renderTimes(this.talk.slide, this.talk.state.endSlide);
+      // The lines as they would stand at the end of this slide, run in the other file's times.
+      const { slide, talk } = this.comparison.renderTimes(this.talk.slide, this.talk.state.endSlide, this.settings.slack);
+      for (const id of ["pace-slide", "talkbar"]) $(id).hidden = false;
+      $("pace-slide").classList.toggle("none", !slide);
+      if (slide) {
+        $("slide-fill").className = `slide-fill t-${slide.tone}`;
+        $("slide-fill").style.transform = `scaleX(${slide.share})`;
+        this.fillAt = -1;
+      }
+      this.drawTalkbar(talk.scale, talk.target, talk.at, talk.finish, `t-${talk.tone}`, talk.window);
       this.beatMs = 250;
       return;
     }
@@ -632,29 +638,8 @@ export class Presenter {
     const moving = budget !== null && this.talk.state.timer.pausedAt === null && (this.talk.used(now) ?? 1) < 1;
     this.beatMs = moving ? Math.min(250, Math.max(40, (budget * 1000) / Math.max(1, this.fillPixels, this.spoken.total))) : 250;
 
-    // The whole talk: a red line at the target end, time spent colored by the
-    // pace and going on lighter to where the talk would end, this slide's
-    // planned part over them.
-    const bar = $("talkbar");
-    const x = (t: number) => `${((Math.min(Math.max(t, 0), p.scale) / p.scale) * 100).toFixed(3)}%`;
-    if (p.scale !== this.barScale) {
-      this.barScale = p.scale;
-      for (const part of [".target", ".past"]) bar.querySelector<HTMLElement>(part)!.style.left = x(p.target);
-    }
     const tone = `t-${p.started ? p.tone : "on"}`;
-    const spent = bar.querySelector<HTMLElement>(".spent")!;
-    spent.style.width = x(p.at);
-    spent.className = `spent ${tone}`;
-    const projected = bar.querySelector<HTMLElement>(".projected")!;
-    projected.style.width = x(p.finish);
-    projected.className = `projected ${tone}`;
-    const mine = p.segments.find((s) => s.slide === this.talk.slide);
-    const slot = bar.querySelector<HTMLElement>(".window")!;
-    slot.hidden = !mine;
-    if (mine) {
-      slot.style.left = x(mine.start);
-      slot.style.width = `calc(${x(mine.end)} - ${x(mine.start)})`;
-    }
+    this.drawTalkbar(p.scale, p.target, p.at, p.finish, tone, p.segments.find((s) => s.slide === this.talk.slide) ?? null);
     // Where the talk would end, or how early or late, at the clock's right, under the target end.
     $("target-at").textContent = this.when(p.target, p, now);
     // A little early is simply on time.
@@ -668,6 +653,32 @@ export class Presenter {
     } else {
       finish.textContent = this.when(p.finish, p, now);
       finish.title = `Where the talk would end at this pace: ${pace}. ${plan} Click (e) for how early or late.`;
+    }
+  }
+
+  /**
+   * The whole talk's line: a red line at the `target` end, time spent `at` in
+   * the pace's `tone` and going on lighter to where the talk would end, this
+   * slide's planned `window` over them; all of it against `scale` seconds.
+   */
+  private drawTalkbar(scale: number, target: number, at: number, finish: number, tone: string, window: { start: number; end: number } | null): void {
+    const bar = $("talkbar");
+    const x = (t: number) => `${((Math.min(Math.max(t, 0), scale) / scale) * 100).toFixed(3)}%`;
+    if (`${scale}:${target}` !== this.barScale) {
+      this.barScale = `${scale}:${target}`;
+      for (const part of [".target", ".past"]) bar.querySelector<HTMLElement>(part)!.style.left = x(target);
+    }
+    const spent = bar.querySelector<HTMLElement>(".spent")!;
+    spent.style.width = x(at);
+    spent.className = `spent ${tone}`;
+    const projected = bar.querySelector<HTMLElement>(".projected")!;
+    projected.style.width = x(finish);
+    projected.className = `projected ${tone}`;
+    const slot = bar.querySelector<HTMLElement>(".window")!;
+    slot.hidden = !window;
+    if (window) {
+      slot.style.left = x(window.start);
+      slot.style.width = `calc(${x(window.end)} - ${x(window.start)})`;
     }
   }
 
@@ -726,12 +737,13 @@ export class Presenter {
     strip.style.setProperty("--digits", `${String(this.deck.slides.length).length}ch`);
     const items: Array<[HTMLElement, Thumb]> = [];
     this.stripItems = [];
+    this.thumbLines.strip = [];
     this.stripSlide = -1;
     this.listSlides(strip, (slide) => {
       const li = el("li");
       li.classList.toggle("hidden", !t.slideVisible(slide));
       const thumb = this.thumb(t.lastOf(slide));
-      li.append(el("span", "num", String(slide + 1)), thumb.canvas);
+      li.append(el("span", "num", String(slide + 1)), thumb.canvas, (this.thumbLines.strip[slide] = el("i", "cmp")));
       li.addEventListener("mouseenter", () => this.showPreview(t.lastOf(slide)));
       li.addEventListener("click", () => (this.showPreview(null), this.go(t.firstOf(slide))));
       this.stripItems[slide] = li;
@@ -739,6 +751,7 @@ export class Presenter {
       return li;
     });
     this.lazy(strip, items);
+    this.drawThumbLines();
   }
 
   /**
@@ -759,6 +772,20 @@ export class Presenter {
     }
   }
 
+  /** While comparing, each thumbnail's line: its slide's, run in the other file's times (ui/compare.ts). */
+  private drawThumbLines(): void {
+    const lines = this.comparison?.slideLines(this.talk.state.endSlide, this.settings.slack);
+    for (const list of [this.thumbLines.strip, this.thumbLines.overview]) {
+      list.forEach((line, slide) => {
+        const l = lines?.[slide];
+        line.hidden = !l;
+        if (!l) return;
+        line.className = `cmp t-${l.tone}`;
+        line.style.setProperty("--fill", `${(l.share * 100).toFixed(1)}%`);
+      });
+    }
+  }
+
   private setOverview(open: boolean): void {
     this.view.overview = open;
     $("overview").hidden = !open;
@@ -774,6 +801,7 @@ export class Presenter {
     const grid = $("overview-grid");
     const items: Array<[HTMLElement, Thumb]> = [];
     this.overviewItems = [];
+    this.thumbLines.overview = [];
     this.listSlides(grid, (slide) => {
       const pages = this.deck.slides[slide];
       const li = el("li");
@@ -785,13 +813,14 @@ export class Presenter {
         el("span", "", String(slide + 1)),
         el("span", "", [pages.length > 1 ? `${pages.length} steps` : "", t.slideVisible(slide) ? "" : "hidden"].filter(Boolean).join(" · ")),
       );
-      li.append(thumb.canvas, cap);
+      li.append(thumb.canvas, (this.thumbLines.overview[slide] = el("i", "cmp")), cap);
       li.addEventListener("click", () => this.pick(slide));
       this.overviewItems[slide] = li;
       items.push([li, thumb]);
       return li;
     });
     this.lazy($("overview"), items);
+    this.drawThumbLines();
     this.select(this.view.selected);
   }
 
@@ -873,17 +902,19 @@ export class Presenter {
 
   /**
    * Compares the deck's plan with another `.pdfpc` file (ui/compare.ts), or
-   * stops. Meanwhile, moving through the slides doesn't start the clock.
+   * stops. Meanwhile the clock stands still, paused if it was running: moving
+   * through the slides doesn't start it, and its keys and buttons do nothing.
    */
   compareWith(other: { name: string; text: string } | null): void {
     const was = this.comparison;
     // Parsed first: a file that isn't a .pdfpc changes nothing.
     this.comparison = other && new Comparison(this.deck, this.opened.source.pdfpc?.name ?? "the deck", other);
     was?.dispose();
+    const t = this.talk.state.timer;
+    if (other && t.startedAt !== null && t.pausedAt === null) this.talk.act("timerPause");
     this.talk.review = !!other;
     $("presenter").classList.toggle("comparing", !!other);
-    this.compareBadge.hidden = !other;
-    this.compareBadge.title = other ? `Comparing with ${other.name}. Click to end the comparison.` : "";
+    this.drawThumbLines();
     this.nextNote = null;
     this.render();
   }

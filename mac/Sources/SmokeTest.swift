@@ -120,7 +120,7 @@ final class SmokeTest {
             try await Task.sleep(nanoseconds: 300_000_000)
             guard app.audience.view.isInFullScreenMode else { throw Failure("Esc took the audience out of fullscreen") }
         }
-        await check("at the end of the run, a click on the guide's line saves its times beside the PDF") {
+        await check("Save run saves the run's times beside the PDF") {
             let folder = files[0].deletingLastPathComponent()
             let stem = files[0].deletingPathExtension().lastPathComponent
             func runs() -> [URL] {
@@ -130,16 +130,8 @@ final class SmokeTest {
             for url in runs() { try? FileManager.default.removeItem(at: url) }
             // A second and a half on this slide, so the run has some time to save, however quick the checks before.
             try await Task.sleep(nanoseconds: 1_500_000_000)
-            try await press("End")
-            try await until("the line's offer") {
-                (try await js("return document.querySelector('#guide').textContent") as? String ?? "").hasPrefix("Click here to save this run's times")
-            }
-            _ = try await js("document.querySelector('#guide').click(); return null")
+            _ = try await js("document.querySelector('#save-run').click(); return null")
             try await until("the file") { !runs().isEmpty }
-            // Back where the reload's check expects the talk.
-            try await press("Home")
-            try await press("ArrowRight")
-            try await until("page 2") { try await page() == 1 }
             let text = try String(contentsOf: runs()[0], encoding: .utf8)
             for url in runs() { try? FileManager.default.removeItem(at: url) }
             guard text.contains("\"pdfpcFormat\": 2"), text.contains("→") else { throw Failure("it isn't a run's timing lines: \(text.prefix(200))") }

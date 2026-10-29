@@ -86,8 +86,10 @@ export async function openPdf(data: ArrayBuffer): Promise<Pdf> {
     async draw(index, width) {
       const page = await doc.getPage(index + 1);
       const viewport = page.getViewport({ scale: width / page.getViewport({ scale: 1 }).width });
-      canvas.width = Math.round(viewport.width);
-      canvas.height = Math.round(viewport.height);
+      // Whole pixels the page covers fully: rounded up, the last row would be partly the white background, a light
+      // line along a dark slide's edge.
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
       // Note annotations become speaker notes, so they are left off the slide (as pdfpc does).
       await page.render({ canvas, viewport, annotationMode: AnnotationMode.DISABLE, background: "#fff" }).promise;
       return createImageBitmap(canvas);

@@ -64,14 +64,12 @@ export class Spoken {
     return out;
   }
 
-  /** How dim the said part is: 0 for not at all, up to 1. */
-  static setDim(dim: number): void {
-    let style = document.getElementById("spoken-style");
-    if (!style) {
-      style = document.createElement("style");
-      style.id = "spoken-style";
-      document.head.append(style);
-    }
-    style.textContent = `::highlight(${NAME}) { color: rgb(245 245 247 / ${(1 - dim).toFixed(3)}); }`;
+  /** The said part in the grey of the next slide's notes and of references (--dim), so the notes have one grey. */
+  static style(): void {
+    if (document.getElementById("spoken-style")) return;
+    const style = document.createElement("style");
+    style.id = "spoken-style";
+    style.textContent = `::highlight(${NAME}) { color: #8e8e93; }`;
+    document.head.append(style);
   }
 }

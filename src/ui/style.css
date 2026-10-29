@@ -211,7 +211,7 @@ kbd {
   position: fixed;
   inset: 0;
   display: grid;
-  padding: 4px 28px 18px;
+  padding: 4px 16px 18px;
   grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr);
   grid-template-rows: auto auto auto auto minmax(0, 1fr);
   grid-template-areas:
@@ -604,51 +604,52 @@ kbd {
 .t-over {
   color: var(--over);
 }
-/* Comparing two plans (ui/compare.ts). Where this slide's line and the talk's are, two lines in one: the deck's
-   plan over the other file's, in purple; this slide's part of the talk in yellow on each. At their foot, in place of
-   the target end, the two times and the difference. Where the next slide's notes are, the other file's note for this
-   slide, in full, and in both notes the words the other doesn't have, marked as a word diff marks them. */
-.compare-lines,
+/* Comparing two plans (ui/compare.ts). This slide's line and the talk's, and each thumbnail's, show the talk run again
+   in the other file's times, as each would stand at the end of its slide: shorter in blue, longer in the late colors.
+   Under the lines, in place of the target end, both times and the difference. Where the next slide's notes are, the
+   other file's note for this slide, in full, and in both notes the words the other doesn't have, marked as a word
+   diff marks them. */
 .compare-times {
   display: none;
 }
-.presenter.comparing :is(.slidebar-track, .target-at),
-.presenter.comparing .talkbar > :not(.compare-lines) {
+.presenter.comparing .target-at {
   display: none;
 }
 .presenter.comparing .finish {
   visibility: hidden;
 }
-.presenter.comparing .compare-lines {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  height: var(--time-line);
-  background: #3a3a3c;
+.slide-fill.t-early {
+  background: var(--ahead);
 }
-.talkbar .compare-lines {
-  right: 0;
-  left: 0;
-  height: auto;
+/* Under each thumbnail, its slide's line: filled to --fill in --c. */
+.cmp {
+  --c: #d1d1d6;
+  display: block;
+  height: 4px;
+  background: linear-gradient(to right, var(--c) var(--fill, 0%), #3a3a3c var(--fill, 0%));
 }
-.compare-lines > div {
-  position: relative;
-  height: calc((100% - 1px) / 2);
+.cmp[hidden] {
+  display: none;
 }
-.compare-lines i {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
+.cmp.t-early {
+  --c: var(--ahead);
 }
-.compare-lines .span {
-  background: #d1d1d6;
+.cmp.t-late {
+  --c: var(--late);
 }
-.compare-lines .b .span {
-  background: var(--hint);
+.cmp.t-serious {
+  --c: var(--serious);
 }
-.compare-lines .window {
-  background: var(--accent);
+.cmp.t-severe {
+  --c: var(--severe);
+}
+.strip .cmp {
+  grid-column: 2;
+  margin-top: -2px;
+}
+/* Clear of the selected slide's frame. */
+.overview-grid .cmp {
+  margin-top: 8px;
 }
 .presenter.comparing .compare-times {
   display: flex;
@@ -666,33 +667,9 @@ kbd {
 .compare-times .a {
   color: #d1d1d6;
 }
-.compare-times .b {
-  color: var(--hint);
-}
 .presenter.comparing .next-notes {
   color: var(--fg);
   mask-image: none;
-}
-/* On the next slide while comparing, as the backup slides' badge, in purple: a click ends the comparison. */
-.compare-badge {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 1;
-  padding: 3px 8px;
-  border: 0;
-  border-radius: 6px;
-  background: var(--hint);
-  color: #fff;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.compare-badge:hover {
-  background: #9333ea;
 }
 ::highlight(removed) {
   background-color: rgb(255 69 58 / 0.3);
@@ -726,13 +703,6 @@ kbd {
 }
 .guide .fact {
   color: var(--dim);
-}
-/* A line that says to click does it, underlined under the mouse as a link is. */
-.guide.act {
-  cursor: pointer;
-}
-.guide.act:hover {
-  text-decoration: underline;
 }
 .toolbar {
   display: flex;
@@ -780,6 +750,20 @@ kbd {
 .toolbar kbd {
   font-size: 12px;
 }
+/* A button that takes turns at labels, as wide as the widest (steadyLabel in dom.ts). */
+.toolbar button.steady {
+  display: grid;
+}
+.toolbar button.steady > span {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.toolbar button.steady > .off {
+  visibility: hidden;
+}
 /* The thumbnails, for jumping: off the right edge, and in over the page while
    the mouse is there or over them. The width is the number and thumbnail's;
    the padding around them stays tight. */
@@ -810,7 +794,7 @@ kbd {
   gap: 6px;
   align-items: start;
   /* Padding, not margin: the mouse is always over one of them, so the hovered one doesn't blink between them. */
-  padding-bottom: 12px;
+  padding-bottom: 6px;
   font-size: 14px;
   cursor: pointer;
 }
@@ -851,7 +835,7 @@ kbd {
   position: absolute;
   right: 4px;
   /* Over the thumbnail's corner, above the space under it. */
-  bottom: 16px;
+  bottom: 10px;
   padding: 1px 6px;
   border-radius: 5px;
   background: var(--ahead);

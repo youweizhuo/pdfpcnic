@@ -56,8 +56,6 @@ export interface Line {
   text: string;
   /** Where things stand, in grey before it. */
   fact?: string;
-  /** What a click on the line does, when it says to click. */
-  action?: "saveRun";
 }
 
 /** Whether the audience sees the slides: fullscreen, or presented in the presenter's window (solo). */
@@ -110,7 +108,7 @@ export function guideLine(s: Situation): Line | null {
         : undefined;
     return { kind: "next", text: "Ready: press s to start the clock.", fact };
   }
-  if (s.finished) return { kind: "hint", text: "Click here to save this run's times, to compare with the plan.", action: "saveRun" };
+  if (s.finished) return { kind: "hint", text: "Click Save run to keep this run's times, to compare with the plan." };
   if (s.clock === "paused") return { kind: "hint", text: "Paused: p or a click on the clock resumes; ⇧R resets." };
   if (s.laser) return { kind: "hint", text: "Laser on: + and − size the dot; l turns it off." };
   if (s.lastPlanned) return { kind: "fact", text: "Last planned slide: backup slides follow." };

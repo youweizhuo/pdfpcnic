@@ -1,5 +1,5 @@
 // What the presenter can size and tune, kept on this computer: the columns,
-// the current slide against its notes, the notes and laser sizes, how much the
+// the current slide against its notes, the notes and laser sizes, whether the
 // notes dim, how the bar shows its times, and the pace colors' levels. The settings dialog (,) and the drag
 // handles change them.
 
@@ -24,8 +24,8 @@ export class Settings {
   notesSize: number;
   /** Laser dot size, as a share of the slide's height. */
   laserSize: number;
-  /** How much the covered part of a note dims, 0 for not at all. */
-  notesDim: number;
+  /** Whether the part of a note you'd have said by now dims. */
+  dimNotes: boolean;
   /** The clocks as times of day, rather than on the talk's clock. */
   timeOfDay: boolean;
   /** Where the talk would end, as how early or late rather than a time. */
@@ -43,7 +43,8 @@ export class Settings {
   ) {
     this.notesSize = store.pref<number | null>("notesSize", null) ?? this.deckNotesSize;
     this.laserSize = store.pref("laserSize", 0.035);
-    this.notesDim = store.pref("notesDim", 0.5);
+    // Once how much (0 for not at all), now whether.
+    this.dimNotes = store.pref<boolean | null>("dimNotes", null) ?? store.pref("notesDim", 0.5) > 0;
     this.timeOfDay = store.pref("barTimeOfDay", false);
     this.earlyLate = store.pref("earlyLate", false);
     const saved = store.pref<Slack | null>("paceSlack", null);
@@ -55,7 +56,7 @@ export class Settings {
     document.documentElement.style.setProperty("--notes", `${this.notesSize}px`);
     this.applyColumns(this.store.pref("split", 0.5));
     this.applyStage(this.store.pref("stage", 1));
-    Spoken.setDim(this.notesDim);
+    Spoken.style();
   }
 
   open(): void {
@@ -114,7 +115,6 @@ export class Settings {
     range("set-stage", (v) => this.setStage(v / 100));
     range("set-notes", (v) => this.setNotesSize(v));
     range("set-laser", (v) => this.setLaserSize(v / 100));
-    range("set-dim", (v) => this.setNotesDim(v / 100));
     // Pace levels: sliders in seconds or percent, as the unit says. The late
     // levels keep their order: serious never past severe.
     const setSlack = (key: SlackLevel, v: number) => {
@@ -156,6 +156,16 @@ export class Settings {
         { signal },
       );
     }
+    for (const b of document.querySelectorAll<HTMLButtonElement>("#set-dim button")) {
+      b.addEventListener(
+        "click",
+        () => {
+          this.setDimNotes(b.dataset.dim === "on");
+          this.sync();
+        },
+        { signal },
+      );
+    }
     $("set-defaults").addEventListener(
       "click",
       () => {
@@ -164,7 +174,7 @@ export class Settings {
         this.store.setPref("notesSize", null);
         this.setLaserSize(0.035);
         this.useSlack({ ...SLACK.time });
-        this.setNotesDim(0.5);
+        this.setDimNotes(true);
         this.setTimeOfDay(false);
         this.setEarlyLate(false);
         this.sync();
@@ -204,10 +214,9 @@ export class Settings {
     document.documentElement.style.setProperty("--stage", String(this.stage));
   }
 
-  private setNotesDim(f: number): void {
-    this.notesDim = Math.min(0.8, Math.max(0, f));
-    this.store.setPref("notesDim", this.notesDim);
-    Spoken.setDim(this.notesDim);
+  private setDimNotes(on: boolean): void {
+    this.dimNotes = on;
+    this.store.setPref("dimNotes", on);
     this.on.dim();
   }
 
@@ -228,8 +237,6 @@ export class Settings {
     show("set-notes", this.notesSize, `${this.notesSize} px`);
     const laser = Math.round(this.laserSize * 200) / 2;
     show("set-laser", laser, `${laser}%`);
-    const dim = Math.round(this.notesDim * 100);
-    show("set-dim", dim, dim ? `${dim}%` : "off");
     const { unit } = this.slack;
     const t = this.target();
     for (const b of document.querySelectorAll<HTMLButtonElement>("#set-unit button")) {
@@ -237,6 +244,9 @@ export class Settings {
     }
     for (const b of document.querySelectorAll<HTMLButtonElement>("#set-times button")) {
       b.classList.toggle("on", (b.dataset.times === "day") === this.timeOfDay);
+    }
+    for (const b of document.querySelectorAll<HTMLButtonElement>("#set-dim button")) {
+      b.classList.toggle("on", (b.dataset.dim === "on") === this.dimNotes);
     }
     for (const key of LEVELS) {
       const v = this.slack[key];

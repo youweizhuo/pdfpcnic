@@ -460,10 +460,7 @@ try {
     assert.equal(await widths(), 1);
     await press("p");
     await press(",");
-    await page.$eval("#set-dim", (e) => {
-      e.value = 0;
-      e.dispatchEvent(new Event("input"));
-    });
+    await page.click('#set-dim [data-dim="off"]');
     assert.equal(await dim(), null);
     await page.click("#set-defaults");
     await press("Escape");
@@ -560,7 +557,7 @@ try {
   });
 
   const cta = (sel) => page.$eval(sel, (e) => e.classList.contains("cta"));
-  const toggle = () => page.$eval("#timer-toggle", (e) => e.firstChild.textContent.trim());
+  const toggle = () => page.$eval("#timer-toggle > :not(.off)", (e) => e.firstChild.textContent.trim());
   const ctaIs = (sel, on) => page.waitForFunction((sel, on) => document.querySelector(sel).classList.contains("cta") === on, { timeout: 5000 }, sel, on);
 
   await check("the clock, and the button by it, pause and resume the timer; paused, the guide says how to go on", async () => {
@@ -641,7 +638,7 @@ try {
     assert.equal(await cta("#timer-reset"), false);
   });
 
-  await check("at the end of a run, a click on the line saves its times; dropped back, the plan is compared with them, and nothing moves", async () => {
+  await check("Save run keeps a run's times; dropped back, the plan is compared with them, the clock standing still", async () => {
     const downloads = resolve(out, "downloads");
     rmSync(downloads, { recursive: true, force: true });
     mkdirSync(downloads, { recursive: true });
@@ -650,15 +647,15 @@ try {
     // Where the buttons, the clock and the guide's line are: a comparison moves none of them.
     const spots = () =>
       page.$$eval(".slide-tools button, .timer-controls button, .foot button, #timer, #guide", (els) =>
-        els.map((e) => [e.id || e.textContent, Math.round(e.getBoundingClientRect().x), Math.round(e.getBoundingClientRect().y)]),
+        els.map((e) => [e.id || e.dataset.action, Math.round(e.getBoundingClientRect().x), Math.round(e.getBoundingClientRect().y)]),
       );
     // A second and a half on this slide, so the run has some time to save, however quick the checks before.
     await new Promise((r) => setTimeout(r, 1500));
     await press("End");
-    await textMatches("#guide", /^Click here to save this run's times, to compare with the plan\.$/);
-    assert.equal(await page.$eval("#guide", (e) => e.className), "guide hint act");
+    await textMatches("#guide", /^Click Save run to keep this run's times, to compare with the plan\.$/);
+    assert.equal(await page.$eval("#guide", (e) => e.className), "guide hint");
     const before = await spots();
-    await page.click("#guide");
+    await page.click("#save-run");
     let saved;
     for (let i = 0; i < 50 && !saved; i++) {
       await new Promise((r) => setTimeout(r, 100));
@@ -675,11 +672,27 @@ try {
     await input.uploadFile(join(downloads, saved));
     await page.waitForSelector("#presenter.comparing", { timeout: 5000 });
     assert.equal(await text("#guide"), `Comparing with ${saved}.`);
-    assert.equal(await page.$eval(".compare-badge", (e) => !e.hidden && getComputedStyle(e).display !== "none"), true, "no badge");
     assert.match(await text("#compare-slide"), /^1:00 [\d:]+( s)? [+−]/, `the end slide: planned 1:00, then the run's, then the difference: ${await text("#compare-slide")}`);
     assert.match(await text("#compare-talk"), /^9:30 /);
     assert.equal(await text("#next-notes"), "", "times only: no notes");
     assert.deepEqual(await spots(), before);
+    // The slide's line as the run would have left it: the end slide took less than its minute, so part-filled, in blue.
+    const fill = await page.$eval("#slide-fill", (e) => [e.className, e.style.transform]);
+    assert.match(fill[0], /t-early/);
+    assert.match(fill[1], /^scaleX\(0(\.\d+)?\)$/);
+    // Each thumbnail has its slide's line too; the hidden slide, given no time either way, none.
+    const lines = () => page.$$eval(".strip .cmp", (els) => els.filter((e) => !e.hidden).length);
+    assert.equal(await lines(), 7);
+    // The clock stands still, paused, and its keys and buttons leave it so.
+    const clock = await text("#timer");
+    const timer = (await state()).timer;
+    assert.ok(timer.pausedAt !== null, "the clock wasn't paused");
+    await press("p", "Shift+R", "s");
+    await new Promise((r) => setTimeout(r, 1200));
+    assert.equal(await text("#timer"), clock);
+    assert.deepEqual((await state()).timer, timer);
+    assert.deepEqual(await page.$$eval("#timer-toggle, #timer-reset", (els) => els.map((e) => e.disabled)), [true, true]);
+    assert.equal(await text("#save-run"), "End comparison");
     await page.screenshot({ path: `${out}/compare-run.png` });
 
     // Another export of the notes: the words each note doesn't share, marked.
@@ -695,19 +708,22 @@ try {
     assert.equal(await text("#compare-slide"), "1:00 1:00 same");
     await page.screenshot({ path: `${out}/compare-notes.png` });
 
-    // A new export of the deck's own file keeps the comparison; Esc doesn't end it, the badge does.
+    // A new export of the deck's own file keeps the comparison; Esc doesn't end it, End comparison does.
     await input.uploadFile(resolve("demo/demo.pdfpc"));
     await textMatches("#guide", /^Comparing with demo-v2\.pdfpc\.$/);
     assert.deepEqual(await marked(), [["counter"], ["clock"]]);
     await press("Escape");
     assert.notEqual(await page.$("#presenter.comparing"), null, "Esc ended the comparison");
-    await page.click(".compare-badge");
+    await page.click("#save-run");
     assert.equal(await page.$("#presenter.comparing"), null);
-    assert.equal(await page.$eval(".compare-badge", (e) => e.hidden), true);
+    assert.equal(await text("#save-run"), "Save run");
     assert.deepEqual(await marked(), [[], []]);
     assert.match(await text("#next-notes"), /^Backup material/, "the next slide's notes are back");
-    assert.equal((await state()).page, 8, "the badge's click didn't step to the next slide");
+    assert.equal(await lines(), 0);
     assert.deepEqual(await spots(), before);
+    // Still paused: going on is the presenter's to choose.
+    assert.ok((await state()).timer.pausedAt !== null);
+    await press("p");
     await press("g");
     await page.keyboard.type("5");
     await press("Enter");

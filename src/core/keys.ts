@@ -46,8 +46,9 @@ export type ViewAction =
   | "resetLayout"
   | "timesOfDay"
   | "earlyLate"
-  // A click on the guide's line at the end of a run; no key.
+  // The buttons by the clock, with no key: Save run, and End comparison in its place while comparing.
   | "saveRun"
+  | "endCompare"
   | "settings";
 
 export type Action = TalkAction | ViewAction;

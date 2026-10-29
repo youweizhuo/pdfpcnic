@@ -3,6 +3,28 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.3.1 (2026-10-28)
+
+### Changed
+
+- **Save run is a button**, by the clock, once it has run. The line over the buttons says so in purple at the end of
+  a run, and no longer takes clicks.
+- **Comparing two plans shows the talk run again in the other file's times**, on the presenter's own lines: this
+  slide's line filled as far as the other file's time against the plan (shorter in blue, longer in orange to red),
+  and the talk's line as it would stand at the end of this slide. Each thumbnail, in the strip and the overview, gets
+  its slide's line too. Nothing moves when a comparison starts or ends.
+- **The clock stands still while comparing**: paused if it was running, and Start, Pause and Reset leave it as it is.
+- **End comparison**, in Save run's place, ends a comparison; the badge on the next slide is gone.
+- **Dimming the notes is on or off**, and what you'd have said by now dims to the same grey as the next slide's notes
+  and references. It used to dim by a share you set.
+- **Narrower margins** at the sides of the two columns, and less space between the thumbnails.
+- **The clock's button is as wide as its widest label**, so Reset beside it doesn't move when the clock pauses.
+
+### Fixed
+
+- **No light line along a slide's bottom edge**, seen on dark slides: a slide drawn a fraction of a pixel taller than
+  its picture left its last row partly the white page behind it.
+
 ## 1.3.0 (2026-10-28)
 
 ### Added

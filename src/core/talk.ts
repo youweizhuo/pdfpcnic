@@ -141,9 +141,9 @@ export class Talk {
     return null;
   }
 
-  /** The next slide's final step, as pdfpc shows it, or null at the end. */
-  nextPage(): number | null {
-    const s = this.slideFrom(this.slide, 1);
+  /** The next slide's final step, as pdfpc shows it, or null at the end; after `page`, by default the one shown. */
+  nextPage(page = this.state.page): number | null {
+    const s = this.slideFrom(this.deck.pages[page].slide, 1);
     return s === null ? null : this.lastOf(s);
   }
 

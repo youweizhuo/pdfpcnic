@@ -128,6 +128,8 @@ final class SmokeTest {
                     .filter { $0.lastPathComponent.range(of: "^\(stem)-\\d{8}-\\d{4}(-\\d+)?\\.pdfpc$", options: .regularExpression) != nil }
             }
             for url in runs() { try? FileManager.default.removeItem(at: url) }
+            // A second and a half on this slide, so the run has some time to save, however quick the checks before.
+            try await Task.sleep(nanoseconds: 1_500_000_000)
             try await press("End")
             try await until("the line's offer") {
                 (try await js("return document.querySelector('#guide').textContent") as? String ?? "").hasPrefix("Click here to save this run's times")

@@ -29,6 +29,12 @@ fields read and the timing-line format are the interface. Each release attaches 
 - **The next slide is a little dimmer than the current one**, as in Présentation.app, a touch less.
 - **The line over the buttons never wraps**: what doesn't fit ends in "…", and its tooltip has it all.
 
+### Fixed
+
+- **The next slide no longer shows dark or blurry for a moment** after a step into a new slide: what the next slide's
+  place shows after the next step is drawn ahead, as the next step itself was. It showed most with a 4K projector or a
+  large Retina screen, where a slide takes about a second to draw.
+
 ## 1.2.10 (2026-10-28)
 
 ### Changed

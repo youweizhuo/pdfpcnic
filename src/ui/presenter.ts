@@ -428,13 +428,17 @@ export class Presenter {
     this.current.root.classList.toggle("laser-on", s.laser);
 
     // Keep what is on screen, and render the pages around it ahead of time.
-    this.cache.pinned = new Set([s.page, room.page, ...(next === null ? [] : [next])]);
+    this.cache.pinned = new Set([s.page, room.page, ...(shown === null ? [] : [shown])]);
     const width = Math.max(this.audience.pixelWidth, this.current.pixelWidth, this.solo?.pixelWidth ?? 0);
     const prev = t.slideFrom(here.slide, -1);
-    // The next step and the next slide right away; going back and further ahead when idle.
+    const step = d.pages.findIndex((_, i) => i > s.page && t.visible(i));
+    // Right away: the next step, the next slide, and what the next slide's place shows after the next step (the
+    // slide after that one, once the step leaves this slide). When idle: going back (where the next slide's place
+    // shows this slide's last step), and further ahead.
+    const after = step < 0 ? null : t.nextPage(step);
     this.cache.prefetch(
-      [s.page + 1, ...(next === null ? [] : [next])],
-      [s.page - 1, ...(prev === null ? [] : [t.firstOf(prev)]), s.page + 2, s.page + 3],
+      [s.page + 1, ...[next, after].filter((p) => p !== null)],
+      [s.page - 1, ...(prev === null ? [] : [t.firstOf(prev)]), t.lastOf(here.slide), s.page + 2, s.page + 3],
       width,
     );
 

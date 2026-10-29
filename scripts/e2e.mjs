@@ -627,6 +627,8 @@ try {
       page.$$eval(".slide-tools button, .timer-controls button, .foot button, #timer, #guide", (els) =>
         els.map((e) => [e.id || e.textContent, Math.round(e.getBoundingClientRect().x), Math.round(e.getBoundingClientRect().y)]),
       );
+    // A second and a half on this slide, so the run has some time to save, however quick the checks before.
+    await new Promise((r) => setTimeout(r, 1500));
     await press("End");
     await textMatches("#guide", /^Click here to save this run's times, to compare with the plan\.$/);
     assert.equal(await page.$eval("#guide", (e) => e.className), "guide hint act");

@@ -75,6 +75,14 @@ try {
   }
   const page = (await browser.pages())[0] ?? (await browser.newPage());
   watch(page, "presenter");
+  // Each canvas notes how wide the last picture drawn into it was: a slide drawn ahead shows at once at full size.
+  await page.evaluateOnNewDocument(() => {
+    const drawImage = CanvasRenderingContext2D.prototype.drawImage;
+    CanvasRenderingContext2D.prototype.drawImage = function (image, ...rest) {
+      this.canvas.dataset.drawn = String(image.width);
+      return drawImage.call(this, image, ...rest);
+    };
+  });
   await page.goto(url);
   await page.screenshot({ path: `${out}/start.png` });
 
@@ -165,6 +173,23 @@ try {
     assert.equal(s.page, 1);
     assert.ok(s.timer.startedAt > 0);
     assert.equal(await text("#guide"), "");
+  });
+
+  await check("a step into a new slide finds the next slide's place drawn ahead, at full size, not dark or blurry", async () => {
+    // Time to draw ahead, as a presenter takes before the next step.
+    await new Promise((r) => setTimeout(r, 1500));
+    // Into slide 3, whose next slide (page 6) hadn't been in the next slide's place yet. Looked at in the same
+    // moment as the key, before anything could be drawn after it.
+    const [now, drawn, width] = await page.evaluate(() => {
+      const c = document.querySelector("#next canvas");
+      delete c.dataset.drawn;
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
+      return [window.pdfpcnic.state.page, c.dataset.drawn, c.width];
+    });
+    assert.equal(now, 2);
+    assert.ok(drawn !== undefined && Number(drawn) >= width, `drawn ${drawn ?? "nothing (dark)"} into ${width} pixels`);
+    await press("ArrowLeft");
+    assert.equal((await state()).page, 1);
   });
 
   await check("reveal steps: step forward, Shift+PageDown skips, back jumps to first step", async () => {

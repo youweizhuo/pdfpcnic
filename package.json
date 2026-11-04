@@ -36,9 +36,11 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p src/core",
     "test": "node --test \"test/*.test.mjs\"",
     "e2e": "node scripts/e2e.mjs",
-    "e2e:firefox": "node scripts/e2e-firefox.mjs"
+    "e2e:firefox": "node scripts/e2e-firefox.mjs",
+    "e2e:webkit": "node scripts/e2e-webkit.mjs"
   },
   "devDependencies": {
+    "playwright-core": "^1.64.1",
     "puppeteer-core": "^25.16.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",

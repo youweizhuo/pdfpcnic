@@ -27,6 +27,8 @@ jobs:
         run: npm run e2e:firefox
         env:
           FIREFOX_PATH: /usr/bin/firefox
+      - name: End-to-end checks (WebKit)
+        run: npx playwright-core install --with-deps webkit && npm run e2e:webkit
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

@@ -20,7 +20,7 @@ what's being weighed and what was left out, and why.
 
 ## Development
 
-You need Node 22.18 or later, and Chrome or Chromium and Firefox for the end-to-end checks.
+You need Node 22.18 or later, and Chrome or Chromium, Firefox and Playwright's WebKit for the end-to-end checks.
 
 ```sh
 npm install
@@ -30,6 +30,8 @@ npm run build                                    # type-check, then dist/ (the s
 CHROME_PATH=/path/to/chrome npm run e2e          # end-to-end checks on the offline file
 CHROME_PATH=/path/to/chrome npm run e2e -- site  # ... and on the site, with window placement
 FIREFOX_PATH=/path/to/firefox npm run e2e:firefox # the main path in Firefox, on both builds
+npx playwright-core install --with-deps webkit   # once, for the next line
+npm run e2e:webkit                               # the main path in WebKit, Safari's engine, on both builds
 ```
 
 The e2e script drives a real Chrome through the demo deck and saves screenshots to `e2e-out/`. It also runs against a

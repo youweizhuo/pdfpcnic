@@ -50,6 +50,8 @@ jobs:
         run: npm run e2e:firefox
         env:
           FIREFOX_PATH: /usr/bin/firefox
+      - name: End-to-end checks (WebKit)
+        run: npx playwright-core install --with-deps webkit && npm run e2e:webkit
       - name: Release notes from CHANGELOG.md
         run: |
           version="${GITHUB_REF_NAME#v}"

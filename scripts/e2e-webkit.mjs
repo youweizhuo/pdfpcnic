@@ -134,6 +134,35 @@ try {
       assert.deepEqual(wrapped, { same: true, taller: true });
     });
 
+    await check(`${build}: scrolling the thumbnails with the mouse still, the outline follows; leaving, they go at once`, async () => {
+      const strip = page.locator("#strip");
+      const { width, height } = page.viewportSize();
+      await page.mouse.move(width / 2, height / 2);
+      await page.mouse.move(width - 3, height / 2);
+      await page.waitForFunction(() => document.querySelector("#strip").getBoundingClientRect().left < innerWidth - 100);
+      await strip.evaluate((s) => (s.scrollTop = 0));
+      const box = await page.locator("#strip li:not(.divider)").first().boundingBox();
+      const [x, y] = [box.x + box.width / 2, box.y + box.height / 2];
+      await page.mouse.move(x, y);
+      assert.equal(await page.$$eval("#strip li.hover", (ls) => ls.length), 1);
+      // With no input in between: the mark follows what's under the mouse, a thumbnail or (they load as they scroll in) none.
+      const seen = await strip.evaluate(async (s, [x, y]) => {
+        const name = (li) => li?.querySelector(".num").textContent ?? null;
+        const was = name(s.querySelector("li.hover"));
+        s.scrollTop = 200;
+        const frames = [];
+        for (let i = 0; i < 12; i++) {
+          await new Promise(requestAnimationFrame);
+          frames.push([name(s.querySelector("li.hover")), name(document.elementFromPoint(x, y)?.closest("li:not(.divider)"))]);
+        }
+        return { was, frames };
+      }, [x, y]);
+      assert.ok(seen.frames.some(([mark, under]) => mark === under && under !== seen.was), JSON.stringify(seen));
+      await page.mouse.move(width / 2, height - 5);
+      assert.ok(await strip.evaluate((e) => e.getBoundingClientRect().left >= innerWidth - 1), "the thumbnails lingered");
+      assert.equal(await page.$$eval("#strip li.hover", (ls) => ls.length), 0);
+    });
+
     await check(`${build}: the help fits its window`, async () => {
       await page.keyboard.press("?");
       await sleep(200);

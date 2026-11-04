@@ -13,9 +13,19 @@ fields read and the timing-line format are the interface. Each release attaches 
   by their token, as `example.com/#k3j9x2`, and can't write. The private one has a page that uploads decks, each with its
   own link; a new version keeps the link, and the highest version opens. Nothing on either port overwrites or deletes.
 - **A presentation remote's black button works:** `.` blacks the screen, as `b` does.
+- **Settings has a row for the talk's end,** a time or early or late, apart from the row for the clock.
+
+### Changed
+
+- **Clicking the clock turns it to the time of day and back,** as `t` does, instead of pausing it. Pausing stays on the
+  button beside it and on `p`.
+- **Only the clock shows the time of day.** The target and the talk's end stay on the talk's clock.
 
 ### Fixed
 
+- **The thumbnails go the moment the mouse leaves them,** instead of about 0.4 seconds later.
+- **The purple outline follows the scroll,** when you scroll the thumbnails with the mouse still. In WebKit it waited
+  for the scrolling to stop.
 - **F5 no longer reloads the page mid-talk**, as a presentation remote's start button would. It does nothing, as in
   pdfpc; Ctrl+F5 and the browser's own reload still work.
 

@@ -804,12 +804,13 @@ kbd {
   list-style: none;
   overflow-y: auto;
   transform: translateX(100%);
-  transition: transform 0.12s;
   scrollbar-width: thin;
   scrollbar-color: #3a3a3c transparent;
 }
+/* Slides in, and is gone at once. */
 .strip.open {
   transform: none;
+  transition: transform 0.12s;
 }
 .strip li {
   display: grid;
@@ -835,10 +836,10 @@ kbd {
   outline: 1px solid var(--line);
 }
 /* Under the mouse, at once, in the hints' purple; the current and the frozen slides keep their colors. */
-.strip li:hover:not(.divider, .current, .frozen) canvas {
+.strip li.hover:not(.current, .frozen) canvas {
   outline: 2px solid var(--hint);
 }
-.strip li:hover:not(.divider, .current, .frozen) .num {
+.strip li.hover:not(.current, .frozen) .num {
   color: var(--hint);
 }
 .strip li.current canvas {

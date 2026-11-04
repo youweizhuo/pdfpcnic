@@ -520,7 +520,7 @@ try {
     await press("e");
     assert.match(await text("#finish"), /^13:0\d$/);
     await press("p");
-    // t turns the clocks to times of day: the clock now, where the talk would end a minute from now. t again, back
+    // t turns the clock to the time of day, and only the clock. t again, back
     // on the talk's clock.
     await press("t");
     const day = (ms) =>
@@ -532,8 +532,8 @@ try {
         ms,
       );
     assert.ok((await day(Date.now())).includes(await text("#timer")), "the clock as the time of day");
-    assert.ok((await day(Date.now() + 60_000)).includes(await text("#finish")), "the time of day the talk would end");
-    assert.ok((await day(Date.now() - 120_000)).includes(await text("#target-at")), "the time of day of the target end");
+    assert.match(await text("#finish"), /^13:0\d$/, "the talk's end stays on the talk's clock");
+    assert.equal(await text("#target-at"), "10:00", "the target stays on the talk's clock");
     assert.match(await text("#timer"), /^\d{1,2}:\d\d [AP]M$/, "a time of day says AM or PM, not to be taken for the clock");
     // The whole row fits on its line, however wide the times.
     const row = await page.$eval(".clock", (e) => [e.scrollWidth, e.clientWidth]);
@@ -543,6 +543,28 @@ try {
     assert.match(await text("#timer"), /^0:12:\d\d$/);
     assert.match(await text("#finish"), /^13:0\d$/);
     assert.equal(await text("#target-at"), "10:00");
+    // A click does what t does, and leaves the timer as it was. Settings holds the clock and the talk's end apart.
+    const place = () => page.$eval(".clock", (e) => [...e.children].map((c) => c.getBoundingClientRect().top).join());
+    const [placed, paused] = [await place(), (await state()).timer.pausedAt];
+    await page.click("#timer");
+    assert.match(await text("#timer"), /^\d{1,2}:\d\d [AP]M$/, "a click on the clock shows the time of day");
+    assert.match(await text("#finish"), /^13:0\d$/, "the talk's end stays on the talk's clock");
+    assert.equal(await place(), placed);
+    assert.equal((await state()).timer.pausedAt, paused, "a click on the clock paused or resumed it");
+    await page.click("#timer");
+    assert.match(await text("#timer"), /^0:12:\d\d$/);
+    const shownOn = (id) => page.$eval(`#${id} button.on`, (b) => b.textContent);
+    await press(",");
+    assert.deepEqual([await shownOn("set-times"), await shownOn("set-end")], ["clock", "a time"]);
+    await page.click('#set-end [data-end="pace"]');
+    assert.deepEqual([await shownOn("set-times"), await shownOn("set-end")], ["clock", "early or late"]);
+    await page.click('#set-times [data-times="day"]');
+    assert.deepEqual([await shownOn("set-times"), await shownOn("set-end")], ["time of day", "early or late"]);
+    await page.click('#set-times [data-times="clock"]');
+    await page.click('#set-end [data-end="time"]');
+    await press("Escape");
+    assert.match(await text("#timer"), /^0:12:\d\d$/);
+    assert.match(await text("#finish"), /^13:0\d$/);
     await press("p");
     await page.screenshot({ path: `${out}/pace-late.png` });
     // A slide keeps its time over visits: on to the end slide for a minute and
@@ -601,11 +623,11 @@ try {
   const toggle = () => page.$eval("#timer-toggle > :not(.off)", (e) => e.firstChild.textContent.trim());
   const ctaIs = (sel, on) => page.waitForFunction((sel, on) => document.querySelector(sel).classList.contains("cta") === on, { timeout: 5000 }, sel, on);
 
-  await check("the clock, and the button by it, pause and resume the timer; paused, the guide says how to go on", async () => {
+  await check("the button by the clock pauses and resumes the timer; paused, the guide says how to go on", async () => {
     assert.equal(await toggle(), "Pause");
     const notesHeight = () => page.$eval("#next-notes", (e) => e.getBoundingClientRect().height);
     const running = await notesHeight();
-    await page.click("#timer");
+    await page.click("#timer-toggle");
     assert.ok((await state()).timer.pausedAt > 0);
     assert.equal(await toggle(), "Resume");
     assert.match(await text("#guide"), /^Paused: /);
@@ -639,7 +661,7 @@ try {
     await ctaIs("#timer-reset", false);
     await page.click("#timer-toggle");
     assert.ok((await state()).timer.pausedAt > 0);
-    await page.click("#timer");
+    await page.click("#timer-toggle");
     assert.equal((await state()).timer.pausedAt, null);
   });
 
@@ -765,6 +787,8 @@ try {
 
     // A new export of the deck's own file keeps the comparison; Esc doesn't end it, End comparison does.
     await input.uploadFile(resolve("demo/demo.pdfpc"));
+    // The notes reload, the marks gone a moment, and the guide's line the same throughout: this toast is when they're back.
+    await textMatches("#toast", /^Loaded notes from demo\.pdfpc\.$/);
     await textMatches("#guide", /^Comparing with demo-v2\.pdfpc\.$/);
     assert.deepEqual(await marked(), [["planned"], ["due"]]);
     await press("Escape");
@@ -899,8 +923,8 @@ try {
     });
     await page.mouse.move(x, y, { steps: 3 });
     await page.waitForFunction(() => document.querySelector("#next canvas").toDataURL() !== window.nextSeen, { timeout: 3000 });
-    await page.mouse.move(w / 2, h - 5, { steps: 5 });
-    await page.waitForFunction(() => document.querySelector("#strip").getBoundingClientRect().left >= innerWidth - 1, { timeout: 2000 });
+    await page.mouse.move(w / 2, h - 5);
+    assert.ok(await page.$eval("#strip", (e) => e.getBoundingClientRect().left >= innerWidth - 1), "the thumbnails lingered after the mouse left");
     await page.waitForFunction(() => document.querySelector("#next canvas").toDataURL() === window.nextSeen, { timeout: 3000 });
     // Passing by the edge doesn't bring them in.
     await page.mouse.move(w - 3, h / 2);

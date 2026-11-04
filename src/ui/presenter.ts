@@ -7,7 +7,7 @@ import type { Deck, LinkTarget } from "../core/deck.ts";
 import { audienceButton, audienceReady, guideLine } from "../core/guide.ts";
 import { actionFor, isIgnored, isTalkAction, type Action } from "../core/keys.ts";
 import { mark, span } from "../core/pace.ts";
-import { Talk, type Point, type Progress, type SavedSession } from "../core/talk.ts";
+import { Talk, type Point, type SavedSession } from "../core/talk.ts";
 import * as T from "../core/timer.ts";
 import type { Audience, Pdf, Platform } from "../platform.ts";
 import { Comparison } from "./compare.ts";
@@ -64,6 +64,9 @@ export class Presenter {
   /** The page of the thumbnail the mouse rests on, shown in the next slide's place. */
   private preview: number | null = null;
   private previewTimer = 0;
+  /** Where the mouse last was over the thumbnails, and the thumbnail it marks there. */
+  private stripMouse = { x: -1, y: -1 };
+  private stripHover: HTMLElement | null = null;
   private spoken = new Spoken();
   /** The other `.pdfpc` file the deck's plan is compared with, while it is. */
   private comparison: Comparison | null = null;
@@ -268,29 +271,39 @@ export class Presenter {
     cur.addEventListener("wheel", wheelStepper((d) => this.act(d > 0 ? "next" : "prev")), { signal, passive: true });
     $("next").addEventListener("click", () => this.act("nextSlide"), { signal });
     // The thumbnails come in once the mouse rests within 64 px of the right
-    // edge, and go once it has left them. Watched from the mouse's position, so
-    // nothing over the edge takes the clicks meant for what's under it.
+    // edge, and go the moment it leaves them. Watched from the mouse's position,
+    // so nothing over the edge takes the clicks meant for what's under it.
     const strip = $("strip");
     let stripTimer = 0;
-    const stripLater = (open: boolean) => {
-      clearTimeout(stripTimer);
-      stripTimer = window.setTimeout(() => ((stripTimer = 0), strip.classList.toggle("open", open)), 300);
-    };
     const stay = () => (clearTimeout(stripTimer), (stripTimer = 0));
     window.addEventListener(
       "mousemove",
       (e) => {
         if (strip.classList.contains("open")) return;
         if (e.clientX < innerWidth - 64) stay();
-        else if (!stripTimer) stripLater(true);
+        else if (!stripTimer) stripTimer = window.setTimeout(() => ((stripTimer = 0), strip.classList.add("open")), 300);
       },
       { signal },
     );
     // Out of the window, to the projector's screen say.
     document.addEventListener("mouseout", (e) => e.relatedTarget || strip.classList.contains("open") || stay(), { signal });
-    strip.addEventListener("mouseenter", stay, { signal });
-    strip.addEventListener("mouseleave", () => (stripLater(false), this.showPreview(null)), { signal });
-    $("timer").addEventListener("click", () => this.act("timerPause"), { signal });
+    const mouse = (x: number, y: number) => {
+      this.stripMouse = { x, y };
+      this.hoverStrip();
+    };
+    for (const type of ["mouseover", "mousemove"] as const) {
+      strip.addEventListener(type, (e) => mouse(e.clientX, e.clientY), { signal });
+    }
+    strip.addEventListener("scroll", () => this.hoverStrip(), { signal, passive: true });
+    strip.addEventListener(
+      "mouseleave",
+      () => {
+        strip.classList.remove("open");
+        mouse(-1, -1);
+        this.showPreview(null);
+      },
+      { signal },
+    );
     const toggle = $("timer-toggle");
     toggle.addEventListener(
       "click",
@@ -493,6 +506,7 @@ export class Presenter {
     const t = this.talk.state.timer;
     const timer = $("timer");
     timer.textContent = this.settings.timeOfDay ? T.formatClock(now) : T.format(T.elapsed(t, now));
+    timer.title = this.settings.timeOfDay ? "The time of day. Click (t) for the talk's clock." : "The talk's clock. Click (t) for the time of day.";
     timer.classList.toggle("idle", t.startedAt === null);
     timer.classList.toggle("paused", t.pausedAt !== null);
     const stale = this.talk.stale;
@@ -646,7 +660,7 @@ export class Presenter {
     const tone = `t-${p.started ? p.tone : "on"}`;
     this.drawTalkbar(p.scale, p.target, p.at, p.finish, tone, p.segments.find((s) => s.slide === this.talk.slide) ?? null);
     // Where the talk would end, or how early or late, at the clock's right, under the target end.
-    $("target-at").textContent = this.when(p.target, p, now);
+    $("target-at").textContent = T.formatShort(p.target * 1000);
     // A little early is simply on time.
     const pace = p.late > 0 ? `${span(p.late)} late` : p.tone === "early" ? `${span(p.late)} early` : "on time";
     const plan = `Planned to end at ${mark(p.planned)}; target ${mark(p.target)}.`;
@@ -656,7 +670,7 @@ export class Presenter {
       finish.textContent = pace;
       finish.title = `How early or late the talk would end at this pace. ${plan} Click (e) for where it would end.`;
     } else {
-      finish.textContent = this.when(p.finish, p, now);
+      finish.textContent = T.formatShort(p.finish * 1000);
       finish.title = `Where the talk would end at this pace: ${pace}. ${plan} Click (e) for how early or late.`;
     }
   }
@@ -685,17 +699,6 @@ export class Presenter {
       slot.style.left = x(window.start);
       slot.style.width = `calc(${x(window.end)} - ${x(window.start)})`;
     }
-  }
-
-  /**
-   * A time in the talk (where it would end, the target end), on the clock, or
-   * as a time of day. As a time of day it runs on from now, so a pause moves it later.
-   */
-  private when(t: number, p: Progress, now: number): string {
-    if (!this.settings.timeOfDay) return T.formatShort(t * 1000);
-    const started = this.talk.state.timer.startedAt;
-    // Before the clock starts: from the talk's start time if it has one ahead, else from now.
-    return T.formatClock(started === null ? now + T.untilStart(this.deck, now) + t * 1000 : now + (t - p.at) * 1000);
   }
 
   // Strip and overview
@@ -749,7 +752,6 @@ export class Presenter {
       li.classList.toggle("hidden", !t.slideVisible(slide));
       const thumb = this.thumb(t.lastOf(slide));
       li.append(el("span", "num", String(slide + 1)), thumb.canvas, (this.thumbLines.strip[slide] = el("i", "cmp")));
-      li.addEventListener("mouseenter", () => this.showPreview(t.lastOf(slide)));
       li.addEventListener("click", () => (this.showPreview(null), this.go(t.firstOf(slide))));
       this.stripItems[slide] = li;
       items.push([li, thumb]);
@@ -757,6 +759,23 @@ export class Presenter {
     });
     this.lazy(strip, items);
     this.drawThumbLines();
+    this.stripHover = null;
+    this.hoverStrip();
+  }
+
+  /**
+   * Marks the thumbnail under the mouse, and shows its slide. Not the browser's
+   * :hover, which in WebKit catches up only once scrolling has stopped.
+   */
+  private hoverStrip(): void {
+    const { x, y } = this.stripMouse;
+    const li = document.elementFromPoint(x, y)?.closest<HTMLElement>("#strip li:not(.divider)") ?? null;
+    if (li === this.stripHover) return;
+    this.stripHover?.classList.remove("hover");
+    this.stripHover = li;
+    if (!li) return;
+    li.classList.add("hover");
+    this.showPreview(this.talk.lastOf(this.stripItems.indexOf(li)));
   }
 
   /**

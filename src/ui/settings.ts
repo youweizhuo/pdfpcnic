@@ -26,7 +26,7 @@ export class Settings {
   laserSize: number;
   /** Whether the part of a note you'd have said by now dims. */
   dimNotes: boolean;
-  /** The clocks as times of day, rather than on the talk's clock. */
+  /** The clock as the time of day, rather than the talk's. */
   timeOfDay: boolean;
   /** Where the talk would end, as how early or late rather than a time. */
   earlyLate: boolean;
@@ -156,6 +156,16 @@ export class Settings {
         { signal },
       );
     }
+    for (const b of document.querySelectorAll<HTMLButtonElement>("#set-end button")) {
+      b.addEventListener(
+        "click",
+        () => {
+          this.setEarlyLate(b.dataset.end === "pace");
+          this.sync();
+        },
+        { signal },
+      );
+    }
     for (const b of document.querySelectorAll<HTMLButtonElement>("#set-dim button")) {
       b.addEventListener(
         "click",
@@ -244,6 +254,9 @@ export class Settings {
     }
     for (const b of document.querySelectorAll<HTMLButtonElement>("#set-times button")) {
       b.classList.toggle("on", (b.dataset.times === "day") === this.timeOfDay);
+    }
+    for (const b of document.querySelectorAll<HTMLButtonElement>("#set-end button")) {
+      b.classList.toggle("on", (b.dataset.end === "pace") === this.earlyLate);
     }
     for (const b of document.querySelectorAll<HTMLButtonElement>("#set-dim button")) {
       b.classList.toggle("on", (b.dataset.dim === "on") === this.dimNotes);

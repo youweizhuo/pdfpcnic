@@ -94,7 +94,7 @@
           <span id="compare-talk" class="compare-times"></span>
         </nav>
         <div class="clock">
-          <button id="timer" class="timer idle" type="button" title="Click to pause or resume (p)">0:00:00</button>
+          <button id="timer" class="timer idle" type="button" data-action="timesOfDay">0:00:00</button>
           <button id="finish" class="finish" type="button" data-action="earlyLate"></button>
         </div>
         <!-- The next slide's notes, in grey: how it starts, as much as fits. -->
@@ -188,10 +188,17 @@
           <kbd>+ −</kbd>
         </label>
         <div class="setting">
-          <span>Clocks</span>
-          <div id="set-times" class="switch" title="Or press t">
+          <span>Clock</span>
+          <div id="set-times" class="switch" title="Or click the clock, or press t">
             <button type="button" data-times="clock">clock</button>
             <button type="button" data-times="day">time of day</button>
+          </div>
+        </div>
+        <div class="setting">
+          <span>Talk's end</span>
+          <div id="set-end" class="switch" title="Or click it, or press e">
+            <button type="button" data-end="time">a time</button>
+            <button type="button" data-end="pace">early or late</button>
           </div>
         </div>
         <h3>Pace colors</h3>

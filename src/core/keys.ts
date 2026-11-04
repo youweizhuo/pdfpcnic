@@ -178,7 +178,7 @@ export const HELP: Array<[string, Array<[string, string, highlight?: "key" | "mo
       ["s / p", "start / pause the clock"],
       ["Shift+R or Ctrl+T", "reset the clock (pause it first)"],
       ["Ctrl+E", "mark this slide as the end"],
-      ["t", "the clocks as times of day, or back", "key"],
+      ["t", "the clock as the time of day, or back", "key"],
       ["e", "where the talk would end, or how early or late", "key"],
       ["+ / −", "notes size; the laser dot's when on", "key"],
       ["[ / ]", "slides smaller / bigger", "key"],

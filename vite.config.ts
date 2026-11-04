@@ -5,17 +5,18 @@ import { viteSingleFile } from "vite-plugin-singlefile";
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 
-// What deck links may fetch from: any HTTPS address, since a deck can be anywhere. (A check adds its local server.)
-const decksFrom = ["https:", process.env.PDFPCNIC_CHECK_SERVER].filter(Boolean).join(" ");
+// A deck server's own site: `PDFPCNIC_DECK_SERVER=1 npm run build`, as the container does. It reads its decks from
+// itself. The public website has no deck links.
+const deckServer = !!process.env.PDFPCNIC_DECK_SERVER;
 
-// The site's policy: scripts and workers from this site only, so a PDF or a note
-// can't load code. Fetches only over HTTPS, for deck links. (Workers also run from
+// The site's policy: scripts, workers and fetches from this site only, so a PDF
+// or a note can't load code or send anything elsewhere. (Workers also run from
 // blob: URLs; pdf.js draws fonts and images from data: and blob: URLs.)
 const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "worker-src 'self' blob:",
-  `connect-src 'self' ${decksFrom}`,
+  "connect-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
@@ -62,7 +63,7 @@ function macPage(): Plugin {
     "default-src 'none'",
     "script-src 'unsafe-inline'",
     "style-src 'unsafe-inline'",
-    `connect-src pdfpcnic: data: ${decksFrom}`,
+    "connect-src pdfpcnic: data: https:",
     "img-src data: blob:",
     "font-src data:",
     "worker-src blob:",
@@ -94,10 +95,11 @@ export default defineConfig(({ mode }) => {
     define: {
       __BUILD__: JSON.stringify(build),
       __VERSION__: JSON.stringify(pkg.version),
+      __DECKS__: JSON.stringify(build === "mac" || (build === "site" && deckServer)),
     },
     resolve: {
       alias: {
-        variant: resolve(build === "site" ? "src/web/variant-site.ts" : "src/web/variant-single.ts"),
+        variant: resolve(build === "site" ? (deckServer ? "src/web/variant-server.ts" : "src/web/variant-site.ts") : "src/web/variant-single.ts"),
       },
     },
     plugins: { site: [contentSecurityPolicy(), pdfjsResources()], single: [viteSingleFile()], mac: [viteSingleFile(), macPage()] }[build],

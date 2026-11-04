@@ -2,8 +2,8 @@
 
 pdfpcnic opens PDFs and Markdown notes in your browser, including files you didn't make. It renders them with
 [PDF.js](https://mozilla.github.io/pdf.js/), cleans notes with [DOMPurify](https://github.com/cure53/DOMPurify), and
-never sends a file anywhere. On the site, a Content Security Policy lets scripts and workers come from the site alone,
-and fetches go only there and over HTTPS, for deck links.
+never sends a file anywhere. On the site, a Content Security Policy lets scripts, workers and connections come from the
+site alone.
 
 A deck server's upload port has no password: it's meant for a private network, and exposing it is outside this policy.
 Its public port only reads. Anyone with a deck's link can read that deck, notes included.

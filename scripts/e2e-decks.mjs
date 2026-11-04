@@ -1,39 +1,21 @@
 // Deck-server check: nginx's two ports and the upload page, as they're deployed. Uploads go through the page on the
-// private port, and decks open with no password from the public port's own site and from another origin, as GitHub
-// Pages or the Mac app would, in Chrome and WebKit.
+// private port, and decks open by link with no password from the public port's own site, in Chrome and WebKit.
 //
 //   deploy/deploy.sh
 //   npm run build
 //   CHROME_PATH=/path/to/chrome npm run e2e:decks
 //
-// DECKS_VIEW and DECKS_UPLOAD say where the two ports are, if not on deploy.sh's defaults. NO_HTTPS=webkit skips what
-// needs HTTPS in that engine, where this machine's WebKit has none.
+// DECKS_VIEW and DECKS_UPLOAD say where the two ports are, if not on deploy.sh's defaults.
 
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { createReadStream, existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
-import { createServer } from "node:http";
-import { extname, join, resolve } from "node:path";
+import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { chromium, webkit } from "playwright-core";
 
 const view = process.env.DECKS_VIEW ?? "http://127.0.0.1:28613/";
 const upload = process.env.DECKS_UPLOAD ?? "http://127.0.0.1:28614/";
 const out = resolve("e2e-out", "decks");
 mkdirSync(out, { recursive: true });
-
-// The site as GitHub Pages serves it: another origin. The check's local server stands in for an HTTPS one.
-const pages = resolve(out, "pages");
-execFileSync("npx", ["vite", "build", "--outDir", pages, "--logLevel", "error"], { env: { ...process.env, PDFPCNIC_CHECK_SERVER: new URL(view).origin }, stdio: "inherit" });
-const types = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".wasm": "application/wasm" };
-const server = createServer((req, res) => {
-  const path = join(pages, decodeURIComponent(new URL(req.url, "http://x").pathname));
-  const file = existsSync(path) && statSync(path).isDirectory() ? join(path, "index.html") : path;
-  if (!existsSync(file)) return res.writeHead(404).end();
-  res.writeHead(200, { "content-type": types[extname(file)] ?? "application/octet-stream" });
-  createReadStream(file).pipe(res);
-});
-await new Promise((r) => server.listen(0, "127.0.0.1", r));
-const elsewhere = `http://localhost:${server.address().port}/`;
 
 const pdf = readFileSync("demo/demo.pdf");
 const notes = readFileSync("demo/demo.pdfpc");
@@ -102,11 +84,12 @@ await check("guessing tokens is slowed down, for each visitor", async () => {
   await sleep(5000);
 });
 
-await check("the offline file, the site and the Mac page have no upload side", async () => {
+await check("the offline file and the public website load no deck by link", async () => {
   const single = readFileSync("dist/pdfpcnic.html", "utf8");
   for (const trace of ["Open link", "decks/", "public-url", "Add version"]) assert.ok(!single.includes(trace), `${trace} in the offline file`);
-  const site = readFileSync("dist/index.html", "utf8");
-  assert.ok(!site.includes("Add version"), "the upload page in the site");
+  const site = [readFileSync("dist/index.html", "utf8"), ...readdirSync("dist/assets").filter((f) => f.endsWith(".js")).map((f) => readFileSync(`dist/assets/${f}`, "utf8"))].join("");
+  for (const trace of ["decks/", "Fetching the deck", "Add version"]) assert.ok(!site.includes(trace), `${trace} in the website`);
+  assert.match(readFileSync("dist/index.html", "utf8"), /connect-src &#39;self&#39;;/, "the website's fetches aren't limited to itself");
   assert.ok(!existsSync("dist/upload.js"), "the upload page beside the site");
 });
 
@@ -123,11 +106,6 @@ for (const [engine, [type, options]] of Object.entries(engines)) {
   };
   const ready = (page, name) => page.waitForFunction((name) => document.querySelector("#ready-name")?.textContent === name, name, { timeout: 15000 });
   const said = (page, re) => page.waitForFunction((re) => new RegExp(re).test(document.querySelector("#start-error").textContent), re.source, { timeout: 15000 });
-  const paste = async (page, text) => {
-    await page.waitForSelector(".deck-link input");
-    await page.fill(".deck-link input", text);
-    await page.keyboard.press("Enter");
-  };
   const uploads = [
     { name: `${LONG}.pdf`, mimeType: "application/pdf", buffer: pdf },
     { name: `${LONG}.pdfpc`, mimeType: "application/json", buffer: notes },
@@ -175,17 +153,6 @@ for (const [engine, [type, options]] of Object.entries(engines)) {
     await context.close();
   });
 
-  await check(`${engine}: from another origin, the box takes the same link`, async () => {
-    const { context, page, errors } = await fresh();
-    await page.goto(elsewhere);
-    await page.waitForSelector(".deck-link input");
-    await page.screenshot({ path: `${out}/${engine}-box.png` });
-    await paste(page, `${view}#${token}`);
-    await ready(page, `${LONG}.pdf + ${LONG}.pdfpc`);
-    assert.deepEqual(errors, []);
-    await context.close();
-  });
-
   await check(`${engine}: Add version keeps the link, the link opens the new one, and old notes don't come with it`, async () => {
     const { context, page } = await fresh();
     await page.goto(upload);
@@ -203,15 +170,10 @@ for (const [engine, [type, options]] of Object.entries(engines)) {
   await check(`${engine}: a wrong token or link says so, and the page still works`, async () => {
     const { context, page } = await fresh();
     await page.goto(`${view}#aaaaaa`);
-    await said(page, /no deck aaaaaa/);
-    await paste(page, `${view}#bbbbbb`);
-    await said(page, /no deck bbbbbb on/);
-    await paste(page, "https://example.com/page.html");
+    await said(page, /no deck aaaaaa on/);
+    await page.goto(`${view}#nonsense!`);
     await said(page, /isn't a deck's link/);
-    await page.goto(elsewhere);
-    await paste(page, token);
-    await said(page, /no deck .* paste its whole link/);
-    await paste(page, `${view}#${token2}`);
+    await page.goto(`${view}#${token2}`);
     await ready(page, `${LONG}.pdf + ${LONG}.pdfpc`);
     await context.close();
   });
@@ -231,31 +193,10 @@ for (const [engine, [type, options]] of Object.entries(engines)) {
     await page.waitForSelector("#resume:not([hidden])");
     assert.match(await page.textContent("#resume"), /^Resume /);
     assert.equal(await page.$eval("#ready", (e) => e.hidden), true, "the link took over");
-    assert.equal(await page.inputValue(".deck-link input"), `#${token2}`, "the link isn't kept to hand");
     await context.close();
   });
-
-  if (process.env.NO_HTTPS !== engine) {
-    await check(`${engine}: a PDF on another host opens by its own address, with the notes beside it`, async () => {
-      const { context, page, errors } = await fresh();
-      await page.goto(elsewhere);
-      await paste(page, "https://raw.githubusercontent.com/youweizhuo/pdfpcnic/main/demo/demo.pdf");
-      await ready(page, "demo.pdf + demo.pdfpc");
-      assert.deepEqual(errors, []);
-      await context.close();
-    });
-    await check(`${engine}: a host that doesn't let pages read its files says so`, async () => {
-      const { context, page } = await fresh();
-      await page.goto(elsewhere);
-      await paste(page, "https://github.com/youweizhuo/pdfpcnic/releases/latest/download/nothing.pdf");
-      await said(page, /Can't read that from github\.com/);
-      await context.close();
-    });
-  }
 
   await browser.close();
 }
 
-server.close();
 console.log(`${passed} checks passed (decks); screenshots in ${out}`);
-process.exit();

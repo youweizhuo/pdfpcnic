@@ -332,54 +332,53 @@ export async function start(platform: Platform): Promise<void> {
     });
   }
 
-  // Not in the offline file, which needs no network.
-  if (__BUILD__ !== "single" && platform.fetchDeck) {
+  // Only a deck server's own site, which opens them from its address, and the Mac app, which has a box to paste them in.
+  if (__DECKS__ && platform.fetchDeck) {
     const fetchDeck = platform.fetchDeck;
     const status = $("start-error");
-    const field = el("input");
-    /** Fetches a deck, waiting for Present like any other. Taken from the address, the token leaves it: it may be on the wall. */
-    const open = async (text: string, fromAddress = false) => {
+    const open = async (text: string) => {
       const link = deckLink(text);
       status.hidden = false;
       if (!link) {
-        status.textContent = "That isn't a deck's link: paste a server's link, like example.com/#k3j9x2, or a PDF's own address.";
+        status.textContent = "That isn't a deck's link. It looks like example.com/#k3j9x2.";
         return;
       }
       status.textContent = "Fetching the deck…";
       try {
         const files = await fetchDeck(link);
-        if (fromAddress) history.replaceState(null, "", location.pathname + location.search);
         if (__BUILD__ === "mac") platform.store.setPref("deckLink", text);
+        // The token leaves the address, which may be on the wall.
+        else history.replaceState(null, "", location.pathname + location.search);
         await openFiles(files);
       } catch (err) {
         status.textContent = reasonOf(err);
       }
     };
 
-    const form = el("form", "deck-link");
-    field.type = "text";
-    field.placeholder = "Deck link";
-    field.ariaLabel = "Deck link: a server's link, or a PDF's own address";
-    field.title = "A server's link, like example.com/#k3j9x2, or a PDF's own address with its .pdfpc file beside it";
-    field.autocapitalize = "none";
-    field.spellcheck = false;
-    field.value = __BUILD__ === "mac" ? platform.store.pref("deckLink", "") : "";
-    const go = el("button", "", "Open link");
-    go.type = "submit";
-    form.append(field, go);
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      void open(field.value);
-    });
-    $("actions").prepend(form);
-
-    // The page's address names a deck: at once, unless a reload mid-talk has one to resume, with its clock.
-    const fromAddress = () => {
-      if (presenter || location.hash.length < 2) return;
-      if (midTalk) field.value = location.hash;
-      else void open(location.hash, true);
-    };
-    window.addEventListener("hashchange", fromAddress);
-    fromAddress();
+    if (__BUILD__ === "mac") {
+      const form = el("form", "deck-link");
+      const field = el("input");
+      field.type = "text";
+      field.placeholder = "Deck link, like example.com/#k3j9x2";
+      field.ariaLabel = "Deck link";
+      field.autocapitalize = "none";
+      field.spellcheck = false;
+      field.value = platform.store.pref("deckLink", "");
+      const go = el("button", "", "Open link");
+      go.type = "submit";
+      form.append(field, go);
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        void open(field.value);
+      });
+      $("actions").prepend(form);
+    } else {
+      // The address names a deck: at once, unless a reload mid-talk has one to resume, with its clock.
+      const fromAddress = () => {
+        if (!presenter && !midTalk && location.hash.length > 1) void open(location.hash);
+      };
+      window.addEventListener("hashchange", fromAddress);
+      fromAddress();
+    }
   }
 }

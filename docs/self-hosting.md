@@ -121,7 +121,7 @@ It runs one container with two ports over one folder, in a volume:
 
 | Port | Who reaches it | What it does |
 | --- | --- | --- |
-| `28613`, on `127.0.0.1` | Everyone, through your HTTPS proxy or tunnel | The site, and decks to read by their token. It can't write. |
+| `28613`, on `127.0.0.1` | Everyone, through your HTTPS proxy or tunnel | The site, and decks to read by their token, as `https://slides.example.com/#k3j9x2`. It can't write. |
 | `28614`, on every network | Only your private network | The upload page, with no password. It can't overwrite, rename or delete. |
 
 Point your proxy or tunnel at `127.0.0.1:28613`, and nothing at `28614`. `VIEW_PORT` and `UPLOAD_PORT` change the ports.

@@ -7,17 +7,12 @@ fields read and the timing-line format are the interface. Each release attaches 
 
 ### Added
 
-- **Decks by link:** the start page's box opens a deck from a server's link, or a PDF's own address with its `.pdfpc` file
-  beside it, on any host that lets other sites read its files. The offline file has no links.
+- **Decks by link:** a deck server's own site opens `example.com/#k3j9x2` from the address, and the Mac app has a box to
+  paste it in. The public website and the offline file don't load decks by link.
 - **A deck server:** `deploy/deploy.sh` runs the container with two ports. The public one serves the site and reads decks
   by their token, as `example.com/#k3j9x2`, and can't write. The private one has a page that uploads decks, each with its
   own link; a new version keeps the link, and the highest version opens. Nothing on either port overwrites or deletes.
 - **A presentation remote's black button works:** `.` blacks the screen, as `b` does.
-
-### Changed
-
-- **The site's fetches aren't limited to itself:** its Content Security Policy now allows any HTTPS address, for deck
-  links. Scripts still come from the site alone.
 
 ### Fixed
 

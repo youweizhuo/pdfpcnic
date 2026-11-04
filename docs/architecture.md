@@ -51,7 +51,7 @@ void start(mac); // src/mac/main.ts
 | `store` → `Store` | the last deck, where its talk stood, the settings | IndexedDB and localStorage (`store.ts`) | the same: the app's web view keeps both |
 | `demo` | the demo deck | fetched on the site, left out of the offline file | carried in the page |
 | `files` | files the platform opens itself | none | from the Finder or File › Open (`App.swift`) |
-| `fetchDeck` | a deck by its link | fetched on the site, left out of the offline file (`decks.ts`) | the same (`decks.ts`) |
+| `fetchDeck` | a deck by its link | only on a deck server's own site (`decks.ts`), not the public website or the offline file | from a pasted link (`decks.ts`) |
 | `save` | a file the presenter makes, a run's times | the browser's downloads (`platform.ts`) | beside the PDF (`Presenter.swift`) |
 
 Each port says what, never how. The audience's status, for one, is a mode (closed, window, fullscreen), the screen's

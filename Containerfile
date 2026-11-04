@@ -13,7 +13,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
 # Gzipped copies for nginx's gzip_static: compressed once here, not per request.
-RUN npm run build \
+RUN PDFPCNIC_DECK_SERVER=1 npm run build \
  && find dist -type f ! -name '*.pdf' -size +1k -exec gzip -9 -k {} + \
  && mkdir -p /keep/decks /keep/.uploading
 

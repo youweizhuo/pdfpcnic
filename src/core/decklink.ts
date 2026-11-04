@@ -1,13 +1,13 @@
-// A deck's link, as pasted or typed, and which of a deck's files it opens. A deck
-// on a pdfpcnic server is a folder named by its token, holding `talk.pdf`, then
-// `talk.v2.pdf` and so on, each with the `.pdfpc` file of its own version. Any
-// other host needs no server: a PDF's own address, with the notes beside it.
+// A deck's link, as pasted or from the page's address, and which of a deck's files it
+// opens. A deck on a pdfpcnic server is a folder named by its token, holding
+// `talk.pdf`, then `talk.v2.pdf` and so on, each with the `.pdfpc` file of its own
+// version.
 
-export type DeckLink =
-  /** A token on the server at this address, or on this page's own server when it's empty. */
-  | { kind: "token"; server: string; token: string }
-  /** A PDF at its own address, with where its `.pdfpc` file would be. */
-  | { kind: "pdf"; pdf: string; notes: string };
+export interface DeckLink {
+  /** The server's address, or empty for this page's own server. */
+  server: string;
+  token: string;
+}
 
 const TOKEN = "[a-z2-9]{6}";
 
@@ -15,15 +15,12 @@ const TOKEN = "[a-z2-9]{6}";
 export function deckLink(text: string): DeckLink | null {
   const link = text.trim();
   const own = new RegExp(`^#?(${TOKEN})$`, "i").exec(link);
-  if (own) return { kind: "token", server: "", token: own[1]!.toLowerCase() };
+  if (own) return { server: "", token: own[1]!.toLowerCase() };
   // No spaces, and no other scheme. (A colon before digits is a port.)
   if (link.includes(" ") || /^(?!https?:\/\/)[a-z][a-z0-9+.-]*:(?!\d)/i.test(link)) return null;
   const url = /^https?:\/\//i.test(link) ? link : `https://${link}`;
   const shared = new RegExp(`^(https?://[^/#?]+(?:/[^#?]*)?)#(${TOKEN})$`, "i").exec(url);
-  if (shared) return { kind: "token", server: shared[1]!.replace(/\/?$/, "/"), token: shared[2]!.toLowerCase() };
-  const file = /^(https?:\/\/[^/#?]+\/[^#?]*)\.(pdf|pdfpc)(\?[^#]*)?$/i.exec(url);
-  if (file) return { kind: "pdf", pdf: `${file[1]}.pdf${file[3] ?? ""}`, notes: `${file[1]}.pdfpc${file[3] ?? ""}` };
-  return null;
+  return shared && { server: shared[1]!.replace(/\/?$/, "/"), token: shared[2]!.toLowerCase() };
 }
 
 /** A file's name without its version and extension, its version (1 without a mark), and its kind. */

@@ -5,7 +5,7 @@ import type { Audience, AudienceEvents, Pdf } from "../platform.ts";
 import type { PageCache } from "../ui/page-cache.ts";
 import { SlideView } from "../ui/slide-view.ts";
 import css from "./audience.css?inline";
-import { lockEscape } from "./window.ts";
+import { holdWakeLock, lockEscape } from "./window.ts";
 
 // Window Management API (Chromium); absent elsewhere, which is fine.
 interface ScreenDetailed extends Screen {
@@ -234,6 +234,8 @@ export class PopupAudience implements Audience {
 
     // Closed (or reloaded, which loses what this window drew): forget it now,
     // not at the next poll, so the presenter offers to open it again.
+    // It may be all that shows, with the presenter's window hidden, and where the keys go once it's been double-clicked.
+    holdWakeLock(win);
     win.addEventListener("pagehide", () => this.detach());
     win.addEventListener("keydown", (e) => this.events.key(e));
     // Esc goes on to the presenter too, rather than ending the room's fullscreen.

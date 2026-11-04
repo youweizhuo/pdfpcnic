@@ -47,7 +47,7 @@ void start(mac); // src/mac/main.ts
 | --- | --- | --- | --- |
 | `openPdf` → `Pdf` | reads each page's size, label, notes and links; draws a page as a picture | pdf.js (`pdfjs.ts`) | PDFKit reads, Quartz draws, as Preview does (`pdf.ts`, `Documents.swift`) |
 | `audience` → `Audience` | the room's window: opens it, makes it fullscreen on the projector, shows a slide | a popup this page draws into (`audience.ts`), within each browser's limits | a frameless window that draws the slide itself, fullscreen on the chosen screen (`audience.ts`, `Audience.swift`, `SlideView.swift`) |
-| `window` → `PresenterWindow` | the presenter's own fullscreen; whether there's a second screen, and the system's name | the Fullscreen API (`window.ts`) | the window's view takes the screen, as in Présentation.app (`window.ts`, `Presenter.swift`) |
+| `window` → `PresenterWindow` | the presenter's own fullscreen; whether there's a second screen, and the system's name; keeping the display on | the Fullscreen and Wake Lock APIs (`window.ts`) | the window's view takes the screen, as in Présentation.app; a process activity for the display (`window.ts`, `Presenter.swift`) |
 | `store` → `Store` | the last deck, where its talk stood, the settings | IndexedDB and localStorage (`store.ts`) | the same: the app's web view keeps both |
 | `demo` | the demo deck | fetched on the site, left out of the offline file | carried in the page |
 | `files` | files the platform opens itself | none | from the Finder or File › Open (`App.swift`) |

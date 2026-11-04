@@ -24,6 +24,31 @@ function system(): System {
  */
 export const lockEscape = (win: Window) => void win.navigator.keyboard?.lock(["Escape"]).catch(() => {});
 
+/**
+ * Keeps the display from sleeping while a window shows, until the signal aborts or the window closes. Asks again when
+ * it comes back, as the browser lets go while it's hidden, and at each key press or click until it has the lock:
+ * WebKit wants one of those, and opening the audience window uses up the click that opened the deck.
+ */
+export function holdWakeLock(win: Window, signal?: AbortSignal): void {
+  let lock: WakeLockSentinel | undefined;
+  let asking = false;
+  const hold = async () => {
+    if (asking || (lock && !lock.released) || win.document.visibilityState !== "visible") return;
+    asking = true;
+    try {
+      lock = await win.navigator.wakeLock.request("screen");
+      if (signal?.aborted) void lock.release();
+    } catch {
+      // Absent over plain http and in older browsers, refused on low battery: the talk goes on without it.
+    } finally {
+      asking = false;
+    }
+  };
+  void hold();
+  for (const event of ["visibilitychange", "keydown", "pointerdown"]) win.document.addEventListener(event, () => void hold(), { signal });
+  signal?.addEventListener("abort", () => void lock?.release());
+}
+
 export const presenterWindow: PresenterWindow = {
   get fullscreen() {
     return !!document.fullscreenElement;
@@ -50,4 +75,5 @@ export const presenterWindow: PresenterWindow = {
     // Chromium tells when a screen is plugged in or out.
     (screen as unknown as EventTarget).addEventListener?.("change", cb, { signal });
   },
+  keepAwake: (signal) => holdWakeLock(window, signal),
 };

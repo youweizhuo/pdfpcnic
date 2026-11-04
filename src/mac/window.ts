@@ -19,4 +19,8 @@ export const presenterWindow: PresenterWindow = {
     await call("presenterFullscreen", { on: full });
   },
   onChange: (cb, signal) => on("window", cb, signal),
+  keepAwake(signal) {
+    void call("keepAwake", { on: true });
+    signal.addEventListener("abort", () => void call("keepAwake", { on: false }));
+  },
 };

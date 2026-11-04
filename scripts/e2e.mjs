@@ -71,7 +71,7 @@ try {
   if (mode === "site") {
     // As if the user had allowed window placement before.
     const cdp = await browser.target().createCDPSession();
-    await cdp.send("Browser.grantPermissions", { origin: new URL(url).origin, permissions: ["windowManagement"] });
+    await cdp.send("Browser.grantPermissions", { origin: new URL(url).origin, permissions: ["windowManagement", "wakeLockScreen"] });
   }
   const page = (await browser.pages())[0] ?? (await browser.newPage());
   watch(page, "presenter");
@@ -81,6 +81,14 @@ try {
     CanvasRenderingContext2D.prototype.drawImage = function (image, ...rest) {
       this.canvas.dataset.drawn = String(image.width);
       return drawImage.call(this, image, ...rest);
+    };
+    // The real wake lock, with a note of each one asked for.
+    window.wakeLocks = [];
+    const request = WakeLock.prototype.request;
+    WakeLock.prototype.request = async function (type) {
+      const lock = await request.call(this, type);
+      window.wakeLocks.push(lock);
+      return lock;
     };
   });
   await page.goto(url);
@@ -877,6 +885,17 @@ try {
     await page.mouse.move(w / 2, h - 5);
     await new Promise((r) => setTimeout(r, 700));
     assert.equal(await shown(), false, "the thumbnails came in as the mouse passed");
+  });
+
+  await check("the display is kept awake while a deck is open, again after the page was hidden", async () => {
+    const held = () => page.evaluate(() => window.wakeLocks.filter((l) => !l.released).length);
+    assert.equal(await held(), 1);
+    // The browser lets go when the page is hidden, and the page asks again when it's back.
+    await page.evaluate(async () => {
+      await window.wakeLocks.at(-1).release();
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await page.waitForFunction(() => window.wakeLocks.filter((l) => !l.released).length === 1, { timeout: 2000 });
   });
 
   await check("help sheet", async () => {

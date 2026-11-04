@@ -20,7 +20,7 @@ to take anywhere.
 - **Any PDF.** Add a `.pdfpc` file for Markdown notes, reveal steps, hidden slides, the end slide and the talk's
   length, as pdfpc does.
 - **Made for someone else's laptop.** `Shift+W` puts the audience fullscreen on the projector. A reload picks up
-  mid-talk with the clock running.
+  mid-talk with the clock running, and the display stays on while a deck is open.
 - **Private.** Your files stay on the computer: no accounts, no uploads, no analytics.
 
 ## Get it

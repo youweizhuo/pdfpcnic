@@ -13,6 +13,8 @@ final class Presenter: NSObject, WKNavigationDelegate, WKUIDelegate, NSWindowDel
     private var title: NSKeyValueObservation?
     /// Where the page's files came from, by name, to find a PDF's notes beside it.
     private var paths: [String: URL] = [:]
+    /// Held while a deck is open: the display doesn't sleep.
+    private var awake: NSObjectProtocol?
 
     init(scheme: PageScheme, bridge: Bridge) {
         let config = WKWebViewConfiguration()
@@ -54,6 +56,17 @@ final class Presenter: NSObject, WKNavigationDelegate, WKUIDelegate, NSWindowDel
 
     /// The screen the presenter is on.
     var screen: NSScreen? { web.window?.screen ?? window.screen }
+
+    var keepingAwake: Bool { awake != nil }
+
+    func keepAwake(_ on: Bool) {
+        if on, awake == nil {
+            awake = ProcessInfo.processInfo.beginActivity(options: [.idleDisplaySleepDisabled, .userInitiated], reason: "Presenting")
+        } else if !on, let held = awake {
+            ProcessInfo.processInfo.endActivity(held)
+            awake = nil
+        }
+    }
 
     /// What the page's window port reports.
     var state: [String: Any] { ["fullscreen": fullscreen, "extended": NSScreen.screens.count > 1] }

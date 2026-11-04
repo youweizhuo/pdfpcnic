@@ -78,6 +78,8 @@ export interface PresenterWindow {
   readonly system: System;
   /** Calls back when fullscreen or the screens change. */
   onChange(cb: () => void, signal: AbortSignal): void;
+  /** Keeps the display from sleeping until the signal aborts, where the platform can. */
+  keepAwake(signal: AbortSignal): void;
 }
 
 /** The deck as it was opened, kept to resume after a reload. */

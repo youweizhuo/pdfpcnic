@@ -247,6 +247,8 @@ export class Presenter {
 
   private wire(): void {
     const signal = this.abort.signal;
+    // A slide can stay up longer than a borrowed laptop's display stays on.
+    this.platform.window.keepAwake(signal);
     const cur = this.current.root;
     cur.addEventListener("pointermove", (e) => this.pointAt(this.current.toPage(e.clientX, e.clientY)), { signal });
     cur.addEventListener("pointerleave", () => this.pointAt(null), { signal });

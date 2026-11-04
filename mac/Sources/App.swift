@@ -81,6 +81,8 @@ final class App: NSObject, NSApplicationDelegate {
         }
         bridge.on("ready") { [unowned self] _ in
             ready = true
+            // A fresh page has no deck open, whatever the last one had.
+            presenter.keepAwake(false)
             presenter.onChange()
             if let pending { presenter.emit("updated", pending) }
             open([])
@@ -121,6 +123,10 @@ final class App: NSObject, NSApplicationDelegate {
         }
         bridge.on("presenterFullscreen") { [unowned self] args in
             presenter.setFullscreen(args.bool("on"))
+            return nil
+        }
+        bridge.on("keepAwake") { [unowned self] args in
+            presenter.keepAwake(args.bool("on"))
             return nil
         }
     }

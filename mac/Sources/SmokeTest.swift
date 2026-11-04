@@ -60,6 +60,7 @@ final class SmokeTest {
             try await until("the notes") { (try await js("return document.querySelector('#notes-body').textContent.length") as? Int ?? 0) > 20 }
             try await until("the current slide drawn") { try await js(Self.painted("#current canvas")) as? Bool == true }
             try await until("the thumbnails drawn") { try await js(Self.painted("#strip li canvas")) as? Bool == true }
+            try await until("the display kept awake") { app.presenter.keepingAwake }
         }
         await check("the audience window opens with the deck, behind the presenter, and Quartz draws the slide in it") {
             try await until("the audience window") { app.audience.view.window != nil }

@@ -48,11 +48,16 @@ edge; rest on one to see it large in the next slide's place.
 | --- | --- |
 | `→` `Space` click / `←` right-click | next / back |
 | `g` / `Tab` | go to a slide / overview |
-| `b` / `f` | black / freeze the audience |
+| `b` or `.` / `f` | black / freeze the audience |
 | `l` | laser pointer on / off (`2` / `1` too, as in pdfpc) |
 | `s` / `p` | start / pause the clock |
 | `w` / `Shift+W` | presenter / audience fullscreen |
 | `?` | every key, and what the colors mean |
+
+The usual presentation remotes need no setup: next and back send Page Down and Page Up or the arrows, and a black button
+sends `.`. A start button that sends F5 and Esc in turn does nothing on F5, as in pdfpc, rather than reload the page;
+Esc steps back as it does on the keyboard, so it can end a black screen or the presenter's fullscreen, never the
+audience's.
 
 ## Mac app
 

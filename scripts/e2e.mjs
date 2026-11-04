@@ -355,6 +355,28 @@ try {
     assert.equal(await page.$eval("#audience-state", (e) => e.hidden), true);
   });
 
+  await check("a presentation remote: . is black, F5 reloads nothing, in either window and over a dialog", async () => {
+    await press(".");
+    assert.equal(await audience.$eval("#black", (e) => e.hidden), false);
+    await press(".");
+    assert.equal(await audience.$eval("#black", (e) => e.hidden), true);
+    // Whether F5 was kept from the browser; null if it never arrived.
+    const f5 = async (win) => {
+      await win.bringToFront();
+      await win.evaluate(() => {
+        window.f5Blocked = null;
+        addEventListener("keydown", (e) => (window.f5Blocked = e.defaultPrevented), { once: true });
+      });
+      await win.keyboard.press("F5");
+      return win.evaluate(() => window.f5Blocked);
+    };
+    assert.equal(await f5(audience), true, "F5 left to the browser in the audience window");
+    assert.equal(await f5(page), true, "F5 left to the browser");
+    await press(",");
+    assert.equal(await f5(page), true, "F5 left to the browser with settings open");
+    await press("Escape");
+  });
+
   await check("laser follows the presenter's mouse onto the audience; the mouse over the audience window doesn't move it", async () => {
     await press("Home", "l");
     const box = await (await page.$("#current canvas")).boundingBox();

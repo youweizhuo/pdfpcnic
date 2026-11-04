@@ -5,7 +5,7 @@
 import { runFile, runName } from "../core/compare.ts";
 import type { Deck, LinkTarget } from "../core/deck.ts";
 import { audienceButton, audienceReady, guideLine } from "../core/guide.ts";
-import { actionFor, isTalkAction, type Action } from "../core/keys.ts";
+import { actionFor, isIgnored, isTalkAction, type Action } from "../core/keys.ts";
 import { mark, span } from "../core/pace.ts";
 import { Talk, type Point, type Progress, type SavedSession } from "../core/talk.ts";
 import * as T from "../core/timer.ts";
@@ -216,6 +216,10 @@ export class Presenter {
   }
 
   onKey(e: KeyboardEvent): void {
+    if (isIgnored(e)) {
+      e.preventDefault();
+      return;
+    }
     // Dialogs (go to, settings) keep their keys.
     if (e.target instanceof HTMLInputElement || document.querySelector("dialog[open]")) return;
     if (this.view.overview && this.overviewKey(e)) {

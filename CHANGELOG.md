@@ -3,6 +3,17 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## Unreleased
+
+### Added
+
+- **A presentation remote's black button works:** `.` blacks the screen, as `b` does.
+
+### Fixed
+
+- **F5 no longer reloads the page mid-talk**, as a presentation remote's start button would. It does nothing, as in
+  pdfpc; Ctrl+F5 and the browser's own reload still work.
+
 ## 1.3.2 (2026-11-03)
 
 ### Added

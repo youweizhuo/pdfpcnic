@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { actionFor, isTalkAction, keyName } from "../src/core/keys.ts";
+import { actionFor, isIgnored, isTalkAction, keyName } from "../src/core/keys.ts";
 import { grade, SLACK, splitPlan } from "../src/core/pace.ts";
 import { parsePdfpc } from "../src/core/pdfpc.ts";
 import * as T from "../src/core/timer.ts";
@@ -66,6 +66,15 @@ test("keys: pdfpc's bindings, read the same whatever the case or the Shift for s
   assert.equal(actionFor(key("?", { shiftKey: true })), "help");
   assert.equal(actionFor(key("W", { shiftKey: true })), "audienceFullscreen");
   assert.equal(actionFor(key("o", { metaKey: true })), null, "Cmd is left to the browser");
+  // A presentation remote's black button, and its start button, which a browser would reload on.
+  assert.equal(actionFor(key(".")), "blank");
+  assert.equal(actionFor(key("b")), "blank");
+  assert.equal(actionFor(key("Escape")), "escape");
+  assert.equal(isIgnored(key("F5")), true);
+  assert.equal(isIgnored(key("F5", { shiftKey: true })), true);
+  assert.equal(isIgnored(key("F5", { ctrlKey: true })), false, "Ctrl+F5 still reloads");
+  assert.equal(isIgnored(key("F5", { metaKey: true })), false);
+  assert.equal(isIgnored(key("r", { ctrlKey: true })), false);
   assert.equal(isTalkAction("next"), true);
   assert.equal(isTalkAction("openAudience"), false);
 });

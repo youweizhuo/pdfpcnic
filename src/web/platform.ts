@@ -1,6 +1,6 @@
 // The web platform: the browser's side of each port, for the website and the offline file.
 
-import { demoDeck } from "variant";
+import { demoDeck, fetchDeck } from "variant";
 import type { Platform } from "../platform.ts";
 import { PopupAudience } from "./audience.ts";
 import { openPdf } from "./pdfjs.ts";
@@ -12,6 +12,7 @@ export const web: Platform = {
   audience: (events) => new PopupAudience(events),
   window: presenterWindow,
   store,
+  fetchDeck,
   demo: demoDeck,
   // To the browser's downloads: it says where.
   async save(name, text) {

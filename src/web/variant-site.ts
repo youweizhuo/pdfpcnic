@@ -5,6 +5,8 @@ import workerFile from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import demoPdf from "../../demo/demo.pdf?url";
 import demoPdfpc from "../../demo/demo.pdfpc?raw";
 
+export { fetchDeck } from "./decks.ts";
+
 /** The pdf.js worker, as its own cached file. */
 export function workerUrl(): string {
   return workerFile;

@@ -19,3 +19,6 @@ export function resources(): Record<string, never> {
 
 /** The demo deck stays on the website. */
 export const demoDeck = null;
+
+/** No deck links: it needs no network. */
+export const fetchDeck = null;

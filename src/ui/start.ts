@@ -2,6 +2,7 @@
 // visit left off. It hands each deck to a fresh presenter.
 
 import { buildDeck } from "../core/deck.ts";
+import { deckLink } from "../core/decklink.ts";
 import { HELP } from "../core/keys.ts";
 import { parsePdfpc, PdfpcError, type PdfpcFile } from "../core/pdfpc.ts";
 import { resumes, type SavedSession } from "../core/talk.ts";
@@ -302,9 +303,11 @@ export async function start(platform: Platform): Promise<void> {
 
   // Offer to pick up where an earlier visit left off (an accidental reload, say).
   const [deck, session] = await Promise.all([platform.store.loadDeck(), platform.store.loadSession()]);
+  let midTalk = false;
   if (deck) {
     const resume = $<HTMLButtonElement>("resume");
     const recent = resumes(session, deck.pdfName, Date.now());
+    midTalk = recent;
     resume.textContent = recent ? `Resume ${deck.pdfName} at page ${session.page + 1}` : `Reopen ${deck.pdfName}`;
     resume.hidden = false;
     resume.focus();
@@ -327,5 +330,56 @@ export async function start(platform: Platform): Promise<void> {
         $("start-error").textContent = String(err);
       });
     });
+  }
+
+  // Not in the offline file, which needs no network.
+  if (__BUILD__ !== "single" && platform.fetchDeck) {
+    const fetchDeck = platform.fetchDeck;
+    const status = $("start-error");
+    const field = el("input");
+    /** Fetches a deck, waiting for Present like any other. Taken from the address, the token leaves it: it may be on the wall. */
+    const open = async (text: string, fromAddress = false) => {
+      const link = deckLink(text);
+      status.hidden = false;
+      if (!link) {
+        status.textContent = "That isn't a deck's link: paste a server's link, like example.com/#k3j9x2, or a PDF's own address.";
+        return;
+      }
+      status.textContent = "Fetching the deck…";
+      try {
+        const files = await fetchDeck(link);
+        if (fromAddress) history.replaceState(null, "", location.pathname + location.search);
+        if (__BUILD__ === "mac") platform.store.setPref("deckLink", text);
+        await openFiles(files);
+      } catch (err) {
+        status.textContent = reasonOf(err);
+      }
+    };
+
+    const form = el("form", "deck-link");
+    field.type = "text";
+    field.placeholder = "Deck link";
+    field.ariaLabel = "Deck link: a server's link, or a PDF's own address";
+    field.title = "A server's link, like example.com/#k3j9x2, or a PDF's own address with its .pdfpc file beside it";
+    field.autocapitalize = "none";
+    field.spellcheck = false;
+    field.value = __BUILD__ === "mac" ? platform.store.pref("deckLink", "") : "";
+    const go = el("button", "", "Open link");
+    go.type = "submit";
+    form.append(field, go);
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      void open(field.value);
+    });
+    $("actions").prepend(form);
+
+    // The page's address names a deck: at once, unless a reload mid-talk has one to resume, with its clock.
+    const fromAddress = () => {
+      if (presenter || location.hash.length < 2) return;
+      if (midTalk) field.value = location.hash;
+      else void open(location.hash, true);
+    };
+    window.addEventListener("hashchange", fromAddress);
+    fromAddress();
   }
 }

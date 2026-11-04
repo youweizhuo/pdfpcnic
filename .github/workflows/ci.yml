@@ -29,6 +29,10 @@ jobs:
           FIREFOX_PATH: /usr/bin/firefox
       - name: End-to-end checks (WebKit)
         run: npx playwright-core install --with-deps webkit && npm run e2e:webkit
+      - name: Deck server (the real container, from its deploy script)
+        run: deploy/deploy.sh http://127.0.0.1:28613 && npm run e2e:decks
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

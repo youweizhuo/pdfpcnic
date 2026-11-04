@@ -32,6 +32,7 @@ CHROME_PATH=/path/to/chrome npm run e2e -- site  # ... and on the site, with win
 FIREFOX_PATH=/path/to/firefox npm run e2e:firefox # the main path in Firefox, on both builds
 npx playwright-core install --with-deps webkit   # once, for the next line
 npm run e2e:webkit                               # the main path in WebKit, Safari's engine, on both builds
+CHROME_PATH=/path/to/chrome npm run e2e:decks    # after deploy/deploy.sh: the deck server, in Chrome and WebKit
 ```
 
 The e2e script drives a real Chrome through the demo deck and saves screenshots to `e2e-out/`. It also runs against a

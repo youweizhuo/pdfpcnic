@@ -37,7 +37,8 @@
     "test": "node --test \"test/*.test.mjs\"",
     "e2e": "node scripts/e2e.mjs",
     "e2e:firefox": "node scripts/e2e-firefox.mjs",
-    "e2e:webkit": "node scripts/e2e-webkit.mjs"
+    "e2e:webkit": "node scripts/e2e-webkit.mjs",
+    "e2e:decks": "node scripts/e2e-decks.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.64.1",

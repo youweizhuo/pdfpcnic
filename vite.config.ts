@@ -5,14 +5,17 @@ import { viteSingleFile } from "vite-plugin-singlefile";
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 
-// The site's policy: scripts, workers and fetches from this site only, so a PDF
-// or a note can't load code or send anything elsewhere. (Workers also run from
+// What deck links may fetch from: any HTTPS address, since a deck can be anywhere. (A check adds its local server.)
+const decksFrom = ["https:", process.env.PDFPCNIC_CHECK_SERVER].filter(Boolean).join(" ");
+
+// The site's policy: scripts and workers from this site only, so a PDF or a note
+// can't load code. Fetches only over HTTPS, for deck links. (Workers also run from
 // blob: URLs; pdf.js draws fonts and images from data: and blob: URLs.)
 const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "worker-src 'self' blob:",
-  "connect-src 'self'",
+  `connect-src 'self' ${decksFrom}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
@@ -52,14 +55,14 @@ function pdfjsResources(): Plugin {
 /**
  * Mac build: the page on the Mac platform (src/mac/). Its policy keeps
  * everything inside the app: the script and styles are inline, and the only
- * fetches go to the app (pdfpcnic:) or data: URLs.
+ * fetches go to the app (pdfpcnic:), data: URLs, and HTTPS for deck links.
  */
 function macPage(): Plugin {
   const policy = [
     "default-src 'none'",
     "script-src 'unsafe-inline'",
     "style-src 'unsafe-inline'",
-    "connect-src pdfpcnic: data:",
+    `connect-src pdfpcnic: data: ${decksFrom}`,
     "img-src data: blob:",
     "font-src data:",
     "worker-src blob:",

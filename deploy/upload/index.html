@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>pdfpcnic decks</title>
+    <link rel="stylesheet" href="upload.css" />
+    <script type="module" src="upload.js"></script>
+  </head>
+  <body>
+    <h1>Decks</h1>
+    <label id="drop" class="drop">
+      <input id="files" type="file" accept=".pdf,.pdfpc" multiple hidden />
+      <strong>Drop a PDF and its .pdfpc file here</strong>, or click to choose. Each upload is a new deck with its own link.
+    </label>
+    <input id="version-files" type="file" accept=".pdf,.pdfpc" multiple hidden />
+    <p id="status" role="status"></p>
+    <table>
+      <thead>
+        <tr><th>Deck</th><th>Link</th><th>Versions</th><th>Uploaded</th><th></th></tr>
+      </thead>
+      <tbody id="decks"></tbody>
+    </table>
+    <p id="none" class="dim" hidden>No decks yet.</p>
+    <p class="dim">Anyone with a link can read that deck, notes included. Nothing here deletes: that's done on the server.</p>
+  </body>
+</html>

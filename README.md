@@ -75,6 +75,16 @@ Or download `pdfpcnic-mac.zip` from the [latest release](https://github.com/youw
 The app isn't signed with a paid Apple developer account, so macOS stops a copy a browser downloaded: click **Done**,
 then **Open Anyway** at the bottom of System Settings › Privacy & Security. macOS 12 or later.
 
+## Decks by link
+
+To present without carrying the files, open a deck by its link: no password, and nothing to install. On a
+[deck server](docs/self-hosting.md#a-deck-server), it looks like `pdfpcnic.youwei.xyz/#k3j9x2`, and opens as it is.
+Anywhere else, the website and the Mac app take the same link in the box on the start page.
+
+The box also takes a PDF's own address on any host that lets other sites read its files, with the `.pdfpc` file beside it
+under the same name. GitHub raw, GitHub Pages, jsDelivr, Hugging Face and Zenodo do; GitHub's file pages and release files,
+GitLab, Codeberg and the Internet Archive don't, and Google Drive reportedly doesn't either.
+
 ## Pacing a talk
 
 Start a slide's note with its planned window, in minutes from the start of the talk:
@@ -117,9 +127,10 @@ Not supported: Beamer notes on half pages, transitions, movies, drawing and spot
 
 ## Privacy
 
-Decks open in the browser and aren't sent anywhere. On the website, a Content Security Policy lets the page connect
-only to its own site; the Mac app connects only to GitHub, for updates. To resume after a reload, the browser keeps
-the last deck in its own storage; **Forget** on the start page removes it.
+Decks open in the browser and aren't sent anywhere. A Content Security Policy lets scripts come only from the page's own
+site, and fetches go only there and over HTTPS, when you open a deck's link. The Mac app otherwise connects only to
+GitHub, for updates. To resume after a reload, the browser keeps the last deck in its own storage; **Forget** on the start
+page removes it. The offline file has no links and needs no network.
 
 ## Contributing
 

@@ -4,6 +4,7 @@
 // the talk (src/core/) and the presenter page (src/ui/).
 
 import type { Deck, LinkTarget, OutlineEntry, PageInfo } from "./core/deck.ts";
+import type { DeckLink } from "./core/decklink.ts";
 import type { AudienceStatus, System } from "./core/guide.ts";
 import type { Point, SavedSession } from "./core/talk.ts";
 import type { PageCache } from "./ui/page-cache.ts";
@@ -16,6 +17,8 @@ export interface Platform {
   /** The presenter's own window. */
   window: PresenterWindow;
   store: Store;
+  /** Fetches a deck by its link, where this build has a network. */
+  fetchDeck: ((link: DeckLink) => Promise<File[]>) | null;
   /** The demo deck, where this build can get it. */
   demo: (() => Promise<{ pdf: ArrayBuffer; pdfpc: string }>) | null;
   /** Hands over files the platform opens itself, such as a PDF double-clicked in the Finder. */

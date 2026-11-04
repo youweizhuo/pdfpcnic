@@ -75,6 +75,10 @@ final class SmokeTest {
                 return line.hasPrefix("Press ⇧W to make the audience window fullscreen on") || line.hasPrefix("One screen only:")
             }
         }
+        await check("a deck's link can be read from another site: the page's policy and the web view let it") {
+            let url = "https://raw.githubusercontent.com/youweizhuo/pdfpcnic/main/demo/demo.pdfpc"
+            try await until("the fetch") { try await js("return (await fetch('\(url)')).ok") as? Bool == true }
+        }
         await check("keys step through the slides") {
             try await press("ArrowRight")
             try await until("page 2") { try await page() == 1 }

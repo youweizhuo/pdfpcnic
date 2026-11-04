@@ -107,7 +107,40 @@ Run `npm ci && npm run build`, then serve `dist/` with any web server. Two thing
 - Files under `assets/` have content hashes in their names, so they can be cached for good.
   [`deploy/nginx.conf`](../deploy/nginx.conf) does both, and serves gzipped copies made at build time.
 
+## A deck server
+
+The same image can keep decks, to open by link from anywhere with no password. One script deploys it, using Podman or
+Docker, and checks it. It builds the image from your checkout unless you give it one with `IMAGE`, and running it
+again updates the container and keeps the decks:
+
+```sh
+deploy/deploy.sh https://slides.example.com
+```
+
+It runs one container with two ports over one folder, in a volume:
+
+| Port | Who reaches it | What it does |
+| --- | --- | --- |
+| `28613`, on `127.0.0.1` | Everyone, through your HTTPS proxy or tunnel | The site, and decks to read by their token. It can't write. |
+| `28614`, on every network | Only your private network | The upload page, with no password. It can't overwrite, rename or delete. |
+
+Point your proxy or tunnel at `127.0.0.1:28613`, and nothing at `28614`. `VIEW_PORT` and `UPLOAD_PORT` change the ports.
+
+**Keep the upload port off the internet.** It has no password, and anyone who reaches it can upload files that get public
+links on your domain. Tailscale or a home network is the idea; check your firewall, because a container's published port
+can get around one such as ufw, and a machine with a public address needs that port blocked outside it.
+
+To add a deck, open `http://<private address>:28614/` and drop the PDF with its `.pdfpc` file. Each upload is a new deck
+with its own six-character link. **Add version** stores `talk.v2.pdf` beside `talk.pdf`: the link stays the same and opens
+the highest version, with the notes of that version only, so upload them together.
+
+Anyone with a link can read that deck, notes included, so don't keep secrets here. Removing a deck is done on the server,
+as `podman exec pdfpcnic rm -r /data/decks/<token>`. To keep a copy, back up the volume `pdfpcnic-decks`. Uploads aren't
+limited in total, up to 1 GB a file, so a shared machine wants its own partition or a quota for it.
+
+Without a volume, and with port 8081 unpublished, the image is the plain site, as in the sections above.
+
 ## What the server sees
 
-Only requests for the site's own files, which nginx logs to the journal. The browser reads your PDF and notes; they
-are never sent to the server.
+For the plain site, only requests for the site's own files, which nginx logs to the journal. The browser reads your PDF
+and notes; they are never sent to the server. A deck server also keeps what's uploaded to it, and logs which decks are read.

@@ -172,6 +172,30 @@ kbd {
   color: #000;
   font-weight: 600;
 }
+.deck-link {
+  display: flex;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.deck-link input {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #3a3a3c;
+  border-radius: 10px;
+  background: var(--panel);
+  color: inherit;
+  font: inherit;
+}
+.deck-link button {
+  padding: 10px 16px;
+  border: 1px solid #3a3a3c;
+  border-radius: 10px;
+  background: var(--panel);
+  cursor: pointer;
+}
 .start-error {
   color: var(--over);
 }

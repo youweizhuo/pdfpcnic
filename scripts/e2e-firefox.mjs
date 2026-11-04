@@ -111,7 +111,7 @@ try {
       await page.keyboard.down("Shift");
       await page.keyboard.press("W");
       await page.keyboard.up("Shift");
-      await page.waitForFunction(() => /can.t make it fullscreen from here: double-click the audience window/.test(document.querySelector("#guide").textContent));
+      await page.waitForFunction(() => /Can.t go fullscreen from here: double-click the audience window/.test(document.querySelector("#guide").textContent));
       assert.equal(await page.$eval("#error", (e) => e.hidden), true);
       await page.screenshot({ path: `${out}/${build}-ask.png` });
       await audience.screenshot({ path: `${out}/${build}-audience.png` });

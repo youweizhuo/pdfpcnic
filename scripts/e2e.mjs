@@ -580,6 +580,20 @@ try {
     assert.equal(await toggle(), "Resume");
     assert.match(await text("#guide"), /^Paused: /);
     assert.equal(await page.$eval("#guide", (e) => e.classList.contains("hint")), true);
+    // The hint and the target end read as large as the buttons' labels.
+    const sizes = await page.evaluate(() => ["#guide", "#target-at", "#timer-toggle"].map((s) => getComputedStyle(document.querySelector(s)).fontSize));
+    assert.deepEqual(sizes, ["15px", "15px", "15px"]);
+    // A line too long for the column wraps, whole, and moves neither the buttons nor the clock.
+    const wrapped = await page.evaluate(() => {
+      const guide = document.querySelector("#guide");
+      const at = () => ["#timer", ".foot"].map((s) => document.querySelector(s).getBoundingClientRect().top).join();
+      const [before, height, text] = [at(), guide.offsetHeight, guide.textContent];
+      guide.textContent = "A line far too long for its column. ".repeat(6);
+      const result = { same: at() === before, taller: guide.offsetHeight > height, whole: guide.scrollHeight <= guide.clientHeight && guide.scrollWidth <= guide.clientWidth };
+      guide.textContent = text;
+      return result;
+    });
+    assert.deepEqual(wrapped, { same: true, taller: true, whole: true });
     assert.equal(await page.$eval("#timer", (e) => e.classList.contains("paused")), true);
     // The guide's line is kept while empty: the next notes over it keep their size.
     assert.equal(await notesHeight(), running);

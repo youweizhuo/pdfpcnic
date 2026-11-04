@@ -94,7 +94,7 @@ export function guideLine(s: Situation): Line | null {
   // In the way, whenever it is.
   if (s.oneScreen && !ready) return { kind: "blocked", text: `One screen only: ${EXTEND[s.system ?? "other"]}.` };
   if (a.mode === "window" && a.refused) {
-    return { kind: "blocked", text: "This browser can't make it fullscreen from here: double-click the audience window." };
+    return { kind: "blocked", text: "Can't go fullscreen from here: double-click the audience window." };
   }
   // Before the talk, as the buttons stand out: the audience first, then the clock.
   if (s.clock === "idle" || s.stale) {

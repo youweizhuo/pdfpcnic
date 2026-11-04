@@ -62,7 +62,7 @@ test("in orange, what no button fixes: one screen, by the system's keys, and a b
   assert.equal(guideLine(at({ oneScreen: true, clock: "running" })).kind, "blocked");
   assert.equal(guideLine(at({ oneScreen: true, audience: status({ mode: "fullscreen" }) })).kind, "next");
   const refused = guideLine(at({ audience: status({ remote: false, refused: true }), clock: "running" }));
-  assert.deepEqual(refused, { kind: "blocked", text: "This browser can't make it fullscreen from here: double-click the audience window." });
+  assert.deepEqual(refused, { kind: "blocked", text: "Can't go fullscreen from here: double-click the audience window." });
 });
 
 test("after a rehearsal, Reset; the audience's step first", () => {

@@ -542,7 +542,6 @@ export class Presenter {
     const p = $("guide");
     p.className = `guide ${line?.kind ?? ""}`;
     p.replaceChildren(...(line?.fact ? [el("span", "fact", `${line.fact} · `)] : []), line?.text ?? "");
-    p.title = line ? `${line.fact ? `${line.fact} · ` : ""}${line.text}` : "";
   }
 
   /** The talk bar's scale and target, as last laid out. */

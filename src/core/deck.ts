@@ -1,4 +1,4 @@
-import { splitPlan, type Plan } from "./pace.ts";
+import { hasLength, readNote, readOldNote } from "./pace.ts";
 import type { PdfpcFile, PdfpcPage } from "./pdfpc.ts";
 
 /** Where a link on a slide leads: a page of the deck, a web page, or a PDF named action (NextPage, GoBack…). */
@@ -47,10 +47,8 @@ export interface Page {
   step: number;
   hidden: boolean;
   note: string;
-  /** Planned window, from the note's first line. */
-  plan: Plan | null;
-  /** Seconds a slide off the talk's clock (a backup slide) takes, from the note's first line. */
-  length: number | null;
+  /** Planned seconds from here on, from the note's length; null for a page that goes on with the step before: a hidden one has none, and a note repeated on a slide's steps counts once. */
+  seconds: number | null;
   links: Link[];
   /** Size in PDF points, rotation applied. */
   width: number;
@@ -106,15 +104,21 @@ export function buildDeck(name: string, info: PageInfo[], meta: PdfpcFile | null
   // slide unless the page is a forced overlay of the one before.
   const pages: Page[] = [];
   const slides: number[][] = [];
+  // pdfpc lets notes embedded in the PDF win over the .pdfpc file.
+  const raw = info.map((p, i) => p.note || notes.get(i) || "");
+  const read = raw.some(hasLength) ? readNote : readOldNote;
+  let said = new Set<string>();
   let prev: string | null = null;
   for (let i = 0; i < n; i++) {
     if (slides.length === 0 || (label(i) !== prev && !forced.has(i))) {
       slides.push([]);
+      said = new Set();
       prev = label(i);
     }
     const slide = slides.length - 1;
-    // pdfpc lets notes embedded in the PDF win over the .pdfpc file.
-    const { plan, length, note } = splitPlan(info[i].note || notes.get(i) || "");
+    const { seconds, note, said: saying } = read(raw[i]);
+    const counts = seconds !== null && !hidden.has(i) && !said.has(saying);
+    if (counts) said.add(saying);
     pages.push({
       index: i,
       label: label(i),
@@ -122,8 +126,7 @@ export function buildDeck(name: string, info: PageInfo[], meta: PdfpcFile | null
       step: slides[slide].length,
       hidden: hidden.has(i),
       note,
-      plan,
-      length,
+      seconds: counts ? seconds : null,
       links: info[i].links,
       width: info[i].width,
       height: info[i].height,

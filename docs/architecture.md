@@ -37,7 +37,7 @@ void start(mac); // src/mac/main.ts
   from what the platform reports about the audience window and the screens, and where the talk stands.
 - `compare.ts` lays another `.pdfpc` file's plan beside the deck's, slide by slide, writes a run's times as one, and
   finds the words two notes don't share.
-- `pace.ts`, `timer.ts` and `keys.ts` hold the timing lines, the clock and pdfpc's keys.
+- `pace.ts`, `timer.ts` and `keys.ts` hold the notes' lengths, the clock and pdfpc's keys.
 
 ## The ports
 

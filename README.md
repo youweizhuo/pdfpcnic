@@ -83,30 +83,39 @@ its start page to paste the link in. The public website and the offline file don
 
 ## Pacing a talk
 
-Start a slide's note with its planned window, in minutes from the start of the talk:
+Start a slide's note with how long it should take:
 
 ```
-**01:22 → 01:58** · 36 s
+[36s] Good morning, everyone.
 ```
 
-pdfpcnic takes the line off the note and draws it. Under the current slide, a line fills as you spend the slide's
+pdfpcnic takes the length off the note, adds the lengths up into the talk's plan and draws them. Any tool that writes
+notes can write this, with nothing else in the `.pdfpc` file changed. Under the current slide, a line fills as you spend the slide's
 time, then turns orange as it runs over. Under the next slide, the whole talk: the time spent, where it would end at
 this pace, and a red line at the target. Orange, deeper from a minute late, means hurry; blue, more than a minute
-early, means slow down. Without these lines, the `.pdfpc` file's `duration` is split evenly over the slides.
+early, means slow down. Without lengths, the `.pdfpc` file's `duration` is split evenly over the slides.
 
-**Save run**, by the clock, saves the times you took as a `.pdfpc` file of timing lines. Drop that file on the window,
+**Save run**, by the clock, saves the times you took as a `.pdfpc` file of lengths. Drop that file on the window,
 or any `.pdfpc` file with another name than the deck's (an earlier export, say), to compare the two. The lines, and
 each thumbnail's, then show the talk run again in the other file's times: blue where a slide is shorter, orange to red
 where longer, with both times and the difference under them. The other file's notes take the next slide's notes'
 place, the changed words marked. Meanwhile the clock stands still; **End comparison**, in Save run's place, ends it.
 
 <details>
-<summary>The rules for the line</summary>
+<summary>The rules for lengths and references</summary>
 
-It has to be the note's first line, on its own. The arrow may be `->`, minutes may pass 59, and the `· 36 s` is
-optional. `**01:22**` alone plans a slide that takes no time. Reveal steps repeat their slide's line, or carry windows
-of their own. A backup slide (after `endSlide`) can say just how long it takes, `**45 s**`. Paragraphs that open with
-*ref* are references: they show in grey and the dimming skips them.
+A length has to open the note, on the first line or a line of its own; anywhere else it's just text. It's in seconds or
+minutes: `[36s]`, `[1.5min]`. A slide with no length takes no time, once any note in the file has one. A hidden slide's
+time leaves the plan. A backup slide (after `endSlide`) keeps its length, and joins the plan if the end slide moves past
+it.
+
+Reveal steps may repeat their slide's note, as Touying exports it, and it counts once. A step with a note and length of
+its own adds that time, and a step with no length goes on with the step before.
+
+From `[ref]` to the end of the note is a reference, not spoken: it shows in grey and the dimming skips it.
+
+The `**01:22 → 01:58** · 36 s` lines and `*ref*` paragraphs of 1.4 are deprecated. They still read in a file with no
+lengths at all, until 2.0.
 
 </details>
 

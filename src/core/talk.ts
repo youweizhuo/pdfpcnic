@@ -4,7 +4,7 @@
 
 import type { Deck, LinkTarget } from "./deck.ts";
 import type { TalkAction } from "./keys.ts";
-import { grade, slidePlans, type Grade, type Plan, type Slack } from "./pace.ts";
+import { grade, layOut, slideLength, type Grade, type Plan, type Slack } from "./pace.ts";
 import * as T from "./timer.ts";
 
 export interface Point {
@@ -56,7 +56,7 @@ export interface Progress {
   started: boolean;
   /** Seconds into the talk, whole, as the clock shows them. */
   at: number;
-  /** Where the plan ends: from the timing lines, else the talk's set length. 0 when there's nothing to pace. */
+  /** Where the plan ends: from the notes' lengths, else the talk's set length. 0 when there's nothing to pace. */
   planned: number;
   /** The target end: the talk's set length, else where the plan ends. */
   target: number;
@@ -80,9 +80,11 @@ export class Talk {
   review = false;
   /** Each slide's planned window, from its first step's start to its last step's end. */
   private plans: Array<Plan | null> = [];
-  /** Whether any note has a timing line. */
+  /** Each page's planned window, for a step with a length of its own. */
+  private pagePlans: Array<Plan | null> = [];
+  /** Whether any note in the talk proper has a length. */
   private timed = false;
-  /** Planned length of the talk proper in seconds, from the timing lines. */
+  /** Planned length of the talk proper in seconds, from the notes' lengths. */
   private planned = 0;
   /** Seconds spent on each planned window (or slide without one) on earlier visits. */
   private spent = new Map<string, number>();
@@ -380,16 +382,15 @@ export class Talk {
 
   /**
    * Where you are in the plan: the planned window you're in (a step with a
-   * window of its own, a forced overlay say, goes by that), or for a slide
-   * without one, a backup slide, how long it may take.
+   * length of its own, a forced overlay say, goes by that), or for a backup
+   * slide, how long it may take.
    */
   private place(now: number): { slide: number; length: number; plan: Plan | null; budget: number; key: string } {
     const s = this.state;
     const slide = this.slide;
     const length = Math.round(T.talkLength(s.timer, this.deck, now) / 1000);
-    const page = this.deck.pages[s.page];
-    const plan = slide > s.endSlide ? null : (this.timed && page.plan) || this.planOf(slide, length);
-    const budget = plan ? plan.end - plan.start : (page.length ?? 0);
+    const plan = slide > s.endSlide ? null : (this.timed && this.pagePlans[s.page]) || this.planOf(slide, length);
+    const budget = plan ? plan.end - plan.start : slideLength(this.deck.pages, this.deck.slides[slide]);
     return { slide, length, plan, budget, key: plan ? `${slide}:${plan.start}:${plan.end}` : String(slide) };
   }
 
@@ -410,15 +411,17 @@ export class Talk {
   /** Works out the plan: at the start, and again when the end slide moves. */
   private replan(): void {
     const d = this.deck;
-    this.plans = slidePlans(d.pages.map((p) => p.plan), d.slides);
-    this.timed = this.plans.some(Boolean);
+    const plan = layOut(d.pages, d.slides, this.state.endSlide);
+    this.plans = plan.slides;
+    this.pagePlans = plan.pages;
+    this.timed = plan.timed;
+    this.planned = plan.end;
+    // With lengths, the slides planned to take time; without, every slide of the talk proper.
     const main = this.plans.slice(0, this.state.endSlide + 1);
-    this.planned = Math.max(0, ...main.map((p) => p?.end ?? 0));
-    // With timing lines, the slides planned to take time; without, every slide of the talk proper.
     this.onBar = main.flatMap((p, slide) => (!this.timed || (p && p.end > p.start) ? [slide] : []));
   }
 
-  /** A slide's planned window. Without timing lines, the talk's length is split evenly over the slides. */
+  /** A slide's planned window. Without lengths, the talk's length is split evenly over the slides. */
   private planOf(slide: number, length: number): Plan | null {
     const n = this.state.endSlide + 1;
     if (slide >= n) return null;

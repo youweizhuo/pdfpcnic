@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { actionFor, isIgnored, isTalkAction, keyName } from "../src/core/keys.ts";
-import { grade, SLACK, splitPlan } from "../src/core/pace.ts";
+import { grade, SLACK, layOut, readNote, readOldNote, slideLength } from "../src/core/pace.ts";
 import { parsePdfpc } from "../src/core/pdfpc.ts";
 import * as T from "../src/core/timer.ts";
 import { at } from "./decks.mjs";
@@ -24,12 +24,41 @@ test(".pdfpc: says what's wrong with a file it can't read", () => {
   assert.throws(() => parsePdfpc('{"pdfpcFormat": 1}'), /Unsupported pdfpcFormat 1/);
 });
 
-test("timing lines: a window, a moment, a backup slide's length; or none", () => {
-  assert.deepEqual(splitPlan("**01:22 -> 61:05**\nrest"), { plan: { start: 82, end: 3665 }, length: null, note: "rest" });
-  assert.deepEqual(splitPlan("**02:00**"), { plan: { start: 120, end: 120 }, length: null, note: "" });
-  assert.deepEqual(splitPlan("**45 s**\nbackup"), { plan: null, length: 45, note: "backup" });
-  assert.equal(splitPlan("Intro **01:00**").plan, null);
-  assert.equal(splitPlan("**02:00 → 01:00**").plan, null, "a window that ends before it starts");
+test("a note's length: seconds or minutes, at its start, on its first line or its own", () => {
+  assert.deepEqual(readNote("[36s] Hello."), { seconds: 36, note: "Hello.", said: "[36s] Hello." });
+  assert.equal(readNote("[36s]\n\nHello.").note, "Hello.");
+  assert.equal(readNote("  [ 45 s ] Hello.").seconds, 45);
+  assert.equal(readNote("[1.5min]").seconds, 90);
+  assert.equal(readNote("[0s]").seconds, 0);
+  for (const text of ["See [36s] here.", "[36 sec] typo", "[36] cite", "[ref] Table 3."]) {
+    assert.deepEqual(readNote(text).seconds, null, text);
+    assert.equal(readNote(text).note, text);
+  }
+  assert.equal(readNote("[9s] Same.\n\n[ref] One.").said, readNote("[9s] Same.\n\n[ref] Two.").said, "references don't make it another note");
+});
+
+test("the plan: lengths add up through the end slide; a slide with none takes no time", () => {
+  const pages = [36, null, 20, null, 10, 45].map((seconds) => ({ seconds }));
+  const slides = [[0], [1, 2, 3], [4], [5]];
+  assert.deepEqual(layOut(pages, slides, 2), {
+    timed: true,
+    pages: [{ start: 0, end: 36 }, null, { start: 36, end: 56 }, { start: 36, end: 56 }, { start: 56, end: 66 }, null],
+    slides: [{ start: 0, end: 36 }, { start: 36, end: 56 }, { start: 56, end: 66 }, null],
+    end: 66,
+  });
+  assert.equal(layOut(pages, slides, 3).end, 111);
+  assert.equal(layOut([{ seconds: null }], [[0]], 0).timed, false);
+  assert.equal(slideLength(pages, slides[3]), 45);
+});
+
+test("deprecated: old timing lines read as lengths; a window's length only", () => {
+  assert.deepEqual(readOldNote("**01:22 -> 61:05**\nrest").seconds, 3583);
+  assert.equal(readOldNote("**01:22 -> 61:05**\nrest").note, "rest");
+  assert.equal(readOldNote("**02:00**").seconds, 0);
+  assert.equal(readOldNote("**45 s**\nbackup").seconds, 45);
+  assert.equal(readOldNote("Intro **01:00**").seconds, null);
+  assert.equal(readOldNote("**02:00 → 01:00**").seconds, null, "a window that ends before it starts");
+  assert.equal(readOldNote("Said.\n\n*ref* A.\n\n*ref* B.").note, "Said.\n\n[ref] A.\n\n[ref] B.");
 });
 
 test("pace levels: early only past the slack, late always, deeper as it gets serious", () => {

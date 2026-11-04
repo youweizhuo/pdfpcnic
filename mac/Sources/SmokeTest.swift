@@ -140,7 +140,7 @@ final class SmokeTest {
             try await until("the file") { !runs().isEmpty }
             let text = try String(contentsOf: runs()[0], encoding: .utf8)
             for url in runs() { try? FileManager.default.removeItem(at: url) }
-            guard text.contains("\"pdfpcFormat\": 2"), text.contains("→") else { throw Failure("it isn't a run's timing lines: \(text.prefix(200))") }
+            guard text.contains("\"pdfpcFormat\": 2"), text.range(of: #"\[\d+s\]"#, options: .regularExpression) != nil else { throw Failure("it isn't a run's lengths: \(text.prefix(200))") }
         }
         await check("GitHub says which release is the latest") {
             let latest = try await Updates.latest()

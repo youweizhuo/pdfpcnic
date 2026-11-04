@@ -413,12 +413,12 @@ try {
     assert.match(await text("#notes"), /各位老师好/);
   });
 
-  await check("a note's timing line becomes the pace panel", async () => {
-    // Slide 5 of the demo plans 06:30 → 08:30, of a 10 minute talk planned to 09:30.
+  await check("a note's length becomes the pace panel", async () => {
+    // Slide 5 of the demo takes 2:00, 06:30 → 08:30 when added up, of a 10 minute talk planned to 09:30.
     assert.equal(await page.$eval("#pace-slide", (e) => e.title), "This slide: planned 06:30–08:30, 2:00");
     assert.match(await page.$eval("#finish", (e) => e.title), /^Where the talk would end at this pace: .+\. Planned to end at 09:30; target 10:00\. Click \(e\) for how early or late\.$/);
     assert.match(await page.$eval("#notes > :first-child", (e) => e.textContent), /^各位老师好/);
-    // Its *ref* paragraph in grey, and under the next slide (7: 6 is hidden), how that one starts, in grey too.
+    // Its reference in grey, and under the next slide (7: 6 is hidden), how that one starts, in grey too.
     assert.deepEqual(await page.$$eval("#notes-body .ref", (refs) => refs.map((e) => [e.textContent.slice(0, 3), getComputedStyle(e).color])), [["ref", "rgb(142, 142, 147)"]]);
     assert.match(await text("#next-notes"), /^The end slide/);
     assert.equal(await page.$eval("#next-notes", (e) => getComputedStyle(e).color), "rgb(142, 142, 147)");
@@ -463,7 +463,7 @@ try {
       return { right: Math.round(t.right - f.right), above: t.bottom <= f.top };
     });
     assert.ok(above.right === 0 && above.above, `the target end isn't over where the talk would end: ${JSON.stringify(above)}`);
-    // A minute into its two: half the spoken characters dim, none of the *ref* paragraph.
+    // A minute into its two: half the spoken characters dim, none of the reference.
     await at(450);
     await settle();
     // The edge is sharp, as a typewriter's: one highlight, no shades.
@@ -741,9 +741,9 @@ try {
     assert.ok(saved, `no run file in ${readdirSync(downloads)}`);
     const run = JSON.parse(readFileSync(join(downloads, saved), "utf8"));
     assert.equal(run.endSlide, 6);
-    // Timing lines only: a window, a slide that took no time, a backup slide's length.
-    for (const p of run.pages) if (p.note) assert.match(p.note, /^\*\*(\d\d:\d\d → \d\d:\d\d\*\* · \d+ s|\d\d:\d\d\*\*|\d+ s\*\*)$/);
-    assert.ok(run.pages.some((p) => p.note?.includes("→")), "no slide took time");
+    // Lengths only.
+    for (const p of run.pages) if (p.note) assert.match(p.note, /^\[\d+s\]$/);
+    assert.ok(run.pages.some((p) => p.note), "no slide took time");
     assert.equal(await text("#guide"), "Last planned slide: backup slides follow.", "saved, the guide stops asking");
 
     await input.uploadFile(join(downloads, saved));

@@ -1,15 +1,13 @@
-// Planned times from speaker notes, and how the talk keeps to them.
+// How long each note should take, and how the talk keeps to it.
 //
-// A note may open with the times the talk should reach on its slide, as
-// TokenSlides writes them into the .pdfpc file:
+// A note may open with its length, in the speaker notes' own syntax, on the
+// note's first line or on a line of its own:
 //
-//   **01:22 → 01:58** · 36 s     the slide's window, m:ss from the start
-//   **01:22**                    a slide planned to take no time
-//   **45 s**                     a backup slide: its length, off the talk's clock
+//   [36s] Good morning, everyone.
+//   [1.5min]
 //
-// The line has to come first, on its own; `->` works for the arrow and
-// minutes may pass 59. pdfpcnic draws it in the pace panel instead of
-// showing it with the note.
+// Anywhere else it's just text. pdfpcnic draws it in the pace panel instead of
+// showing it with the note, and adds the lengths up into the talk's plan.
 
 export interface Plan {
   /** Seconds from the start of the talk. */
@@ -17,37 +15,83 @@ export interface Plan {
   end: number;
 }
 
-const HEAD = /^\*\*(\d+):([0-5]\d)(?:\s*(?:→|->)\s*(\d+):([0-5]\d))?\*\*(?:\s*·\s*\d+\s*s)?[ \t]*(?:\r?\n|$)/;
-const LENGTH = /^\*\*(\d+)\s*s\*\*[ \t]*(?:\r?\n|$)/;
+/** A note read: its length, the note without it, and what tells it from another note on the same slide. */
+export interface ReadNote {
+  seconds: number | null;
+  note: string;
+  said: string;
+}
 
-/** Takes the planned window, or a backup slide's length in seconds, off the front of a note. */
-export function splitPlan(note: string): { plan: Plan | null; length: number | null; note: string } {
+const LENGTH = /^\[\s*(\d+(?:\.\d+)?)\s*(s|min)\s*\]\s*/;
+
+/** Whether a note opens with its length. */
+export const hasLength = (note: string) => LENGTH.test(note.trimStart());
+
+/** Takes the length off the front of a note. Two notes are the same if they say the same: references don't count. */
+export function readNote(note: string): ReadNote {
   const text = note.trimStart();
-  const rest = (m: RegExpExecArray) => text.slice(m[0].length).trimStart();
-  const len = LENGTH.exec(text);
-  if (len) return { plan: null, length: Number(len[1]), note: rest(len) };
-  const m = HEAD.exec(text);
-  if (!m) return { plan: null, length: null, note };
-  const start = Number(m[1]) * 60 + Number(m[2]);
-  const end = m[3] === undefined ? start : Number(m[3]) * 60 + Number(m[4]);
-  if (end < start) return { plan: null, length: null, note };
-  return { plan: { start, end }, length: null, note: rest(m) };
+  const said = text.split("[ref]")[0].trim();
+  const m = LENGTH.exec(text);
+  if (!m) return { seconds: null, note, said };
+  return { seconds: Math.round(Number(m[1]) * (m[2] === "min" ? 60 : 1)), note: text.slice(m[0].length), said };
 }
 
-/** Each slide's planned window, from its first step's start to its last step's end; null for a slide without one. */
-export function slidePlans(plans: Array<Plan | null>, slides: number[][]): Array<Plan | null> {
-  return slides.map((pages) => {
-    const own = pages.flatMap((p) => plans[p] ?? []);
-    return own.length ? { start: Math.min(...own.map((p) => p.start)), end: Math.max(...own.map((p) => p.end)) } : null;
-  });
+// Deprecated: the timing lines of 1.4 and before, read from files with no
+// length in any note, and never written. Goes in 2.0.
+//
+//   **01:22 → 01:58** · 36 s     a window, m:ss from the start of the talk
+//   **01:22**                    a slide planned to take no time
+//   **45 s**                     a backup slide's length
+const OLD_WINDOW = /^\*\*(\d+):([0-5]\d)(?:\s*(?:→|->)\s*(\d+):([0-5]\d))?\*\*(?:\s*·\s*\d+\s*s)?[ \t]*(?:\r?\n|$)/;
+const OLD_LENGTH = /^\*\*(\d+)\s*s\*\*[ \t]*(?:\r?\n|$)/;
+
+/** Reads a note as 1.4 wrote it. Only a window's length counts; a paragraph opening with *ref* becomes a reference. */
+export function readOldNote(note: string): ReadNote {
+  const text = note.trimStart();
+  const rest = (m: RegExpExecArray) => text.slice(m[0].length).trimStart().replace(/(^|\n\s*\n)\*ref\*/g, "$1[ref]");
+  const len = OLD_LENGTH.exec(text);
+  if (len) return { seconds: Number(len[1]), note: rest(len), said: len[0] };
+  const m = OLD_WINDOW.exec(text);
+  const clock = (min: string, sec: string) => Number(min) * 60 + Number(sec);
+  const seconds = m && (m[3] === undefined ? 0 : clock(m[3], m[4]) - clock(m[1], m[2]));
+  if (!m || seconds === null || seconds < 0) return { seconds: null, note: note.replace(/(^|\n\s*\n)\*ref\*/g, "$1[ref]"), said: text };
+  return { seconds, note: rest(m), said: m[0] };
 }
 
-/** A slide's timing line, as the notes write it: its window from the start of the talk, or a backup slide's length. */
-export function timingLine(plan: Plan | null, length: number): string {
-  if (!plan) return `**${Math.round(length)} s**`;
-  const own = Math.round(plan.end - plan.start);
-  return own ? `**${mark(plan.start)} → ${mark(plan.end)}** · ${own} s` : `**${mark(plan.start)}**`;
+/** The plan: each page's window, each slide's, and where the talk proper ends. */
+export interface Layout {
+  /** Whether any page of the talk proper has a length. */
+  timed: boolean;
+  /** A page's window, from its own length or the step before it; null before the slide's first length, and past the end slide. */
+  pages: Array<Plan | null>;
+  /** A slide's window, from its first step's start to its last step's end; null past the end slide. */
+  slides: Array<Plan | null>;
+  end: number;
 }
+
+/** Adds the lengths up through the end slide. A slide with none takes no time. */
+export function layOut(pages: Array<{ seconds: number | null }>, slides: number[][], endSlide: number): Layout {
+  const out: Layout = { timed: false, pages: pages.map(() => null), slides: slides.map(() => null), end: 0 };
+  let at = 0;
+  for (let s = 0; s < slides.length && s <= endSlide; s++) {
+    const start = at;
+    let step: Plan | null = null;
+    for (const p of slides[s]) {
+      const seconds = pages[p].seconds;
+      if (seconds !== null) {
+        step = { start: at, end: (at += seconds) };
+        out.timed = true;
+      }
+      out.pages[p] = step;
+    }
+    out.slides[s] = { start, end: at };
+  }
+  out.end = at;
+  return out;
+}
+
+/** A slide's own seconds, whether or not it's in the talk proper. */
+export const slideLength = (pages: Array<{ seconds: number | null }>, own: number[]) => own.reduce((sum, p) => sum + (pages[p].seconds ?? 0), 0);
 
 /** A span of seconds: "12 s" or "1:20". */
 export function span(seconds: number): string {

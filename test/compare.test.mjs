@@ -11,10 +11,10 @@ const sec = (s) => T0 + s * 1000;
 /** Three slides, the second with two reveal steps, then a backup slide: planned for 1, 2 and 1 minutes. */
 const planned = () =>
   deck(["1", "2", "2", "3", "4"], {
-    meta: pdfpc({ 0: "**00:00 → 01:00**\n\nHello.", 1: "**01:00 → 03:00**", 2: "**01:00 → 03:00**", 3: "**03:00 → 04:00**", 4: "**45 s**" }, { endSlide: 2 }),
+    meta: pdfpc({ 0: "[60s]\n\nHello.", 1: "[120s]", 2: "[120s]", 3: "[60s]", 4: "[45s]" }, { endSlide: 2 }),
   });
 
-test("a run's times as a .pdfpc file: each slide's window as long as the run took, in the slides' order", () => {
+test("a run's times as a .pdfpc file: each slide opens with how long the run took on it", () => {
   const d = planned();
   const talk = new Talk(d, undefined, T0);
   talk.act("next", sec(0));
@@ -28,11 +28,11 @@ test("a run's times as a .pdfpc file: each slide's window as long as the run too
   assert.deepEqual(
     file.pages.map((p) => [p.label, p.overlay, p.note]),
     [
-      ["1", 0, "**00:00**"],
-      ["2", 0, "**00:00 → 01:40** · 100 s"],
-      ["2", 1, "**00:00 → 01:40** · 100 s"],
-      ["3", 0, "**01:40 → 03:20** · 100 s"],
-      ["4", 0, "**60 s**"],
+      ["1", 0, undefined],
+      ["2", 0, "[100s]"],
+      ["2", 1, undefined],
+      ["3", 0, "[100s]"],
+      ["4", 0, "[60s]"],
     ],
   );
   // Read back onto the deck, it's a plan like any other.
@@ -51,12 +51,15 @@ test("the deck's plan and another, slide by slide: windows, lengths, notes", () 
   assert.equal(ours.notes[0], "Hello.");
   // A slide moved to the backup slides is off the plan.
   assert.equal(plansOf("talk.pdfpc", d.pages, d, 1).end, 180);
-  // Without timing lines, the talk's length split evenly.
+  // A backup slide brought into the talk joins the plan with its length.
+  assert.equal(plansOf("talk.pdfpc", d.pages, d, 3).end, 285);
+  assert.deepEqual(plansOf("talk.pdfpc", d.pages, d, 3).windows[3], { start: 240, end: 285 });
+  // Without lengths, the talk's length split evenly.
   const even = deck(["1", "2"], { meta: pdfpc({}, { duration: 10 }) });
   assert.deepEqual(plansOf("x", even.pages, even, 1).lengths, [300, 300]);
   // The other file goes by the deck's slides, whatever its own say.
-  const other = otherPages(d, parsePdfpc(JSON.stringify({ pdfpcFormat: 2, pages: [{ idx: 2, note: "**01:00 → 04:00**\n\nMore." }] })));
-  assert.deepEqual(plansOf("v2.pdfpc", other, d, 2).windows[1], { start: 60, end: 240 });
+  const other = otherPages(d, parsePdfpc(JSON.stringify({ pdfpcFormat: 2, pages: [{ idx: 2, note: "[180s]\n\nMore." }] })));
+  assert.deepEqual(plansOf("v2.pdfpc", other, d, 2).windows[1], { start: 0, end: 180 });
   assert.equal(other[2].note, "More.");
 });
 

@@ -30,12 +30,39 @@ test("notes in the PDF win over the .pdfpc file's", () => {
   assert.equal(d.pages[1].note, "only pdfpc");
 });
 
-test("a note's timing line becomes the page's plan, and comes off the note", () => {
-  const d = deck(["1", "2"], { meta: pdfpc({ 0: "**01:22 → 01:58** · 36 s\nSay hello.", 1: "**45 s**\nBackup." }) });
-  assert.deepEqual(d.pages[0].plan, { start: 82, end: 118 });
+test("a note's length becomes the page's seconds, and comes off the note", () => {
+  const d = deck(["1", "2", "3"], { meta: pdfpc({ 0: "[36s] Say hello.", 1: "[45s]\n\nBackup.", 2: "See [9s] here." }) });
+  assert.equal(d.pages[0].seconds, 36);
   assert.equal(d.pages[0].note, "Say hello.");
-  assert.equal(d.pages[1].length, 45);
+  assert.equal(d.pages[1].seconds, 45);
   assert.equal(d.pages[1].note, "Backup.");
+  assert.equal(d.pages[2].seconds, null, "only at the note's start");
+  assert.equal(d.pages[2].note, "See [9s] here.");
+});
+
+test("a note repeated on a slide's steps counts once; a step with another note adds its own", () => {
+  // As Touying exports a note on a slide with reveal steps: the same text on each.
+  const d = deck(["1", "1", "1", "2", "2"], {
+    meta: pdfpc({ 0: "[20s] Same.", 1: "[20s] Same.", 2: "[20s] Same.\n\n[ref] Only here.", 3: "[10s] First.", 4: "[10s] Second." }),
+  });
+  assert.deepEqual(d.pages.map((p) => p.seconds), [20, null, null, 10, 10]);
+});
+
+test("a hidden page takes no time, even if a step after it repeats its note", () => {
+  const meta = { pages: [{ idx: 0, label: "1", note: "[20s] Same.", hidden: true }, { idx: 1, label: "1", overlay: 1, note: "[20s] Same." }, { idx: 2, label: "2", note: "[30s] Gone.", hidden: true }] };
+  assert.deepEqual(deck(["1", "1", "2"], { meta }).pages.map((p) => p.seconds), [null, 20, null]);
+});
+
+test("deprecated: a file with no lengths is read by its old timing lines", () => {
+  const d = deck(["1", "2", "2", "3", "4"], {
+    meta: pdfpc({ 0: "**00:00 → 00:36** · 36 s\n\nHello.\n\n*ref* Table 3.", 1: "**00:36 → 01:06**", 2: "**00:36 → 01:06**", 3: "**01:06**", 4: "**45 s**\nBackup." }),
+  });
+  assert.deepEqual(d.pages.map((p) => p.seconds), [36, 30, null, 0, 45]);
+  assert.equal(d.pages[0].note, "Hello.\n\n[ref] Table 3.");
+  assert.equal(d.pages[4].note, "Backup.");
+  // One length anywhere and the old lines are just text.
+  const mixed = deck(["1", "2"], { meta: pdfpc({ 0: "[9s] New.", 1: "**45 s**\nOld." }) });
+  assert.deepEqual(mixed.pages.map((p) => [p.seconds, p.note]), [[9, "New."], [null, "**45 s**\nOld."]]);
 });
 
 test("a .pdfpc entry is found by its label when its index doesn't match", () => {

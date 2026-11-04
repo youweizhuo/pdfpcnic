@@ -38,7 +38,7 @@ export class Comparison {
   readonly name: string;
   /** The other file, to compare with again once the deck's own is loaded anew. */
   readonly file: { name: string; text: string };
-  /** The other file's notes and timing lines, on the deck's pages. */
+  /** The other file's notes and lengths, on the deck's pages. */
   private pages: Page[];
   private ours!: Plans;
   private theirs!: Plans;

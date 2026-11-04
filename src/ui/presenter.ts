@@ -943,7 +943,7 @@ export class Presenter {
     this.render();
   }
 
-  /** Saves the run's times as a `.pdfpc` file of timing lines, to compare with the plan (core/compare.ts). */
+  /** Saves the run's times as a `.pdfpc` file of lengths, to compare with the plan (core/compare.ts). */
   private async saveRun(): Promise<void> {
     const t = this.talk;
     const started = t.state.timer.startedAt;

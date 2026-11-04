@@ -109,7 +109,7 @@ test("on the end slide after other slides, a run is over; looking through the sl
 
 /** Three slides planned for 1, 2 and 1 minutes. */
 const timed = () =>
-  deck(["1", "2", "3"], { meta: pdfpc({ 0: "**00:00 → 01:00**", 1: "**01:00 → 03:00**", 2: "**03:00 → 04:00**" }) });
+  deck(["1", "2", "3"], { meta: pdfpc({ 0: "[60s]", 1: "[120s]", 2: "[60s]" }) });
 
 test("pace: this slide against its window, the talk against its end", () => {
   const talk = new Talk(timed(), undefined, T0);
@@ -157,7 +157,30 @@ test("moving the end slide changes the plan and the bar", () => {
   assert.equal(talk.progress(T0, SLACK.time).planned, 180);
 });
 
-test("a talk without timing lines splits its length evenly", () => {
+test("a backup slide joins the plan when the end slide passes it, with its length", () => {
+  const d = deck(["1", "2", "3"], { meta: pdfpc({ 0: "[60s]", 1: "[60s]", 2: "[45s]" }, { endSlide: 1 }) });
+  const talk = new Talk(d, undefined, T0);
+  assert.equal(talk.progress(T0, SLACK.time).planned, 120);
+  talk.go(2);
+  talk.act("endSlide");
+  const p = talk.progress(T0, SLACK.time);
+  assert.equal(p.planned, 165);
+  assert.deepEqual(p.segments[2], { slide: 2, start: 120, end: 165 });
+});
+
+test("a hidden slide's time leaves the plan", () => {
+  const meta = { pages: [{ idx: 0, label: "1", note: "[60s]" }, { idx: 1, label: "2", note: "[60s]", hidden: true }, { idx: 2, label: "3", note: "[60s]" }] };
+  const p = new Talk(deck(["1", "2", "3"], { meta }), undefined, T0).progress(T0, SLACK.time);
+  assert.equal(p.planned, 120);
+  assert.deepEqual(p.segments, [{ slide: 0, start: 0, end: 60 }, { slide: 2, start: 60, end: 120 }]);
+});
+
+test("a talk with lengths only on its backup slides still splits its length evenly", () => {
+  const d = deck(["1", "2", "3"], { meta: pdfpc({ 2: "[45s]" }, { endSlide: 1, duration: 10 }) });
+  assert.equal(new Talk(d, undefined, T0).progress(T0, SLACK.time).planned, 600);
+});
+
+test("a talk without lengths splits its length evenly", () => {
   const talk = new Talk(deck(["1", "2", "3", "4"], { meta: { pages: [], duration: 20 } }), undefined, T0);
   const p = talk.progress(T0, SLACK.time);
   assert.equal(p.planned, 1200);

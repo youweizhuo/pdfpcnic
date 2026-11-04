@@ -1,10 +1,10 @@
 // Two plans of one talk side by side: the deck's own `.pdfpc` file and another,
 // a run's times saved at its end, say, or an earlier export. The other file
 // is read onto the deck's pages and slides, so the two line up slide by slide;
-// only its notes and timing lines count.
+// only its notes and their lengths count.
 
 import { buildDeck, type Deck, type Page } from "./deck.ts";
-import { slidePlans, timingLine, type Plan } from "./pace.ts";
+import { layOut, slideLength, type Plan } from "./pace.ts";
 import type { PdfpcFile } from "./pdfpc.ts";
 
 /** One side: each slide's window and length, and each page's note. */
@@ -16,52 +16,44 @@ export interface Plans {
   lengths: number[];
   /** Where the talk proper ends. */
   end: number;
-  /** Each page's note, without its timing line. */
+  /** Each page's note, without its length. */
   notes: string[];
 }
 
 /**
- * A side's plans, slide by slide, as the talk reads them: from the timing
- * lines; without any, the talk's length split evenly over its slides.
+ * A side's plans, slide by slide, as the talk reads them: from the notes'
+ * lengths; without any, the talk's length split evenly over its slides.
  */
 export function plansOf(name: string, pages: Page[], deck: Deck, endSlide: number, duration = deck.duration): Plans {
-  let windows = slidePlans(pages.map((p) => p.plan), deck.slides).map((w, s) => (s > endSlide ? null : w));
+  const plan = layOut(pages, deck.slides, endSlide);
   const length = duration * 60;
-  if (!windows.some(Boolean) && length) {
-    const n = endSlide + 1;
-    windows = deck.slides.map((_, s) => (s < n ? { start: (s * length) / n, end: ((s + 1) * length) / n } : null));
-  }
+  const n = endSlide + 1;
+  const windows = plan.timed ? plan.slides : deck.slides.map((_, s) => (s < n && length ? { start: (s * length) / n, end: ((s + 1) * length) / n } : null));
   const lengths = deck.slides.map((own, s) => {
     const w = windows[s];
-    return w ? w.end - w.start : s > endSlide ? Math.max(0, ...own.map((p) => pages[p].length ?? 0)) : 0;
+    return w ? w.end - w.start : s > endSlide ? slideLength(pages, own) : 0;
   });
   return { name, windows, lengths, end: Math.max(0, ...windows.map((w) => w?.end ?? 0)), notes: pages.map((p) => p.note) };
 }
 
-/** Another `.pdfpc` file's pages: its notes and timing lines, on the deck's pages. */
+/** Another `.pdfpc` file's pages: its notes and lengths, on the deck's pages. */
 export function otherPages(deck: Deck, meta: PdfpcFile): Page[] {
   const info = deck.pages.map((p) => ({ width: p.width, height: p.height, label: p.label, note: "", links: [] }));
   return buildDeck(deck.name, info, meta).pages;
 }
 
 /**
- * A run's times as a `.pdfpc` file: each slide's timing line, its window as
- * long as the run spent on it, in the order of the slides; a backup slide
- * that took time, its length. Notes are left out: they're the deck's.
+ * A run's times as a `.pdfpc` file: each slide that took time opens with how
+ * long the run spent on it, and its steps go on with that. Notes are left
+ * out: they're the deck's.
  */
 export function runFile(deck: Deck, endSlide: number, spent: number[]): string {
-  let at = 0;
-  const lines = deck.slides.map((_, s) => {
-    if (s > endSlide) return spent[s] ? timingLine(null, spent[s]) : "";
-    const plan = { start: at, end: at + spent[s] };
-    at = plan.end;
-    return timingLine(plan, 0);
-  });
   // Each page as pdfpc names it: by its label, and its place among the pages with that label.
   let overlay = 0;
   const pages = deck.pages.map((p, i) => {
     overlay = i > 0 && deck.pages[i - 1].label === p.label ? overlay + 1 : 0;
-    const note = lines[p.slide];
+    const seconds = p.step === 0 ? Math.round(spent[p.slide]) : 0;
+    const note = seconds ? `[${seconds}s]` : "";
     return JSON.stringify({ idx: i, label: p.label, overlay, ...(note ? { note } : {}) });
   });
   const head = { pdfpcFormat: 2, ...(deck.duration ? { duration: deck.duration } : {}), endSlide };

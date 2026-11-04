@@ -46,8 +46,8 @@ test("then the clock, after where the audience is, or when the talk starts, in g
     text: "Ready: press s to start the clock.",
     fact: "Audience fullscreen on DELL U2720Q",
   });
-  const scheduled = guideLine(at({ audience: fullscreen, startsAt: { time: "14:00", in: "0:12:34" } }));
-  assert.equal(scheduled.fact, "The talk starts at 14:00, in 0:12:34");
+  const scheduled = guideLine(at({ audience: fullscreen, startsAt: { time: "2:00 PM", in: "0:12:34" } }));
+  assert.equal(scheduled.fact, "The talk starts at 2:00 PM, in 0:12:34");
   // Presenting in this window: nothing to say where.
   assert.equal(guideLine(at({ audience: status({ mode: "closed" }), solo: true })).fact, undefined);
 });

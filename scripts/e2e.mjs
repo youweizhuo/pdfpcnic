@@ -493,10 +493,21 @@ try {
     // t turns the clocks to times of day: the clock now, where the talk would end a minute from now. t again, back
     // on the talk's clock.
     await press("t");
-    const day = (ms) => page.evaluate((ms) => [0, 2000].map((d) => new Date(ms - d).toTimeString().slice(0, 5)), ms);
+    const day = (ms) =>
+      page.evaluate(
+        (ms) =>
+          [0, 2000].map((d) =>
+            new Date(ms - d).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).replace(/\s/g, " "),
+          ),
+        ms,
+      );
     assert.ok((await day(Date.now())).includes(await text("#timer")), "the clock as the time of day");
     assert.ok((await day(Date.now() + 60_000)).includes(await text("#finish")), "the time of day the talk would end");
     assert.ok((await day(Date.now() - 120_000)).includes(await text("#target-at")), "the time of day of the target end");
+    assert.match(await text("#timer"), /^\d{1,2}:\d\d [AP]M$/, "a time of day says AM or PM, not to be taken for the clock");
+    // The whole row fits on its line, however wide the times.
+    const row = await page.$eval(".clock", (e) => [e.scrollWidth, e.clientWidth]);
+    assert.ok(row[0] <= row[1], `the clock's row overflows: ${row}`);
     await press("t");
     await new Promise((r) => setTimeout(r, 1500));
     assert.match(await text("#timer"), /^0:12:\d\d$/);

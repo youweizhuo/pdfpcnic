@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { SLACK } from "../src/core/pace.ts";
 import { Talk } from "../src/core/talk.ts";
+import { formatClock } from "../src/core/timer.ts";
 import { deck, pdfpc } from "./decks.mjs";
 
 const T0 = 1_000_000_000_000;
@@ -184,4 +185,13 @@ test("an old or another deck's session starts afresh", () => {
   assert.equal(new Talk(d, { ...saved, page: 2 }, T0 + 9 * 3600_000).state.page, 0);
   assert.equal(new Talk(d, { ...saved, page: 2, pdfName: "other.pdf" }, T0).state.page, 0);
   assert.equal(new Talk(d, { ...saved, page: 2 }, T0).state.page, 2);
+});
+
+test("a time of day says AM or PM, from midnight round to midnight", () => {
+  const at = (h, m) => formatClock(new Date(2026, 10, 3, h, m).getTime());
+  assert.equal(at(0, 5), "12:05 AM");
+  assert.equal(at(9, 30), "9:30 AM");
+  assert.equal(at(12, 0), "12:00 PM");
+  assert.equal(at(14, 35), "2:35 PM");
+  assert.equal(at(23, 59), "11:59 PM");
 });

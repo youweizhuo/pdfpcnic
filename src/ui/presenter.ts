@@ -501,7 +501,7 @@ export class Presenter {
     if (t.startedAt === null) {
       const until = T.untilStart(this.deck, now);
       toggle.title = until
-        ? `The talk starts at ${this.deck.startTime}, in ${T.format(until)}.`
+        ? `The talk starts at ${T.formatClock(now + until)}, in ${T.format(until)}.`
         : `Starts the clock. It also starts ${this.talk.state.page === 0 ? "when you leave slide 1" : "at your next move"}.`;
     } else toggle.title = "";
     const comparing = !!this.comparison;
@@ -533,7 +533,7 @@ export class Presenter {
       system: this.platform.window.system,
       clock: s.timer.startedAt === null ? "idle" : s.timer.pausedAt === null ? "running" : "paused",
       stale: this.talk.stale,
-      startsAt: until ? { time: this.deck.startTime!, in: T.format(until) } : null,
+      startsAt: until ? { time: T.formatClock(now + until), in: T.format(until) } : null,
       laser: s.laser,
       lastPlanned: this.talk.slide === s.endSlide && s.endSlide < this.deck.slides.length - 1,
       finished: this.talk.finished && this.savedRun !== s.timer.startedAt,

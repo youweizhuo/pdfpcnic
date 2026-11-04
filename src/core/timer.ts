@@ -73,8 +73,9 @@ export function formatShort(ms: number): string {
   return Math.abs(ms) < 3_600_000 ? format(ms).slice(2).replace(/^0(?=\d)/, "") : format(ms);
 }
 
-/** Time of day, "HH:MM". */
+/** Time of day, "2:35 PM": the AM or PM says it isn't the talk's clock. */
 export function formatClock(now: number): string {
   const d = new Date(now);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const h = d.getHours();
+  return `${h % 12 || 12}:${String(d.getMinutes()).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
 }

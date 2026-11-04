@@ -233,15 +233,16 @@ kbd {
 .slidebar.none {
   visibility: hidden;
 }
+/* Quiet while on time, so its late colors are what catches the eye. */
 .slidebar-track {
   height: var(--time-line);
-  background: #3a3a3c;
+  background: var(--line);
 }
 .slide-fill {
   height: 100%;
   transform: scaleX(0);
   transform-origin: left;
-  background: #d1d1d6;
+  background: var(--dim);
 }
 .slide-fill.t-late {
   background: var(--late);

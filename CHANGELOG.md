@@ -1,7 +1,25 @@
 # Changelog
 
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
-fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
+fields read and the notes' length tags are the interface. Each release attaches the offline file, `pdfpcnic.html`.
+
+## 1.5.0 (2026-11-04)
+
+### Changed
+
+- **A note opens with its length,** `[36s]` or `[1.5min]`, in the speaker notes' own syntax, in place of a window of clock
+  times. The `.pdfpc` format stays as it is, so anything that writes notes can write this. Save run writes it too.
+- **References are `[ref]`,** from there to the end of the note, in place of `*ref*` paragraphs.
+
+### Fixed
+
+- **A hidden slide's time leaves the plan,** where it used to keep its place on the talk bar.
+- **A backup slide joins the plan with its length when the end slide moves past it.**
+
+### Deprecated
+
+- **The timing lines of 1.4,** `**01:22 → 01:58** · 36 s`, and `*ref*` paragraphs. Files with no lengths at all still read
+  them, as lengths, so a gap between windows closes up. They go in 2.0.
 
 ## 1.4.0 (2026-11-04)
 

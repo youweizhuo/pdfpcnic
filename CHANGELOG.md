@@ -3,6 +3,31 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the timing-line format are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.3.2 (2026-11-03)
+
+### Added
+
+- **The display stays on while a deck is open**, in the Mac app and the browser, as long as the presenter or the
+  audience window is showing. A browser needs to be recent and the page to be on HTTPS or the offline file; Safari's
+  engine waits for your first key press or click after the deck opens.
+
+### Changed
+
+- **The help is back to groups and tables**: Move, Audience and Presenter, a row for each key, with what nothing on
+  screen shows highlighted. It's wider, and still fits its window at 1440×900.
+- **Times of day say AM or PM**, so they aren't taken for the clock: the clocks under `t`, and the talk's set start
+  time.
+- **The line over the buttons and the target end's time are as large as the buttons' labels.**
+- **The line over the buttons wraps** rather than cutting off what's too long for the column. It takes the room from
+  the next slide's notes; the buttons and the clock stay where they are.
+- **The line under the current slide is quieter while on time**; its late colors stand out against it.
+- **Every change is checked in WebKit**, Safari's engine, as well as Chrome and Firefox.
+
+### Fixed
+
+- **Help and demo notes that had gone out of date**: the slide's line doesn't say by how much it's over, and the demo
+  no longer mentions a slide counter or bars on the right.
+
 ## 1.3.1 (2026-10-28)
 
 ### Changed

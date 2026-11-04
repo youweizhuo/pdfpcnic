@@ -10,9 +10,9 @@
     { "idx": 3, "label": "3", "overlay": 1, "note": "**03:30 → 04:10** · 40 s\n\nStep two of three. Steps can have windows of their own." },
     { "idx": 4, "label": "3", "overlay": 2, "note": "**04:10 → 05:00** · 50 s\n\nLast step. Going back from the next slide jumps to the first step." },
     { "idx": 5, "label": "4", "overlay": 0, "note": "**05:00 → 06:30** · 90 s\n\nPress `l` for the laser, and again to turn it off (`2` and `1` work too, as in pdfpc).\n\n`+` and `-` resize the laser while it is on." },
-    { "idx": 6, "label": "5", "overlay": 0, "note": "**06:30 → 08:30** · 120 s\n\n各位老师好，这一页的备注是中文。备注字号可以用 `+` 和 `-` 调整，`[` 和 `]` 调整当前幻灯片的大小。\n\n*ref* A note's first line, like `**06:30 → 08:30** · 120 s`, is this slide's planned window. It's drawn as the bars on the right instead of shown here." },
+    { "idx": 6, "label": "5", "overlay": 0, "note": "**06:30 → 08:30** · 120 s\n\n各位老师好，这一页的备注是中文。备注字号可以用 `+` 和 `-` 调整，`[` 和 `]` 调整当前幻灯片的大小。\n\n*ref* A note's first line, like `**06:30 → 08:30** · 120 s`, is this slide's planned window. It's drawn as the lines under the slides instead of shown here." },
     { "idx": 7, "label": "6", "overlay": 0, "hidden": true, "note": "You only see this slide through the overview, the thumbnails or `g`." },
-    { "idx": 8, "label": "7", "overlay": 0, "note": "**08:30 → 09:30** · 60 s\n\nThe end slide. The counter shows progress up to here." },
+    { "idx": 8, "label": "7", "overlay": 0, "note": "**08:30 → 09:30** · 60 s\n\nThe end slide: the talk is planned to end here, and backup slides follow." },
     { "idx": 9, "label": "8", "overlay": 0, "note": "**30 s**\n\nBackup material, after the end slide. Its line runs against its own 30 s; the talk's clock keeps going, so early/late counts the detour." }
   ]
 }

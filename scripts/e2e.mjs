@@ -730,21 +730,21 @@ try {
 
     // Another export of the notes: the words each note doesn't share, marked.
     const v2 = JSON.parse(readFileSync("demo/demo.pdfpc", "utf8"));
-    v2.pages[8].note = v2.pages[8].note.replace("The counter shows", "The clock shows");
+    v2.pages[8].note = v2.pages[8].note.replace("is planned to end", "is due to end");
     writeFileSync(`${out}/demo-v2.pdfpc`, JSON.stringify(v2));
     await input.uploadFile(`${out}/demo-v2.pdfpc`);
     await textMatches("#guide", /^Comparing with demo-v2\.pdfpc\.$/);
-    await textMatches("#next-notes", /The clock shows/);
+    await textMatches("#next-notes", /is due to end/);
     const marked = () =>
       page.evaluate(() => ["removed", "added"].map((name) => [...(CSS.highlights.get(name) ?? [])].map((r) => r.toString())));
-    assert.deepEqual(await marked(), [["counter"], ["clock"]]);
+    assert.deepEqual(await marked(), [["planned"], ["due"]]);
     assert.equal(await text("#compare-slide"), "1:00 1:00 same");
     await page.screenshot({ path: `${out}/compare-notes.png` });
 
     // A new export of the deck's own file keeps the comparison; Esc doesn't end it, End comparison does.
     await input.uploadFile(resolve("demo/demo.pdfpc"));
     await textMatches("#guide", /^Comparing with demo-v2\.pdfpc\.$/);
-    assert.deepEqual(await marked(), [["counter"], ["clock"]]);
+    assert.deepEqual(await marked(), [["planned"], ["due"]]);
     await press("Escape");
     assert.notEqual(await page.$("#presenter.comparing"), null, "Esc ended the comparison");
     await page.click("#save-run");

@@ -680,7 +680,8 @@ kbd {
 }
 /* The guide's line over the buttons, as plain as they are, colored by what it says (core/guide.ts): yellow, the next
    thing to do, as the outlined button; orange, something in the way; purple, a hint; grey, a fact. Kept while empty,
-   so the next notes over it keep their size. */
+   so the next notes over it keep their size; too long for the column, it wraps, up into the notes' room, moving
+   nothing else. */
 .guide {
   min-height: 1.4em;
   margin: 8px 0 0;
@@ -925,62 +926,63 @@ kbd {
 }
 .help-card {
   box-sizing: border-box;
-  width: min(1180px, 100%);
-  max-height: 90dvh;
-  padding: 24px 28px;
+  width: min(1360px, 100%);
+  max-height: calc(100dvh - 48px);
+  padding: 20px 28px;
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--panel);
 }
 .help-card h2 {
-  margin: 0 0 16px;
+  margin: 0 0 10px;
   font-weight: 500;
 }
-/* What nothing on screen shows, keys and the mouse: first, and larger. */
-/* A line of keys under each heading; what nothing on screen shows highlighted. */
-.help-rest {
+/* A table of keys for each group; what nothing on screen shows highlighted, as the mouse's in plain type. */
+.help-grid {
   display: grid;
-  gap: 12px;
-  margin: 0 0 24px;
+  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+  gap: 16px 32px;
+  margin: 0 0 16px;
 }
-.help-rest section {
-  display: grid;
-  grid-template-columns: 10em 1fr;
-  align-items: baseline;
-  gap: 14px;
-}
-.help-rest p {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 20px;
-  margin: 0;
-  color: var(--dim);
-  font-size: 14px;
-}
-.help-rest h3,
+.help-grid h3,
 .legend h3 {
-  margin: 0;
+  margin: 0 0 8px;
   color: var(--accent);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.help-rest kbd {
-  margin-right: 4px;
-  font-size: 12px;
+.help-grid table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.3;
+}
+.help-grid td {
+  padding: 3px 0;
+  border-top: 1px solid var(--line);
+  color: var(--dim);
+  vertical-align: baseline;
+}
+.help-grid td:first-child {
+  padding-right: 14px;
+  color: var(--fg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.help-grid tr:is(.key, .mouse) td {
   color: var(--fg);
 }
-.help-rest .highlight {
-  color: var(--fg);
-}
-.help-rest .highlight :is(kbd, b) {
+.help-grid tr:is(.key, .mouse) td:first-child {
   color: var(--accent);
   font-weight: 600;
 }
-.legend h3 {
-  margin-bottom: 10px;
+.help-grid tr.mouse td:first-child {
+  font-family: inherit;
+  font-size: inherit;
 }
 /* Two columns, each entry kept whole; the bar keeps its colors with it. */
 .legend dl {
@@ -1037,7 +1039,7 @@ kbd {
   background: var(--ahead);
 }
 .help-foot {
-  margin: 18px 0 0;
+  margin: 12px 0 0;
   color: var(--dim);
   font-size: 13px;
 }

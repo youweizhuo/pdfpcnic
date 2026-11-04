@@ -132,7 +132,7 @@ export function actionFor(e: KeyPress): Action | null {
 }
 
 /**
- * The help: the keys, and what the mouse does. Highlighted, as a key or a
+ * The help: a table of keys for each group, and what the mouse does. Highlighted, as a key or a
  * mouse move: what nothing on screen shows, so what people open the help for.
  */
 export const HELP: Array<[string, Array<[string, string, highlight?: "key" | "mouse"]>]> = [
@@ -140,49 +140,44 @@ export const HELP: Array<[string, Array<[string, string, highlight?: "key" | "mo
     "Move",
     [
       ["→ ↓ PgDn Space Enter", "next step"],
-      ["← ↑ PgUp Backspace", "previous (skips back over reveal steps)"],
+      ["← ↑ PgUp Backspace", "previous (skips reveal steps)"],
       ["Home / End", "first / last slide"],
-      ["Shift+PgDn / PgUp", "next / previous slide, past reveal steps"],
-      ["g", "go to a slide by its number"],
-      ["Mouse to the right edge", "the thumbnails: rest on one to see it in the next slide's place, click to jump", "mouse"],
-      ["Shift+Backspace / Space", "back / forward after a jump"],
+      ["Shift+PgDn / PgUp", "next / previous whole slide"],
       ["Shift+→ / ←", "10 slides forward / back"],
-      ["Shift+N / Shift+P", "next / previous, including hidden"],
+      ["Shift+N / Shift+P", "next / previous, even hidden"],
+      ["Shift+Backspace / Space", "back / forward after a jump"],
+      ["g", "go to a slide by its number"],
+      ["Tab", "overview"],
       ["m / Shift+M", "bookmark / back to it"],
-      ["Ctrl+E", "mark this slide as the end"],
+      ["Mouse to the right edge", "the thumbnails: rest on one to see it large, click to jump", "mouse"],
     ],
   ],
   [
-    "Show",
+    "Audience",
     [
       ["o", "open the audience window"],
       ["Shift+W", "audience fullscreen (or present here)"],
-      ["w", "presenter fullscreen"],
-      ["b / f", "black screen / freeze"],
-      ["l", "laser pointer on / off (or 2 / 1, as in pdfpc)"],
+      ["b", "black screen"],
+      ["f", "freeze"],
+      ["l", "laser on / off (or 2 / 1, as in pdfpc)"],
       ["Esc", "one step back: closes help and overview, ends black, freeze and laser, then leaves presenter fullscreen", "key"],
-      ["Tab", "overview"],
     ],
   ],
   [
-    "Clock",
+    "Presenter",
     [
       ["s / p", "start / pause the clock"],
       ["Shift+R or Ctrl+T", "reset the clock (pause it first)"],
+      ["Ctrl+E", "mark this slide as the end"],
       ["t", "the clocks as times of day, or back", "key"],
-      ["e", "where the talk would end, or how early or late (or click it)", "key"],
-    ],
-  ],
-  [
-    "Layout",
-    [
-      ["+ / −", "notes text size; the laser dot's while the laser is on", "key"],
-      ["[ / ]", "slides smaller / bigger, for more room for notes", "key"],
-      ["0", "the layout as at first: equal columns, the slides full size", "key"],
-      ["Drag a divider", "resize the columns, or the slides against the notes", "mouse"],
-      ["Drop a .pdfpc file", "its notes and timing, any time; with another name than the deck's, compared with it", "mouse"],
-      [",", "settings"],
-      ["?", "this help"],
+      ["e", "where the talk would end, or how early or late", "key"],
+      ["+ / −", "notes size; the laser dot's when on", "key"],
+      ["[ / ]", "slides smaller / bigger", "key"],
+      ["0", "columns and slides as at first", "key"],
+      ["Drag a divider", "resize columns, or slides and notes", "mouse"],
+      ["Drop a .pdfpc file", "its notes and timing; with another name than the deck's, compared with it", "mouse"],
+      ["w", "presenter fullscreen"],
+      [", / ?", "settings / this help"],
     ],
   ],
 ];

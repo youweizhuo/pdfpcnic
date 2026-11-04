@@ -221,15 +221,15 @@ export async function start(platform: Platform): Promise<void> {
     (__BUILD__ === "site" ? ` · <a href="./licenses.txt" target="_blank">licenses</a>` : "");
 
   for (const [title, rows] of HELP) {
-    const section = el("section");
-    const line = el("p");
+    const table = el("table");
     for (const [keys, what, highlight] of rows) {
-      const span = el("span", highlight ? "highlight" : "", ` ${what}`);
-      span.prepend(el(highlight === "mouse" ? "b" : "kbd", "", keys));
-      line.append(span);
+      const row = el("tr", highlight ?? "");
+      row.append(el("td", "", keys), el("td", "", what));
+      table.append(row);
     }
-    section.append(el("h3", "", title), line);
-    $("help-rest").append(section);
+    const section = el("section");
+    section.append(el("h3", "", title), table);
+    $("help-grid").append(section);
   }
 
   const input = $<HTMLInputElement>("files");

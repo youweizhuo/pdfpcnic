@@ -858,6 +858,16 @@ try {
     await press("?");
     assert.equal(await page.$eval("#help", (e) => e.hidden), false);
     await page.screenshot({ path: `${out}/help.png` });
+    const help = await page.evaluate(() => ({
+      groups: [...document.querySelectorAll("#help-grid h3")].map((h) => h.textContent),
+      rows: document.querySelectorAll("#help-grid tr").length,
+      lit: [...document.querySelectorAll("#help-grid tr:is(.key, .mouse) td:first-child")].map((td) => td.textContent),
+      fits: document.querySelector(".help-card").scrollHeight <= document.querySelector(".help-card").clientHeight,
+    }));
+    assert.deepEqual(help.groups, ["Move", "Audience", "Presenter"]);
+    assert.ok(help.rows > 25, `only ${help.rows} rows`);
+    assert.ok(help.lit.includes("Esc") && help.lit.includes("Drag a divider"), `highlighted: ${help.lit}`);
+    assert.ok(help.fits, "the help doesn't fit its window");
     await press("Escape");
     assert.equal(await page.$eval("#help", (e) => e.hidden), true);
   });

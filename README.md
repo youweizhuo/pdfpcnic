@@ -57,7 +57,7 @@ edge; rest on one to see it large in the next slide's place.
 The usual presentation remotes need no setup: next and back send Page Down and Page Up or the arrows, and a black button
 sends `.`. A start button that sends F5 and Esc in turn does nothing on F5, as in pdfpc, rather than reload the page;
 Esc steps back as it does on the keyboard, so it can end a black screen or the presenter's fullscreen, never the
-audience's.
+audience's on a projector. With one screen, where the audience covers the presenter, Esc ends its fullscreen too.
 
 ## Mac app
 

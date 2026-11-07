@@ -202,8 +202,10 @@ export class Presenter {
    * Esc steps back one thing at a time, the same in the browser and the app:
    * what's open over the slides (the help, the overview, presenting in this
    * window), then what the audience sees instead of the slide (black, freeze,
-   * the laser: the talk ends those), then the presenter's fullscreen. Never the
-   * audience's: the room's screen changes only with Shift+W, or a double-click on it.
+   * the laser: the talk ends those), then the audience's fullscreen on one
+   * screen, where it covers the presenter, then the presenter's. With a
+   * projector, never the audience's: the room's screen changes only with
+   * Shift+W, or a double-click on it.
    */
   private escape(): boolean {
     const v = this.view;
@@ -213,8 +215,10 @@ export class Presenter {
       this.render();
     } else if (v.overview) this.setOverview(false);
     else if (v.solo) this.setSolo(false);
-    else if (s.black || s.frozen !== null || s.laser || !this.platform.window.fullscreen) return false;
-    else this.platform.window.setFullscreen(false).catch(reportError);
+    else if (s.black || s.frozen !== null || s.laser) return false;
+    else if (this.audience.status.mode === "fullscreen" && this.platform.window.extended === false) this.audience.toggleFullscreen();
+    else if (this.platform.window.fullscreen) this.platform.window.setFullscreen(false).catch(reportError);
+    else return false;
     return true;
   }
 

@@ -334,6 +334,25 @@ try {
     await page.bringToFront();
   });
 
+  await check("On one screen, Esc ends the audience's fullscreen too, the laser first", async () => {
+    const full = (on) => audience.waitForFunction((on) => !!document.fullscreenElement === on, { timeout: 3000 }, on);
+    await page.evaluate(() => Object.defineProperty(screen, "isExtended", { get: () => false, configurable: true }));
+    try {
+      await press("Shift+W");
+      await full(true);
+      await press("l");
+      await audience.bringToFront();
+      await audience.keyboard.press("Escape");
+      await page.waitForFunction(() => !window.pdfpcnic.state.laser, { timeout: 3000 });
+      assert.equal(await audience.evaluate(() => !!document.fullscreenElement), true, "the first Esc left fullscreen");
+      await audience.keyboard.press("Escape");
+      await full(false);
+    } finally {
+      await page.evaluate(() => delete screen.isExtended);
+      await page.bringToFront();
+    }
+  });
+
   await check("freeze holds the audience on its slide", async () => {
     await press("f", "ArrowRight");
     const s = await state();

@@ -89,7 +89,7 @@ Gatekeeper doesn't stop the new version. With one download for both halves, the 
 `mac/build.sh` builds it on a Mac, for Apple silicon and Intel, signed to run but not with an Apple Developer ID. CI
 builds it on every change and runs its smoke test (`pdfpcnic --smoke-test`): the deck opens with the audience window
 behind the presenter, both windows draw it, both go fullscreen, `Esc` steps back without touching the audience's
-fullscreen, the zip installs over an app, and a reload resumes.
+fullscreen (with one screen, it ends it), the zip installs over an app, and a reload resumes.
 
 ## Adding a platform
 

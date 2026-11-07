@@ -2,7 +2,9 @@ import AppKit
 
 /// The audience's window: frameless, one slide, drawn by Quartz. Shift+W
 /// puts it fullscreen on the projector, as Présentation.app does: its view
-/// takes over that screen at once, with no animation and no new Space.
+/// takes over that screen at once, with no animation and no new Space. With
+/// one screen, it goes fullscreen as the green button does, in a Space of its
+/// own: Cmd+Tab, Mission Control and a swipe lead back to the presenter.
 @MainActor
 final class Audience: NSObject, NSWindowDelegate {
     /// Tells the page: the window's status, and keys, clicks and links in it.
@@ -25,11 +27,13 @@ final class Audience: NSObject, NSWindowDelegate {
         }
     }
 
-    private var isFullscreen: Bool { view.isInFullScreenMode }
+    /// In a Space of its own, as with one screen.
+    private var inSpace: Bool { window?.styleMask.contains(.fullScreen) == true }
+    var isFullscreen: Bool { view.isInFullScreenMode || inSpace }
 
     /// What the page's guide reads (core/guide.ts's AudienceStatus). The app can always place it: `remote`.
     var status: [String: Any] {
-        let screen = window == nil ? nil : isFullscreen ? fullscreenOn : destination()
+        let screen = window == nil ? nil : isFullscreen ? fullscreenOn ?? window?.screen : destination()
         return [
             "mode": window == nil ? "closed" : isFullscreen ? "fullscreen" : "window",
             "screen": screen.map { $0.localizedName as Any } ?? NSNull(),
@@ -88,6 +92,10 @@ final class Audience: NSObject, NSWindowDelegate {
 
     func toggleFullscreen() {
         guard let window else { return }
+        if inSpace || (!isFullscreen && NSScreen.screens.count == 1) {
+            window.collectionBehavior.insert(.fullScreenPrimary)
+            return window.toggleFullScreen(nil)
+        }
         if isFullscreen {
             view.exitFullScreenMode(options: nil)
             // Out of fullscreen, it stays on the screen it was on, not behind the presenter.
@@ -110,6 +118,18 @@ final class Audience: NSObject, NSWindowDelegate {
         // As in Présentation.app, keys go on to the presenter's window. Pressed
         // in the audience window, they reach the talk too.
         presenter()?.makeKeyAndOrderFront(nil)
+        view.redraw()
+        changed()
+    }
+
+    // In its own Space, keys go to it, and on from there to the talk.
+    func windowDidEnterFullScreen(_ notification: Notification) {
+        window?.makeFirstResponder(view)
+        view.redraw()
+        changed()
+    }
+
+    func windowDidExitFullScreen(_ notification: Notification) {
         view.redraw()
         changed()
     }

@@ -169,7 +169,7 @@ export const HELP: Array<[string, Array<[string, string, highlight?: "key" | "mo
       ["b or .", "black screen"],
       ["f", "freeze"],
       ["l", "laser on / off (or 2 / 1, as in pdfpc)"],
-      ["Esc", "one step back: closes help and overview, ends black, freeze and laser, then leaves presenter fullscreen", "key"],
+      ["Esc", "one step back: closes help and overview, ends black, freeze and laser, then leaves fullscreen (the audience's only on one screen)", "key"],
     ],
   ],
   [

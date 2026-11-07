@@ -3,6 +3,15 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the notes' length tags are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## Unreleased
+
+### Fixed
+
+- **One screen: a way out of the audience's fullscreen.** Esc ends it there, after black, freeze and the laser, in the
+  browser and the Mac app. With a projector, Esc still never touches the room's screen. In the Mac app on one screen,
+  the audience goes fullscreen as the green button does, in a Space of its own, so Cmd+Tab, Mission Control and a swipe
+  lead back to the presenter.
+
 ## 1.5.0 (2026-11-04)
 
 ### Changed

@@ -86,7 +86,7 @@ final class SmokeTest {
         }
         await check("Shift+W makes the audience fullscreen, and the presenter knows") {
             try await press("W", shift: true)
-            try await until("fullscreen") { app.audience.view.isInFullScreenMode }
+            try await until("fullscreen") { app.audience.isFullscreen }
             try await until("its button lit") {
                 try await js("return document.querySelector('#audience-button.on') !== null") as? Bool == true
             }
@@ -109,7 +109,10 @@ final class SmokeTest {
             try await press("w")
             try await until("windowed") { !app.presenter.fullscreen }
         }
-        await check("Esc steps back, the laser first, then the presenter's fullscreen; never the audience's") {
+        let oneScreen = NSScreen.screens.count == 1
+        await check(oneScreen
+            ? "One screen: Esc steps back, the laser first, then the audience's fullscreen, then the presenter's"
+            : "Esc steps back, the laser first, then the presenter's fullscreen; never the audience's") {
             func laser() async throws -> Bool { try await js("return window.pdfpcnic.state.laser") as? Bool ?? false }
             try await press("w")
             try await press("l")
@@ -119,12 +122,17 @@ final class SmokeTest {
             }
             try await press("Escape")
             try await until("the laser off") { try await laser() == false }
-            guard app.presenter.fullscreen else { throw Failure("the first Esc left fullscreen") }
+            guard app.presenter.fullscreen, app.audience.isFullscreen else { throw Failure("the first Esc left fullscreen") }
+            if oneScreen {
+                try await press("Escape")
+                try await until("the audience windowed") { !app.audience.isFullscreen }
+                guard app.presenter.fullscreen else { throw Failure("Esc left both fullscreens at once") }
+            }
             try await press("Escape")
             try await until("windowed") { !app.presenter.fullscreen }
             try await press("Escape")
             try await Task.sleep(nanoseconds: 300_000_000)
-            guard app.audience.view.isInFullScreenMode else { throw Failure("Esc took the audience out of fullscreen") }
+            if !oneScreen, !app.audience.isFullscreen { throw Failure("Esc took the audience out of fullscreen") }
         }
         await check("Save run saves the run's times beside the PDF") {
             let folder = files[0].deletingLastPathComponent()

@@ -20,6 +20,9 @@ final class SlideView: NSView {
     private var dragged = false
     private var tracking: NSTrackingArea?
 
+    /// Fullscreen on the projector, or in a Space of its own.
+    private var fullscreen: Bool { isInFullScreenMode || window?.styleMask.contains(.fullScreen) == true }
+
     override var acceptsFirstResponder: Bool { true }
     override var isOpaque: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -57,7 +60,7 @@ final class SlideView: NSView {
             PageBox(cgPage).draw(cgPage, in: rect, of: ctx)
             if let laser { drawLaser(at: laser, in: rect, ctx) }
         }
-        if Date() < hintUntil, !isInFullScreenMode { drawHint() }
+        if Date() < hintUntil, !fullscreen { drawHint() }
     }
 
     /// The page's laser: a red dot with a soft glow (as `.laser-dot` in the page's CSS).
@@ -108,7 +111,7 @@ final class SlideView: NSView {
 
     /// Dragged, the frameless window moves.
     override func mouseDragged(with event: NSEvent) {
-        guard !dragged, !isInFullScreenMode, let mouseDown else { return }
+        guard !dragged, !fullscreen, let mouseDown else { return }
         dragged = true
         window?.performDrag(with: mouseDown)
     }

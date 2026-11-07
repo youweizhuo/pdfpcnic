@@ -3,7 +3,7 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the notes' length tags are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
-## Unreleased
+## 1.5.1 (2026-11-06)
 
 ### Fixed
 

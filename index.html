@@ -9,20 +9,23 @@
     <title>pdfpcnic</title>
     <meta name="description" content="A pdfpc-style presenter for PDF slides, in the browser: notes, the next slide, pace and an audience window. Also one HTML file that works offline." />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="pdfpcnic: present PDF slides from the browser" />
+    <meta property="og:title" content="pdfpcnic (“PDF picnic”): present PDF slides from the browser" />
     <meta property="og:description" content="A pdfpc-style presenter view: notes, the next slide, pace and an audience window. Nothing to install, nothing uploaded." />
     <meta property="og:image" content="https://youweizhuo.github.io/pdfpcnic/og.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='6' width='28' height='18' rx='3' fill='%23111' stroke='%23ffd60a' stroke-width='2'/%3E%3Ccircle cx='21' cy='15' r='3' fill='%23ff453a'/%3E%3C/svg%3E" />
     <!-- pdfpcnic, MIT. Includes PDF.js (Apache-2.0), marked (MIT) and DOMPurify (Apache-2.0 or MPL-2.0). -->
-    <script type="module" crossorigin src="./assets/index-CiLyiTVk.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DL2dK7wy.css">
+    <script type="module" crossorigin src="./assets/index-DsuHP71R.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-YmOzTDop.css">
   </head>
   <body>
     <section id="start" class="start">
       <div class="start-inner">
-        <h1 class="wordmark">pdfpcnic</h1>
-        <p class="tagline">Present PDF slides with a pdfpc-style presenter view, in the browser.</p>
+        <h1 class="wordmark">pdfpcnic <span id="version" class="version"></span></h1>
+        <p class="say">pronounced “PDF picnic”</p>
+        <!-- The Mac app's word that a newer version installed itself. -->
+        <p id="update" class="say update" hidden></p>
+        <p id="tagline" class="tagline">Present PDF slides with a pdfpc-style presenter view, in the browser.</p>
 
         <label id="drop" class="drop">
           <input id="files" type="file" accept=".pdf,.pdfpc,.json,application/pdf" multiple />
@@ -30,7 +33,18 @@
           <span class="drop-sub">or <span class="link">choose files</span>. The <code>.pdfpc</code> file is optional; it brings notes, timing and reveal steps.</span>
         </label>
 
-        <div class="start-actions">
+        <!-- The deck read from the files: Present opens the presenter and, in the same click, the audience window. -->
+        <div id="ready" class="ready" hidden>
+          <span id="ready-name" class="drop-title"></span>
+          <span id="ready-info" class="drop-sub"></span>
+          <div class="start-actions">
+            <button id="present" class="primary" type="button">Present <kbd>Enter</kbd></button>
+            <button id="choose-other" type="button">Choose other files</button>
+          </div>
+          <span class="drop-sub">Opens the presenter here and the audience window for the projector.</span>
+        </div>
+
+        <div id="actions" class="start-actions">
           <button id="resume" class="primary" type="button" hidden></button>
           <button id="forget" type="button" title="Remove the kept deck from this browser, as when leaving a shared computer" hidden>Forget it</button>
           <button id="demo" type="button">Try the demo deck</button>
@@ -39,9 +53,9 @@
         <p id="start-error" class="start-error" hidden></p>
 
         <footer class="start-foot">
-          <span>Files stay on this computer; nothing is uploaded.</span>
+          <span id="private">Your slides open in this browser; they aren't sent anywhere.</span>
           <span id="offline-note"></span>
-          <span id="version"></span>
+          <span id="links"></span>
         </footer>
       </div>
     </section>
@@ -49,55 +63,67 @@
     <main id="presenter" class="presenter" hidden>
       <div id="current"></div>
       <div id="audience-state" class="audience-state" hidden><strong></strong><span></span></div>
-      <!-- This slide's planned time, filling as you spend it; words only once seriously over. -->
+      <!-- This slide's planned time, filling as you spend it. -->
       <div id="pace-slide" class="slidebar">
         <div class="slidebar-track"><div id="slide-fill" class="slide-fill"></div></div>
-        <span id="pace-slide-text" class="slidebar-text"></span>
       </div>
+      <!-- What the audience sees, under the slide it shows. -->
+      <nav class="toolbar slide-tools">
+        <!-- Comparing two plans: this slide's time in each, and the difference. -->
+        <span id="compare-slide" class="compare-times"></span>
+        <button type="button" data-action="blank">Black <kbd>b</kbd></button>
+        <button type="button" data-action="freeze">Freeze <kbd>f</kbd></button>
+        <button type="button" data-action="laserMode">Laser <kbd>l</kbd></button>
+      </nav>
       <div id="split" class="split" role="separator" aria-orientation="vertical" title="Drag to resize the columns"></div>
       <div id="stage-split" class="hsplit" role="separator" aria-orientation="horizontal" title="Drag to trade slide size for notes"></div>
       <article id="notes" class="notes"><div id="notes-body" class="notes-body"></div></article>
 
       <aside class="side">
         <div id="next"></div>
-        <section class="time">
-          <div class="clock">
-            <button id="timer" class="timer idle" type="button" title="Click to pause or resume (p)">0:00:00</button>
-            <span id="pace-all-text" class="pace-num"></span>
+        <!-- The whole talk, along the next slide's foot as this slide's line is along the current one's. -->
+        <div
+          id="talkbar"
+          class="talkbar"
+          title="The whole talk: time spent, colored by the pace, then paler to where the talk would end; this slide's planned part in yellow; the target end in red."
+        ></div>
+        <!-- Level with black, freeze and the laser, and the clock with the notes' first line, as the columns start. The
+             target end over where the talk would end. -->
+        <nav class="toolbar timer-controls">
+          <button id="timer-toggle" class="ctl cta" type="button">Start <kbd>s</kbd></button>
+          <button id="timer-reset" class="ctl" type="button" disabled>Reset <kbd>⇧R</kbd></button>
+          <!-- Saves the run's times, to compare with the plan; while comparing, ends the comparison. -->
+          <button id="save-run" class="ctl" type="button" data-action="saveRun" disabled>Save run</button>
+          <span id="target-at" class="target-at" title="The target end: the red line"></span>
+          <span id="compare-talk" class="compare-times"></span>
+        </nav>
+        <div class="clock">
+          <button id="timer" class="timer idle" type="button" data-action="timesOfDay">0:00:00</button>
+          <button id="finish" class="finish" type="button" data-action="earlyLate"></button>
+        </div>
+        <!-- The next slide's notes, in grey: how it starts, as much as fits. -->
+        <article id="next-notes" class="notes next-notes"><div id="next-notes-body" class="notes-body"></div></article>
+        <!-- The guide: what to do next, a hint or a fact, colored by which. Its line is kept while empty. -->
+        <p id="guide" class="guide"></p>
+        <!-- Audience preparation modes stay named alike and highlight only while prepared. -->
+        <nav class="toolbar foot">
+          <div>
+            <button type="button" id="audience-button" data-action="prepareProjector" title="Open the audience window and make it fullscreen on the projector. Shift+W toggles fullscreen.">Audience: projector</button>
+            <button type="button" id="sharing-controls" data-action="prepareSharing" title="Shift+O: enlarge the audience window without fullscreen, then select it in your meeting app" hidden>Audience: sharing</button>
           </div>
-          <p id="timer-line" class="timer-line">
-            <span id="timer-mode"></span>
-            <button id="timer-reset" type="button" hidden>Reset to 0:00:00</button>
-          </p>
-          <div
-            id="talkbar"
-            class="talkbar"
-            title="The slides as planned, this one yellow. The line under them: time spent, colored like the early/late by the clock. Red line: the target end."
-          ></div>
-        </section>
-        <p id="audience-status" class="hintline"></p>
-        <p id="screen-status" class="hintline"></p>
-        <nav class="toolbar">
-          <button type="button" id="audience-button" data-action="openAudience">Audience <kbd>o</kbd></button>
-          <button type="button" data-action="blank">Black <kbd>b</kbd></button>
-          <button type="button" data-action="freeze">Freeze <kbd>f</kbd></button>
-          <button type="button" data-action="laserMode">Laser <kbd>2</kbd></button>
-          <button type="button" data-action="overview">Overview <kbd>Tab</kbd></button>
-          <button type="button" data-action="fullscreen">Presenter fullscreen <kbd>w</kbd></button>
-          <button type="button" data-action="settings">Settings <kbd>,</kbd></button>
-          <button type="button" data-action="help">Help <kbd>?</kbd></button>
-          <button type="button" id="open-files">Open…</button>
-          <span id="wallclock" class="wallclock" title="Time of day"></span>
+          <div>
+            <button type="button" id="presenter-button" class="ctl" data-action="fullscreen">Presenter fullscreen <kbd>w</kbd></button>
+          </div>
+          <div>
+            <button type="button" data-action="overview">Overview <kbd>Tab</kbd></button>
+            <button type="button" data-action="settings">Settings <kbd>,</kbd></button>
+            <button type="button" data-action="help">Help <kbd>?</kbd></button>
+            <button type="button" id="open-files">Open…</button>
+          </div>
         </nav>
       </aside>
 
-      <div
-        id="strip-split"
-        class="split strip-split"
-        role="separator"
-        aria-orientation="vertical"
-        title="Drag to resize the thumbnails; double-click to hide or show them"
-      ></div>
+      <!-- The thumbnails, in over the page while the mouse rests at the right edge or is over them. -->
       <ol id="strip" class="strip"></ol>
     </main>
 
@@ -110,30 +136,39 @@
     <section id="help" class="help" hidden>
       <div class="help-card">
         <h2>Help</h2>
-        <div id="help-grid" class="help-grid">
-          <section id="legend" class="legend">
-            <h3>Pace</h3>
-            <dl>
+        <div id="help-grid" class="help-grid"></div>
+        <section class="legend">
+          <h3>Pace</h3>
+          <dl>
+            <div>
               <dt>Under the slide</dt>
-              <dd>A line that fills as you spend this slide's planned time, over all your visits to it, then turns the late colors; once seriously <span class="t-serious">over</span>, it says by how much. A backup slide's runs against its own length.</dd>
+              <dd>A line that fills as you spend this slide's planned time, over all your visits to it, then turns the late colors. A backup slide's runs against its own length.</dd>
+            </div>
+            <div>
               <dt>By the clock</dt>
               <dd>Where the talk would end if you moved on now, the slides after this one as planned, against the target end: early or <span class="t-late">late</span>. On a backup slide, you'd go on from the last planned slide you were on.</dd>
+            </div>
+            <div>
+              <dt>Notes</dt>
+              <dd>What you'd have said by now, at this slide's planned pace, dims character by character; <em>ref</em> paragraphs don't count (turn it off in Settings).</dd>
+            </div>
+            <div>
               <dt><i class="sw this"></i><i class="sw next"></i></dt>
-              <dd>The bar: the slides as planned, this one yellow. The line under it is time spent, colored like the early/late by the clock:</dd>
+              <dd>The line under the next slide is the whole talk: time spent, then paler to where the talk would end if you moved on now, this slide's planned part in yellow over it. It's colored by the pace, as is the time at the clock's right, where the talk would end:</dd>
               <dt><i class="sw on"></i></dt>
               <dd>on time, or a little early;</dd>
               <dt><i class="sw late"></i><i class="sw serious"></i><i class="sw severe"></i></dt>
               <dd>late; deeper as it gets serious and very serious (by default 1 and 2 minutes; see Settings);</dd>
               <dt><i class="sw early"></i></dt>
               <dd>well ahead: by default more than a minute early.</dd>
-              <dt>Notes</dt>
-              <dd>What you'd have said by now, at this slide's planned pace, dims character by character; <em>ref</em> paragraphs don't count (set how much in Settings).</dd>
+            </div>
+            <div>
               <dt><i class="sw target"></i></dt>
-              <dd>Red line: the target end, <code>duration</code>, else where the plan ends.</dd>
-            </dl>
-          </section>
-        </div>
-        <p class="help-foot">Same keys as pdfpc. Click or right-click the audience window to step; double-click it for fullscreen.</p>
+              <dd>Red line: the target end, <code>duration</code>, else where the plan ends; its time is in red over where the talk would end.</dd>
+            </div>
+          </dl>
+        </section>
+        <p class="help-foot">Same keys as pdfpc. Click a slide to step on, right-click to step back; double-click the audience window for fullscreen. Click the clock to pause, where the talk would end for how early or late.</p>
       </div>
     </section>
 
@@ -141,7 +176,7 @@
       <form method="dialog">
         <h2>Settings</h2>
         <label class="setting">
-          <span>Current slide</span>
+          <span>Slides</span>
           <input id="set-stage" type="range" min="50" max="100" step="1" />
           <output for="set-stage"></output>
           <kbd>[ ]</kbd>
@@ -158,6 +193,20 @@
           <output for="set-laser"></output>
           <kbd>+ −</kbd>
         </label>
+        <div class="setting">
+          <span>Clock</span>
+          <div id="set-times" class="switch" title="Or click the clock, or press t">
+            <button type="button" data-times="clock">clock</button>
+            <button type="button" data-times="day">time of day</button>
+          </div>
+        </div>
+        <div class="setting">
+          <span>Talk's end</span>
+          <div id="set-end" class="switch" title="Or click it, or press e">
+            <button type="button" data-end="time">a time</button>
+            <button type="button" data-end="pace">early or late</button>
+          </div>
+        </div>
         <h3>Pace colors</h3>
         <div class="setting">
           <span>Measure in</span>
@@ -181,11 +230,13 @@
           <input id="set-severe" type="range" min="1" max="30" step="1" />
           <output for="set-severe"></output>
         </label>
-        <label class="setting">
+        <div class="setting">
           <span>Dim notes as time passes</span>
-          <input id="set-dim" type="range" min="0" max="80" step="10" />
-          <output for="set-dim"></output>
-        </label>
+          <div id="set-dim" class="switch">
+            <button type="button" data-dim="off">off</button>
+            <button type="button" data-dim="on">on</button>
+          </div>
+        </div>
         <p class="settings-foot">Late always shows, in <span class="t-late">orange</span>, <span class="t-serious">deep orange</span> and <span class="t-severe">red</span>; early only past its level, in <span class="t-early">blue</span>. Shares are of the talk's length (its <code>duration</code>, else the planned total).</p>
         <p class="settings-foot">Saved in this browser. While the laser is on, <kbd>+</kbd> and <kbd>−</kbd> size its dot instead of the notes.</p>
         <div class="settings-actions">
@@ -201,7 +252,13 @@
       </form>
     </dialog>
 
-    <div id="toast" class="toast" hidden></div>
+    <div class="toasts">
+      <div id="error" class="toast error" role="alert" hidden>
+        <p id="error-text"></p>
+        <button type="button" id="error-close" class="ctl">Close</button>
+      </div>
+      <div id="toast" class="toast" role="status" hidden></div>
+    </div>
 
   </body>
 </html>

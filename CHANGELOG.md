@@ -3,6 +3,22 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the notes' length tags are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.6.0 (2026-11-10)
+
+### Added
+
+- **Prepare the audience for screen sharing** in the browser and Mac app with **Audience: sharing** or `Shift+O`.
+  It enlarges the existing audience window on the desktop, leaving fullscreen first if needed, and keeps the slides'
+  proportions. Select that window in Tencent Meeting or Zoom to start sharing. On a Mac with one monitor, this avoids
+  the fullscreen Space transition that can pause Tencent Meeting's window share when switching apps.
+
+### Changed
+
+- **Audience: projector** and **Audience: sharing** sit side by side, with only the prepared mode highlighted. The
+  audience still opens at its normal size with the deck; neither mode is selected automatically. Clicking the selected
+  projector mode brings its window forward without ending fullscreen. `Shift+W` still toggles fullscreen.
+- **Selected toolbar buttons keep readable text on hover.**
+
 ## 1.5.1 (2026-11-06)
 
 ### Fixed

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { audienceButton, audienceReady, guideLine } from "../src/core/guide.ts";
+import { audienceReady, guideLine } from "../src/core/guide.ts";
 
 const status = (s) => ({ mode: "window", screen: null, remote: true, refused: false, ...s });
 /** Before the talk, two screens, the audience window open. */
@@ -19,12 +19,7 @@ const at = (s = {}) => ({
   ...s,
 });
 
-test("the audience's button: open it, then fullscreen where the presenter can, else double-click it", () => {
-  assert.deepEqual(audienceButton(status({ mode: "closed" })), { action: "openAudience", label: "Open audience window", key: "o" });
-  assert.deepEqual(audienceButton(status()), { action: "audienceFullscreen", label: "Audience fullscreen", key: "⇧W" });
-  assert.deepEqual(audienceButton(status({ remote: false })), { action: "openAudience", label: "Double-click the audience window", key: "" });
-  // Fullscreen, the same button takes it back.
-  assert.equal(audienceButton(status({ mode: "fullscreen", remote: false })).action, "audienceFullscreen");
+test("the audience is ready fullscreen or in solo mode, but not in an ordinary window", () => {
   assert.equal(audienceReady(status({ mode: "fullscreen" }), false), true);
   assert.equal(audienceReady(status(), false), false);
   assert.equal(audienceReady(status({ mode: "closed" }), true), true);
@@ -37,6 +32,16 @@ test("before the talk, in yellow: the audience's step, by the button that does i
   // Not knowing the screens, it goes fullscreen where it is: there first.
   assert.equal(next({}).text, "Drag the audience window to the projector, then press ⇧W.");
   assert.equal(next({ remote: false }).text, "Drag the audience window to the projector, then double-click it.");
+});
+
+test("a window prepared for sharing needs no projector or fullscreen, but still needs sharing in the meeting app", () => {
+  const audience = status({ forSharing: true });
+  assert.equal(audienceReady(audience, false), true);
+  assert.deepEqual(guideLine(at({ audience, oneScreen: true })), {
+    kind: "next", text: "Share the audience window in your meeting app; keep it windowed.",
+  });
+  assert.equal(guideLine(at({ audience, oneScreen: true, clock: "running" })), null);
+  assert.equal(audienceReady(status({ mode: "closed", forSharing: true }), false), false);
 });
 
 test("then the clock, after where the audience is, or when the talk starts, in grey", () => {

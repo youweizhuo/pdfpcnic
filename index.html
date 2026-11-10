@@ -101,12 +101,14 @@
         <article id="next-notes" class="notes next-notes"><div id="next-notes-body" class="notes-body"></div></article>
         <!-- The guide: what to do next, a hint or a fact, colored by which. Its line is kept while empty. -->
         <p id="guide" class="guide"></p>
-        <!-- Both windows' fullscreen, each lit while on; the audience's last, so its changing label moves
-             nothing. Then the rest. -->
+        <!-- Audience preparation modes stay named alike and highlight only while prepared. -->
         <nav class="toolbar foot">
           <div>
+            <button type="button" id="audience-button" data-action="prepareProjector" title="Open the audience window and make it fullscreen on the projector. Shift+W toggles fullscreen.">Audience: projector</button>
+            <button type="button" id="sharing-controls" data-action="prepareSharing" title="Shift+O: enlarge the audience window without fullscreen, then select it in your meeting app" hidden>Audience: sharing</button>
+          </div>
+          <div>
             <button type="button" id="presenter-button" class="ctl" data-action="fullscreen">Presenter fullscreen <kbd>w</kbd></button>
-            <button type="button" id="audience-button" class="ctl cta" data-action="openAudience">Open audience window <kbd>o</kbd></button>
           </div>
           <div>
             <button type="button" data-action="overview">Overview <kbd>Tab</kbd></button>

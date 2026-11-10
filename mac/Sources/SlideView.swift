@@ -39,6 +39,11 @@ final class SlideView: NSView {
         DispatchQueue.main.asyncAfter(deadline: .now() + 6.1) { [weak self] in self?.needsDisplay = true }
     }
 
+    func hideHint() {
+        hintUntil = .distantPast
+        needsDisplay = true
+    }
+
     private var cgPage: CGPDFPage? { doc?.cg.page(at: page + 1) }
 
     /// Where the slide sits: fitted and centered, in whole points.

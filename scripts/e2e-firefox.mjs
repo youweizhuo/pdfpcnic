@@ -100,8 +100,10 @@ try {
       const pages = await browser.pages();
       const audience = pages.at(-1);
       assert.notEqual(audience, page, "no audience window");
-      // Only the audience window can make itself fullscreen here, so no Shift+W: the button says what to do.
-      assert.equal(await page.$eval("#audience-button", (e) => e.textContent), "Double-click the audience window");
+      // The stable projector label is shared across platforms; guidance explains Firefox fullscreen.
+      assert.equal(await page.$eval("#audience-button", (e) => e.textContent), "Audience: projector");
+      assert.equal(await page.$eval("#audience-button", (e) => e.getAttribute("aria-pressed")), "false");
+      assert.equal(await page.$eval("#sharing-controls", (e) => e.getAttribute("aria-pressed")), "false");
       await page.keyboard.press("ArrowRight");
       await sleep(800);
       assert.equal(await page.evaluate(() => window.pdfpcnic.state.page), 2);
@@ -115,9 +117,23 @@ try {
       assert.equal(await page.$eval("#error", (e) => e.hidden), true);
       await page.screenshot({ path: `${out}/${build}-ask.png` });
       await audience.screenshot({ path: `${out}/${build}-audience.png` });
+      // Sharing uses an ordinary large window even though remote fullscreen is unavailable.
+      await page.click('[data-action="prepareSharing"]');
+      await audience.waitForFunction(() => !document.fullscreenElement && outerWidth >= screen.availWidth - 16 && outerHeight >= screen.availHeight - 16);
+      assert.equal(await page.evaluate(() => window.pdfpcnic.audience.status.forSharing), true);
+      assert.equal(await page.$eval("#sharing-controls", (e) => e.getAttribute("aria-pressed")), "true");
+      assert.equal(await page.$eval("#audience-button", (e) => e.getAttribute("aria-pressed")), "false");
+      assert.equal(await page.evaluate(() => window.pdfpcnic.audience.status.refused), false);
+      const before = await audience.$eval("canvas", (c) => c.toDataURL());
+      await page.bringToFront();
+      await page.keyboard.press("ArrowRight");
+      await audience.waitForFunction((before) => document.querySelector("canvas").toDataURL() !== before, {}, before);
+      assert.ok(await painted(audience, "canvas"), "covered audience stopped drawing");
+      await page.screenshot({ path: `${out}/${build}-sharing.png` });
       await audience.close();
-      // The presenter hears of it at once, and offers to open it again.
-      await page.waitForFunction(() => /^Open audience window/.test(document.querySelector("#audience-button").textContent), { timeout: 300 });
+      // Closing clears preparation while both action labels remain stable.
+      await page.waitForFunction(() => window.pdfpcnic.audience.status.mode === "closed", { timeout: 1000 });
+      assert.equal(await page.evaluate(() => window.pdfpcnic.audience.status.forSharing), false);
     });
 
     await page.screenshot({ path: `${out}/${build}.png` });

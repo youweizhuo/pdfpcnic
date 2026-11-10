@@ -67,6 +67,8 @@ export interface Audience {
   open(behind?: boolean): void;
   /** Fullscreen on the projector, or back. Call from a key press or click. */
   toggleFullscreen(): void;
+  /** Enlarges a desktop window for meeting apps, without entering a fullscreen Space. */
+  prepareSharing?(): Promise<void>;
   render(page: number, black: boolean, laser: Point | null, laserSize: number): void;
 }
 

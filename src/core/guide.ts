@@ -18,13 +18,8 @@ export interface AudienceStatus {
   remote: boolean;
   /** Fullscreen was asked for from the presenter and refused, until it goes fullscreen. */
   refused: boolean;
-}
-
-export interface Button {
-  /** What the button does. */
-  action: "openAudience" | "audienceFullscreen";
-  label: string;
-  key: string;
+  /** Prepared for window sharing; this does not mean a meeting app is sharing it yet. */
+  forSharing?: boolean;
 }
 
 /** The presenter's system, for the keys that extend the displays; null when it isn't known. */
@@ -58,17 +53,8 @@ export interface Line {
   fact?: string;
 }
 
-/** Whether the audience sees the slides: fullscreen, or presented in the presenter's window (solo). */
-export const audienceReady = (a: AudienceStatus, solo: boolean) => a.mode === "fullscreen" || solo;
-
-const OPEN: Button = { action: "openAudience", label: "Open audience window", key: "o" };
-// Lit while on, as the presenter's fullscreen beside it; pressed again, it ends.
-const FULLSCREEN: Button = { action: "audienceFullscreen", label: "Audience fullscreen", key: "⇧W" };
-// Where the presenter can't, the button brings the window forward (as o does) and says what to do there.
-const DOUBLE_CLICK: Button = { action: "openAudience", label: "Double-click the audience window", key: "" };
-
-export const audienceButton = (a: AudienceStatus): Button =>
-  a.mode === "closed" ? OPEN : a.mode === "fullscreen" || a.remote ? FULLSCREEN : DOUBLE_CLICK;
+/** Whether the display is prepared: fullscreen, a window for sharing, or the presenter's own window (solo). */
+export const audienceReady = (a: AudienceStatus, solo: boolean) => a.mode === "fullscreen" || (a.mode === "window" && !!a.forSharing) || solo;
 
 /** One screen, or two mirrored: each system's way to a second one. */
 const EXTEND = {
@@ -101,6 +87,9 @@ export function guideLine(s: Situation): Line | null {
     if (!ready) return { kind: "next", text: audienceStep(a) };
     // Reset, not Shift+R: that waits for a pause, and the clock likely runs.
     if (s.stale) return { kind: "next", text: "The clock has time from a rehearsal: click Reset before the talk." };
+    if (a.mode === "window" && a.forSharing) {
+      return { kind: "next", text: "Share the audience window in your meeting app; keep it windowed." };
+    }
     const fact = s.startsAt
       ? `The talk starts at ${s.startsAt.time}, in ${s.startsAt.in}`
       : a.mode === "fullscreen"

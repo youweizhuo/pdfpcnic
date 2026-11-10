@@ -126,6 +126,10 @@ final class SmokeTest {
             if oneScreen {
                 try await press("Escape")
                 try await until("the audience windowed") { !app.audience.isFullscreen }
+                // The next Esc is routed by the page's copy of the native state.
+                try await until("the page knows the audience is windowed") {
+                    try await js("return window.pdfpcnic.audience.status.mode === 'window'") as? Bool == true
+                }
                 guard app.presenter.fullscreen else { throw Failure("Esc left both fullscreens at once") }
             }
             try await press("Escape")
@@ -133,6 +137,37 @@ final class SmokeTest {
             try await press("Escape")
             try await Task.sleep(nanoseconds: 300_000_000)
             if !oneScreen, !app.audience.isFullscreen { throw Failure("Esc took the audience out of fullscreen") }
+        }
+        await check("Screen sharing fills the same window, including after fullscreen, and slides keep updating") {
+            guard try await js("return !document.querySelector('#sharing-controls').hidden && document.querySelector('[data-action=prepareSharing]').textContent === 'Audience: sharing'") as? Bool == true else {
+                throw Failure("the Audience: sharing button is missing")
+            }
+            @MainActor func prepare(click: Bool = false) async throws {
+                // Repeated calls must await completion: the already-ready state can't acknowledge a new call.
+                _ = try await js(click
+                    ? "document.querySelector('[data-action=prepareSharing]').click(); return null"
+                    : "await window.pdfpcnic.audience.prepareSharing(); return null")
+                try await until("the audience prepared for sharing") {
+                    app.audience.status["forSharing"] as? Bool == true && !app.audience.isFullscreen
+                }
+                guard let window = app.audience.view.window, let screen = window.screen,
+                      window.frame == screen.visibleFrame else { throw Failure("the audience didn't fill the desktop") }
+            }
+            try await prepare(click: true)
+            let window = app.audience.view.window
+            try await prepare()
+            _ = try await js("document.querySelector('#audience-button').click(); return null")
+            try await until("the fullscreen button lit") {
+                try await js("return document.querySelector('#audience-button.on') !== null") as? Bool == true
+            }
+            try await prepare()
+            guard app.audience.view.window === window else { throw Failure("sharing replaced the audience window") }
+            app.presenter.window.makeKeyAndOrderFront(nil)
+            try await press("ArrowRight")
+            try await until("the covered audience updated") { app.audience.view.page == 2 && Self.painted(app.audience.view) }
+            try Self.save(app.audience.view, to: out.appendingPathComponent("sharing.png"))
+            try await press("ArrowLeft")
+            try await until("page 2 again") { try await page() == 1 }
         }
         await check("Save run saves the run's times beside the PDF") {
             let folder = files[0].deletingLastPathComponent()
@@ -173,7 +208,12 @@ final class SmokeTest {
         }
         await check("after a reload, Resume picks up the talk at its page, and the update is still named") {
             try await Task.sleep(nanoseconds: 800_000_000)
+            _ = try await js("window.smokeBeforeReload = true; return null")
             web.reload()
+            // reload() returns before navigation; don't click the previous document's hidden Resume button.
+            try await until("the new document") {
+                try await js("return !window.smokeBeforeReload && !!window.pdfpcnic") as? Bool == true
+            }
             try await until("the Resume button") {
                 (try await js("return document.querySelector('#resume:not([hidden])')?.textContent ?? ''") as? String ?? "").contains("at page 2")
             }

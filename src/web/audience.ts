@@ -115,6 +115,7 @@ export class PopupAudience implements Audience {
   private poll = 0;
   /** Fullscreen asked for from the presenter and refused, until the audience goes fullscreen. */
   private refused = false;
+  private forSharing = false;
   private refuse = () => {
     this.refused = true;
     this.events.change();
@@ -144,6 +145,7 @@ export class PopupAudience implements Audience {
       // Shift+W in the presenter makes the audience fullscreen (Chrome, Edge); elsewhere only the audience window can.
       remote: delegates,
       refused: this.refused,
+      forSharing: !!win && !fullscreen && this.forSharing,
     };
   }
 
@@ -158,7 +160,9 @@ export class PopupAudience implements Audience {
    */
   open(behind = false): void {
     if (this.isOpen) {
-      if (!behind) this.win!.focus();
+      // Chromium can leave fullscreen when focus() is called on this popup again.
+      // A prepared projector is already showing the audience; keep its fullscreen intact.
+      if (!behind && !this.win!.document.fullscreenElement) this.win!.focus();
       return;
     }
     const { left, top, width, height } = centered();
@@ -186,6 +190,24 @@ export class PopupAudience implements Audience {
     if (!this.isOpen) return;
     if (this.win!.document.fullscreenElement) void this.win!.document.exitFullscreen();
     else this.goFullscreen();
+  }
+
+  /** A large ordinary window stays on the desktop when the presenter covers it. */
+  async prepareSharing(): Promise<void> {
+    // Open before awaiting anything: a new popup needs the original user gesture.
+    this.open();
+    const win = this.win!;
+    if (win.document.fullscreenElement) await win.document.exitFullscreen();
+    if (win.closed || this.win !== win) return;
+    const s = win.screen;
+    // Resize the existing popup: replacing it would break an active window share.
+    // Browsers may ignore these calls; the presenter also explains the manual option.
+    win.moveTo(s.availLeft ?? 0, s.availTop ?? 0);
+    win.resizeTo(s.availWidth, s.availHeight);
+    this.forSharing = true;
+    this.refused = false;
+    win.document.getElementById("hint")!.hidden = true;
+    this.events.change();
   }
 
   render(page: number, black: boolean, laser: Point | null, laserSize: number): void {
@@ -257,8 +279,11 @@ export class PopupAudience implements Audience {
       else doc.documentElement.requestFullscreen().catch(() => {});
     });
     doc.addEventListener("fullscreenchange", () => {
-      hint.hidden = !!doc.fullscreenElement;
-      if (doc.fullscreenElement) this.refused = false;
+      hint.hidden = !!doc.fullscreenElement || this.forSharing;
+      if (doc.fullscreenElement) {
+        this.refused = false;
+        this.forSharing = false;
+      }
       this.events.change();
     });
     // Out of fullscreen, Chrome puts the window back where it opened, often
@@ -304,6 +329,7 @@ export class PopupAudience implements Audience {
     this.view = null;
     this.win = null;
     this.refused = false;
+    this.forSharing = false;
     this.events.change();
   }
 }

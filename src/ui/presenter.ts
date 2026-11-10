@@ -4,7 +4,7 @@
 
 import { runFile, runName } from "../core/compare.ts";
 import type { Deck, LinkTarget } from "../core/deck.ts";
-import { audienceButton, audienceReady, guideLine } from "../core/guide.ts";
+import { audienceReady, guideLine } from "../core/guide.ts";
 import { actionFor, isIgnored, isTalkAction, type Action } from "../core/keys.ts";
 import { mark, span } from "../core/pace.ts";
 import { Talk, type Point, type SavedSession } from "../core/talk.ts";
@@ -175,6 +175,21 @@ export class Presenter {
         } catch (err) {
           reportError(err);
         }
+        return;
+      case "prepareProjector":
+        try {
+          this.audience.open();
+          if (this.audience.status.mode !== "fullscreen") this.audience.toggleFullscreen();
+        } catch (err) {
+          reportError(err);
+        }
+        return;
+      case "prepareSharing":
+        void this.audience.prepareSharing?.().then(() => {
+          toast(__BUILD__ === "mac"
+            ? "Share Audience in your meeting app; keep it windowed."
+            : "Share the audience window in your meeting app. If it stayed small, use Window → Fill or maximize it manually.", 7000);
+        }).catch(reportError);
         return;
       case "slideSmaller":
       case "slideBigger":
@@ -418,27 +433,25 @@ export class Presenter {
       ? `Press b to show slide ${(frozen ?? here.slide) + 1}${frozen === null ? "" : " (frozen)"}`
       : `Press f to move it to slide ${here.slide + 1}`;
 
-    // The audience's next step: on its button at the foot of the column,
-    // standing out until the audience sees the slides (and in the guide's line,
-    // drawn with the clock).
     const status = this.audience.status;
-    const button = audienceButton(status);
-    const ab = $("audience-button");
-    ab.dataset.action = button.action;
-    ab.classList.toggle("cta", !audienceReady(status, this.view.solo));
-    label(ab, button.label, button.key);
+    $("sharing-controls").hidden = !this.audience.prepareSharing;
 
     const on: Partial<Record<Action, boolean>> = {
       laserMode: s.laser,
       blank: s.black,
       freeze: s.frozen !== null,
       overview: this.view.overview,
-      audienceFullscreen: status.mode === "fullscreen",
+      prepareProjector: status.mode === "fullscreen",
+      prepareSharing: status.mode === "window" && status.forSharing,
       fullscreen: this.platform.window.fullscreen,
       help: this.view.help,
     };
     for (const b of document.querySelectorAll<HTMLElement>("#presenter [data-action]")) {
-      b.classList.toggle("on", !!on[b.dataset.action as Action]);
+      const active = !!on[b.dataset.action as Action];
+      b.classList.toggle("on", active);
+      if (b.dataset.action === "prepareProjector" || b.dataset.action === "prepareSharing") {
+        b.setAttribute("aria-pressed", String(active));
+      }
     }
     $("help").hidden = !this.view.help;
     this.current.root.classList.toggle("laser-on", s.laser);

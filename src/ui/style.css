@@ -747,7 +747,7 @@ kbd {
   font-size: 15px;
   cursor: pointer;
 }
-.toolbar button:hover:not(.cta, .confirm) {
+.toolbar button:hover:not(.cta, .confirm, .on) {
   border-color: var(--faint);
   color: var(--fg);
 }
@@ -760,7 +760,7 @@ kbd {
   border-color: rgb(0 0 0 / 0.3);
   color: #3a3a3c;
 }
-/* Two rows at the foot of the column. */
+/* Window controls and talk tools at the foot of the column. */
 .foot {
   flex-direction: column;
   align-items: stretch;

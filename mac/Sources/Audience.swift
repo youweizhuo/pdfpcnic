@@ -16,6 +16,9 @@ final class Audience: NSObject, NSWindowDelegate {
     private var window: AudienceWindow?
     /// The screen it's fullscreen on.
     private var fullscreenOn: NSScreen?
+    private var forSharing = false
+    private var changingSpace = false
+    private var sharingWaiters: [CheckedContinuation<Void, Error>] = []
 
     override init() {
         super.init()
@@ -39,6 +42,7 @@ final class Audience: NSObject, NSWindowDelegate {
             "screen": screen.map { $0.localizedName as Any } ?? NSNull(),
             "remote": true,
             "refused": false,
+            "forSharing": window != nil && !isFullscreen && forSharing,
         ]
     }
 
@@ -62,7 +66,7 @@ final class Audience: NSObject, NSWindowDelegate {
     /// deck opens: behind the presenter, and left as it is if it's open.
     func open(behind: Bool = false) {
         if let window {
-            if !behind { window.makeKeyAndOrderFront(nil) }
+            if !behind { (view.window ?? window).makeKeyAndOrderFront(nil) }
             return
         }
         let area = (presenter()?.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
@@ -90,8 +94,48 @@ final class Audience: NSObject, NSWindowDelegate {
         changed()
     }
 
+    /// Keeps the existing capture target, on the desktop, at the screen's usable size.
+    func prepareSharing() async throws {
+        open()
+        if inSpace || changingSpace {
+            // AppKit restores the old frame during its animation. Fill only after it ends.
+            try await withCheckedThrowingContinuation { continuation in
+                sharingWaiters.append(continuation)
+                if !changingSpace { window?.toggleFullScreen(nil) }
+            }
+        } else {
+            if view.isInFullScreenMode { view.exitFullScreenMode(options: nil) }
+            fillForSharing()
+        }
+    }
+
+    private func fillForSharing() {
+        guard let window else { return }
+        let screen = fullscreenOn ?? window.screen ?? presenter()?.screen ?? NSScreen.screens[0]
+        fullscreenOn = nil
+        window.setFrame(screen.visibleFrame, display: true)
+        window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(view)
+        forSharing = true
+        view.hideHint()
+        view.redraw()
+        changed()
+        finishSharing()
+    }
+
+    private func finishSharing(error: Error? = nil) {
+        let waiters = sharingWaiters
+        sharingWaiters = []
+        for waiter in waiters {
+            if let error { waiter.resume(throwing: error) }
+            else { waiter.resume() }
+        }
+    }
+
     func toggleFullscreen() {
         guard let window else { return }
+        guard !changingSpace, sharingWaiters.isEmpty else { return }
+        forSharing = false
         if inSpace || (!isFullscreen && NSScreen.screens.count == 1) {
             window.collectionBehavior.insert(.fullScreenPrimary)
             return window.toggleFullScreen(nil)
@@ -123,19 +167,52 @@ final class Audience: NSObject, NSWindowDelegate {
     }
 
     // In its own Space, keys go to it, and on from there to the talk.
+    func windowWillEnterFullScreen(_ notification: Notification) {
+        changingSpace = true
+        forSharing = false
+    }
+
+    func windowWillExitFullScreen(_ notification: Notification) {
+        changingSpace = true
+    }
+
     func windowDidEnterFullScreen(_ notification: Notification) {
+        changingSpace = false
+        if !sharingWaiters.isEmpty {
+            window?.toggleFullScreen(nil)
+            return
+        }
         window?.makeFirstResponder(view)
         view.redraw()
         changed()
     }
 
     func windowDidExitFullScreen(_ notification: Notification) {
+        changingSpace = false
+        if !sharingWaiters.isEmpty {
+            fillForSharing()
+            return
+        }
         view.redraw()
+        changed()
+    }
+
+    func windowDidFailToEnterFullScreen(_ window: NSWindow) {
+        changingSpace = false
+        if !sharingWaiters.isEmpty { fillForSharing() }
+    }
+
+    func windowDidFailToExitFullScreen(_ window: NSWindow) {
+        changingSpace = false
+        finishSharing(error: Failure("Couldn't leave fullscreen. Exit fullscreen and click Audience: sharing again."))
         changed()
     }
 
     func windowWillClose(_ notification: Notification) {
         window = nil
+        forSharing = false
+        changingSpace = false
+        finishSharing(error: Failure("The audience window was closed."))
         changed()
     }
 

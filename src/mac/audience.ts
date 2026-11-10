@@ -39,6 +39,10 @@ export class MacAudience implements Audience {
     void call("audienceFullscreen");
   }
 
+  async prepareSharing(): Promise<void> {
+    await call("audiencePrepareSharing");
+  }
+
   render(page: number, black: boolean, laser: Point | null, laserSize: number): void {
     const view = { page, black, laser, laserSize };
     const key = JSON.stringify(view);

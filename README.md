@@ -59,6 +59,20 @@ sends `.`. A start button that sends F5 and Esc in turn does nothing on F5, as i
 Esc steps back as it does on the keyboard, so it can end a black screen or the presenter's fullscreen, never the
 audience's on a projector. With one screen, where the audience covers the presenter, Esc ends its fullscreen too.
 
+### Sharing in a meeting
+
+The audience opens at its normal size. Choose **Audience: projector** for fullscreen or **Audience: sharing** for a
+large window on the desktop. Only the prepared mode is highlighted.
+
+In the browser or Mac app, click **Audience: sharing** (`Shift+O`). It opens or enlarges the audience window without fullscreen,
+or leaves fullscreen first if needed. In Zoom or Tencent Meeting, select **Audience** (Mac app) or the window whose
+title ends in **· audience** (browser). Return to the presenter for notes and slide controls. Keep both windows on
+the same desktop and leave the audience open, not minimized.
+
+On a Mac with one monitor, fullscreen can put the audience window in a separate Space. Switching away can pause
+Tencent Meeting's window share. **Audience: sharing** keeps it in a large ordinary window to avoid that transition.
+If the browser blocks automatic resizing, enlarge the audience manually (on macOS, **Window → Fill**).
+
 ## Mac app
 
 The same presenter, without a browser's limits: the audience window opens behind the presenter, frameless, and `Shift+W`

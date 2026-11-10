@@ -229,7 +229,7 @@ try {
   if (mode !== "site") {
     await check("blocked, the window that comes with the deck is left to its button, with no error", async () => {
       assert.equal((await browser.pages()).length, 1, "a window opened");
-      assert.match(await text("#audience-button"), /^Open audience window/);
+      assert.equal(await text("#audience-button"), "Audience: projector");
       assert.equal(await page.$eval("#error", (e) => e.hidden), true);
     });
     await page.evaluate(() => (window.open = window.allowed));
@@ -284,22 +284,11 @@ try {
     await page.bringToFront();
     await shiftW(page);
     await full(true);
-    // Lit while on, as the presenter's button by it; clicked, it ends.
+    // A selected preparation action stays selected; the fullscreen shortcut still toggles.
     await page.waitForSelector("#audience-button.on", { timeout: 3000 });
-    // Whatever the audience's button says, the buttons around it and the line over them stay put.
-    const places = await page.evaluate(() => {
-      const button = document.querySelector("#audience-button");
-      const was = button.innerHTML;
-      const at = (sel) => JSON.stringify(document.querySelector(sel).getBoundingClientRect());
-      const places = ["Open audience window <kbd>o</kbd>", "Double-click the audience window", "Audience fullscreen <kbd>⇧W</kbd>"].map(
-        (html) => ((button.innerHTML = html), `${at("#timer-reset")} ${at("#presenter-button")} ${at('.foot [data-action="overview"]')} ${at("#guide")}`),
-      );
-      button.innerHTML = was;
-      return places;
-    });
-    assert.equal(new Set(places).size, 1, `a button moved: ${places}`);
     await page.click("#audience-button");
-    await full(false);
+    await full(true);
+    await exit();
     await page.click("#audience-button");
     await full(true);
     await exit();
@@ -668,9 +657,9 @@ try {
     assert.equal(await page.$eval("#timer", (e) => e.classList.contains("paused")), true);
     // The guide's line is kept while empty: the next notes over it keep their size.
     assert.equal(await notesHeight(), running);
-    // One button stands out at a time: the audience's step first, then Reset while paused.
+    // Audience modes stay neutral until prepared; Reset stands out only once the audience is ready.
     assert.equal(await cta("#timer-reset"), false);
-    assert.equal(await cta("#audience-button"), true);
+    assert.equal(await cta("#audience-button"), false);
     await press("Shift+W");
     await ctaIs("#timer-reset", true);
     assert.equal(await cta("#audience-button"), false);
@@ -723,10 +712,10 @@ try {
     assert.equal(await cta("#timer-toggle"), false);
     assert.equal(await barTop(), runningTop);
     await page.screenshot({ path: `${out}/stale-clock.png` });
-    // The audience out of fullscreen: its button stands out instead.
+    // The audience out of fullscreen: neither a preparation mode nor Reset is highlighted.
     await audience.evaluate(() => document.exitFullscreen());
     await ctaIs("#timer-reset", false);
-    assert.equal(await cta("#audience-button"), true);
+    assert.equal(await cta("#audience-button"), false);
     await press("g");
     await page.keyboard.type("5");
     await press("Enter");
@@ -1087,6 +1076,33 @@ try {
     } finally {
       await other.close();
       await page.bringToFront();
+    }
+  });
+
+  await check("screen sharing fills the same audience window without fullscreen", async () => {
+    const sharing = await browser.newPage();
+    try {
+      watch(sharing, "sharing presenter");
+      await sharing.goto(url);
+      const opened = browser.waitForTarget((t) => t.opener() === sharing.target());
+      await (await sharing.$("#files")).uploadFile(resolve("demo/demo.pdf"), resolve("demo/demo.pdfpc"));
+      await sharing.waitForSelector("#ready:not([hidden])");
+      await sharing.click("#present");
+      await sharing.waitForFunction(() => window.pdfpcnic.state);
+      const popup = await (await opened).page();
+      watch(popup, "sharing audience");
+      const target = popup.target();
+      await sharing.click('[data-action="prepareSharing"]');
+      await popup.waitForFunction(() => !document.fullscreenElement && outerWidth >= screen.availWidth - 16 && outerHeight >= screen.availHeight - 16);
+      assert.equal(await sharing.evaluate(() => window.pdfpcnic.audience.status.forSharing), true);
+      assert.equal(await sharing.$eval("#audience-button", (e) => e.classList.contains("cta")), false);
+      await sharing.click('[data-action="prepareSharing"]');
+      assert.equal(popup.target(), target, "preparing sharing replaced the captured window");
+      assert.equal(await popup.evaluate(() => !!document.fullscreenElement), false);
+      await popup.close();
+      await sharing.waitForFunction(() => !window.pdfpcnic.audience.status.forSharing);
+    } finally {
+      await sharing.close();
     }
   });
 

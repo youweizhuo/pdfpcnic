@@ -41,6 +41,8 @@ export type ViewAction =
   | "audienceFullscreen"
   | "help"
   | "openAudience"
+  | "prepareSharing"
+  | "prepareProjector"
   | "slideSmaller"
   | "slideBigger"
   | "resetLayout"
@@ -110,6 +112,7 @@ const BINDINGS: Record<string, Action> = {
   "Ctrl+e": "endSlide",
   "?": "help",
   o: "openAudience",
+  "Shift+o": "prepareSharing",
   "[": "slideSmaller",
   "]": "slideBigger",
   "0": "resetLayout",
@@ -165,6 +168,7 @@ export const HELP: Array<[string, Array<[string, string, highlight?: "key" | "mo
     "Audience",
     [
       ["o", "open the audience window"],
+      ["Shift+O", "prepare the audience window for screen sharing"],
       ["Shift+W", "audience fullscreen (or present here)"],
       ["b or .", "black screen"],
       ["f", "freeze"],

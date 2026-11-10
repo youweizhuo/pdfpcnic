@@ -116,6 +116,10 @@ final class App: NSObject, NSApplicationDelegate {
             audience.toggleFullscreen()
             return nil
         }
+        bridge.onAsync("audiencePrepareSharing") { [unowned self] _ in
+            try await audience.prepareSharing()
+            return nil
+        }
         bridge.on("audienceRender") { [unowned self] args in
             let laser = (args["laser"] as? [String: Any]).map { CGPoint(x: $0.double("x"), y: $0.double("y")) }
             audience.render(page: args.int("page"), black: args.bool("black"), laser: laser, size: args.double("laserSize"))

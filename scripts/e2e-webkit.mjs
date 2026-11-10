@@ -88,9 +88,9 @@ try {
       assert.ok(await painted(page, "#current canvas"), "current slide is blank");
       assert.ok(await painted(page, "#next canvas"), "next slide is blank");
       assert.match(await text("#notes"), /Welcome/);
-      // Only the audience window can make itself fullscreen here: the guide and the button say what to do.
+      // Only the audience window can make itself fullscreen here: the guide explains the extra step.
       await page.waitForFunction(() => /^Drag the audience window to the projector, then double-click it/.test(document.querySelector("#guide").textContent), null, { timeout: 5000 });
-      assert.equal(await text("#audience-button"), "Double-click the audience window");
+      assert.equal(await text("#audience-button"), "Audience: projector");
     });
 
     await check(`${build}: keys step through, the clock runs, pace shows, and the audience follows`, async () => {

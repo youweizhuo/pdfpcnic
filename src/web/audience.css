@@ -5,9 +5,6 @@ body {
   background: #000;
   overflow: hidden;
 }
-body.idle {
-  cursor: none;
-}
 #stage {
   position: absolute;
   inset: 0;

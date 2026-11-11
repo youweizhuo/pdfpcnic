@@ -13,12 +13,10 @@ final class SlideView: NSView {
     var laserSize: CGFloat = 0.035
     var events: (String, Any) -> Void = { _, _ in }
     private var hintUntil = Date.distantPast
-    /// Counts clicks and moves, so a later one cancels what an earlier one scheduled.
+    /// Counts clicks, so a later one cancels what an earlier one scheduled.
     private var clicks = 0
-    private var moves = 0
     private var mouseDown: NSEvent?
     private var dragged = false
-    private var tracking: NSTrackingArea?
 
     /// Fullscreen on the projector, or in a Space of its own.
     private var fullscreen: Bool { isInFullScreenMode || window?.styleMask.contains(.fullScreen) == true }
@@ -135,23 +133,6 @@ final class SlideView: NSView {
 
     override func rightMouseDown(with event: NSEvent) {
         events("audienceStep", -1)
-    }
-
-    override func mouseMoved(with event: NSEvent) {
-        // The cursor hides once the pointer rests.
-        moves += 1
-        let move = moves
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
-            if self?.moves == move { NSCursor.setHiddenUntilMouseMoves(true) }
-        }
-    }
-
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        if let tracking { removeTrackingArea(tracking) }
-        let area = NSTrackingArea(rect: .zero, options: [.mouseMoved, .activeAlways, .inVisibleRect], owner: self)
-        addTrackingArea(area)
-        tracking = area
     }
 
     override func resetCursorRects() {

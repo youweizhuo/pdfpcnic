@@ -3,6 +3,27 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the notes' length tags are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.7.0 (2026-11-11)
+
+### Changed
+
+- **Start on the title slide.** The first keypress starts the clock without advancing the first page; the next
+  navigation key advances. Holding the starting key does not skip slides. Text fields, dialogs and system shortcuts
+  keep their normal keyboard behavior.
+- **Clear clock notices on the current slide.** Before starting and while paused, a purple notice explains how to
+  continue. Black, Freeze and clock notices share a smaller card style; Black and Freeze can still be used together.
+  Start and Resume use the same purple outline, and the footer no longer repeats their instructions.
+- **A compact footer:** Projector, Sharing, Open, Save run and Help sit together. Settings and Overview are highlighted,
+  clickable entries in the original Help sheet. Presenter fullscreen stays available with `w`.
+- **Simpler Settings:** display and clock controls first, with pace colors in an expandable section and shortcuts in
+  Help. Changes still save automatically.
+- **The audience cursor stays visible** in the browser and Mac app; the idle timer and mouse-tracking code are removed.
+
+### Fixed
+
+- Disabled toolbar buttons, including Save run, no longer highlight on hover.
+- The footer leaves the thumbnail flyout's right-edge trigger clear, so hovering Help does not open it.
+
 ## 1.6.0 (2026-11-10)
 
 ### Added

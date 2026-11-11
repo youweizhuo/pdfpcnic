@@ -149,6 +149,7 @@ export class Presenter {
     const v = this.view;
     switch (action) {
       case "overview":
+        v.help = false;
         return this.setOverview(!v.overview);
       case "goto":
         return this.openGoto();
@@ -197,6 +198,10 @@ export class Presenter {
         toast(`Slides at ${Math.round(this.settings.stage * 100)}% of their columns.`, 1500);
         return;
       case "settings":
+        if (v.help) {
+          v.help = false;
+          this.render();
+        }
         return this.settings.open();
       case "timesOfDay":
         return this.settings.setTimeOfDay(!this.settings.timeOfDay);
@@ -237,13 +242,36 @@ export class Presenter {
     return true;
   }
 
+  /** Suppress repeats of the key that started the clock until a fresh keypress. */
+  private startKey: string | null = null;
+
   onKey(e: KeyboardEvent): void {
+    // Text fields and dialogs retain their keyboard interaction before the talk starts.
+    const editing = e.target instanceof HTMLElement && (
+      e.target.matches("input, textarea, select") || e.target.isContentEditable
+    );
+    if (editing || document.querySelector("dialog[open]")) {
+      if (isIgnored(e)) e.preventDefault();
+      return;
+    }
+    if (e.repeat && this.startKey === e.key) {
+      e.preventDefault();
+      return;
+    }
+    if (!e.repeat) this.startKey = null;
+    if (this.talk.state.page === 0 && this.talk.state.timer.startedAt === null &&
+        !this.view.help && !this.view.overview && !this.comparison &&
+        !e.ctrlKey && !e.metaKey && !e.altKey && !e.isComposing &&
+        !["Shift", "Control", "Alt", "Meta", "CapsLock", "Fn", "Unidentified"].includes(e.key)) {
+      e.preventDefault();
+      this.startKey = e.key;
+      this.act("timerStart");
+      return;
+    }
     if (isIgnored(e)) {
       e.preventDefault();
       return;
     }
-    // Dialogs (go to, settings) keep their keys.
-    if (e.target instanceof HTMLInputElement || document.querySelector("dialog[open]")) return;
     if (this.view.overview && this.overviewKey(e)) {
       e.preventDefault();
       return;
@@ -354,7 +382,7 @@ export class Presenter {
       { signal },
     );
 
-    for (const b of document.querySelectorAll<HTMLButtonElement>("#presenter [data-action]")) {
+    for (const b of document.querySelectorAll<HTMLButtonElement>("#presenter [data-action], #help [data-action]")) {
       b.addEventListener(
         "click",
         () => {
@@ -364,7 +392,9 @@ export class Presenter {
         { signal },
       );
     }
-    $("help").addEventListener("click", () => this.act("help"), { signal });
+    $("help").addEventListener("click", (e) => {
+      if (!(e.target as Element).closest("[data-action]")) this.act("help");
+    }, { signal });
     this.settings.wire(signal);
 
     const win = this.platform.window;
@@ -528,8 +558,7 @@ export class Presenter {
     timer.classList.toggle("paused", t.pausedAt !== null);
     const stale = this.talk.stale;
     // The button by the clock says what it does next: start, pause, resume.
-    // What to press next stands out: Start before the talk, Reset while paused
-    // or after a rehearsal. One at a time, and the audience's steps come first.
+    // Start and Resume stand out; Reset is offered after a running rehearsal.
     const ours = audienceReady(this.audience.status, this.view.solo);
     const toggle = $<HTMLButtonElement>("timer-toggle");
     const running = t.startedAt !== null && t.pausedAt === null;
@@ -539,15 +568,28 @@ export class Presenter {
       const until = T.untilStart(this.deck, now);
       toggle.title = until
         ? `The talk starts at ${T.formatClock(now + until)}, in ${T.format(until)}.`
-        : `Starts the clock. It also starts ${this.talk.state.page === 0 ? "when you leave slide 1" : "at your next move"}.`;
+        : this.talk.state.page === 0
+          ? "Press any key to start the clock without advancing the slide."
+          : "Starts the clock. It also starts at your next move.";
     } else toggle.title = "";
     const comparing = !!this.comparison;
+    const card = $("timer-state");
+    const waiting = t.startedAt === null;
+    const firstPage = this.talk.state.page === 0;
+    const heading = waiting ? "Clock not started" : "Clock paused";
+    const instruction = waiting ? firstPage ? "Press any key to start" : "Press s to start" : "Press p to resume";
+    if (card.querySelector("strong")!.textContent !== heading) card.querySelector("strong")!.textContent = heading;
+    if (card.querySelector("span")!.textContent !== instruction) card.querySelector("span")!.textContent = instruction;
+    card.title = waiting
+      ? firstPage ? "Press any key or click Start to begin without advancing the slide" : "Press s or click Start to begin"
+      : "Press p or click Resume to continue";
+    card.hidden = running || comparing;
     toggle.disabled = comparing;
-    toggle.classList.toggle("cta", ours && t.startedAt === null && !stale && !comparing);
+    toggle.classList.toggle("cta", !running && !comparing);
     const reset = $<HTMLButtonElement>("timer-reset");
     reset.title = running ? "While the clock runs, click twice." : "";
     reset.disabled = t.startedAt === null || comparing;
-    reset.classList.toggle("cta", ours && (stale || t.pausedAt !== null) && !this.resetArmed && !comparing);
+    reset.classList.toggle("cta", ours && stale && running && !this.resetArmed && !comparing);
     // Save run, once the clock has run; while comparing, the same place ends the comparison.
     const save = $<HTMLButtonElement>("save-run");
     save.dataset.action = comparing ? "endCompare" : "saveRun";

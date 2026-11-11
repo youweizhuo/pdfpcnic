@@ -441,8 +441,22 @@ kbd {
   overflow: hidden;
   container-type: inline-size;
 }
-/* When the audience isn't seeing your current slide: a card over its middle. */
+/* Keep simultaneous audience and clock notices readable without overlap. */
+.slide-states {
+  grid-area: current;
+  justify-self: center;
+  align-self: center;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 90%;
+  pointer-events: none;
+}
+/* Black, Freeze and Pause share one card style; only the status color changes. */
 .audience-state {
+  --state-color: var(--fg);
   grid-area: current;
   justify-self: center;
   align-self: center;
@@ -452,28 +466,29 @@ kbd {
   align-items: center;
   gap: 4px;
   max-width: 90%;
-  padding: 16px 28px;
-  border: 2px solid var(--fg);
-  border-radius: 16px;
-  background: rgb(0 0 0 / 0.9);
-  box-shadow: 0 10px 40px rgb(0 0 0 / 0.6);
+  padding: 12px 20px;
+  border: 1px solid var(--state-color);
+  border-radius: 10px;
+  background: rgb(20 20 22 / 0.92);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
   backdrop-filter: blur(6px);
   text-align: center;
   pointer-events: none;
 }
 .audience-state strong {
-  font-size: clamp(20px, 2.2vw, 38px);
-  font-weight: 600;
+  color: var(--state-color);
+  font-size: 22px;
+  font-weight: 500;
 }
 .audience-state span {
   color: var(--dim);
-  font-size: clamp(14px, 1.1vw, 18px);
+  font-size: 14px;
 }
 .audience-state.frozen {
-  border-color: var(--ahead);
+  --state-color: var(--ahead);
 }
-.audience-state.frozen strong {
-  color: var(--ahead);
+.audience-state.clock-state {
+  --state-color: var(--hint);
 }
 
 /* Start, pause, resume and reset, level with black, freeze and the laser, both close under their lines. */
@@ -537,7 +552,7 @@ kbd {
   white-space: nowrap;
   cursor: pointer;
 }
-.ctl:hover {
+.ctl:hover:enabled {
   border-color: var(--dim);
 }
 .ctl:disabled {
@@ -553,6 +568,15 @@ kbd {
   border-color: var(--accent);
   color: var(--accent);
   font-weight: 600;
+}
+/* Start and Resume share the paused clock's purple. */
+#timer-toggle {
+  /* Keep the steady label's width when its emphasis changes. */
+  font-weight: 600;
+}
+#timer-toggle.cta {
+  border-color: var(--hint);
+  color: var(--hint);
 }
 .ctl.confirm {
   border-color: var(--over);
@@ -747,7 +771,7 @@ kbd {
   font-size: 15px;
   cursor: pointer;
 }
-.toolbar button:hover:not(.cta, .confirm, .on) {
+.toolbar button:hover:enabled:not(.cta, .confirm, .on) {
   border-color: var(--faint);
   color: var(--fg);
 }
@@ -762,13 +786,12 @@ kbd {
 }
 /* Window controls and talk tools at the foot of the column. */
 .foot {
-  flex-direction: column;
-  align-items: stretch;
+  gap: 6px;
+  /* Leave the right-edge thumbnail trigger clear of the buttons. */
+  padding-right: 64px;
 }
-.foot div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.foot button {
+  padding-inline: 9px;
 }
 .toolbar kbd {
   font-size: 12px;
@@ -1067,11 +1090,37 @@ kbd {
   font-size: 13px;
 }
 
+.help-grid .help-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.settings-details {
+  border-top: 1px solid var(--line);
+}
+.settings-details > summary {
+  padding: 16px 0;
+  color: #c7c7cc;
+  font-size: 14px;
+  cursor: pointer;
+}
+.settings-details > summary::marker {
+  color: var(--dim);
+}
+
 .settings {
-  width: min(600px, calc(100vw - 32px));
-  padding: 22px 26px;
+  box-sizing: border-box;
+  width: min(580px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  padding: 26px;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 12px;
   background: var(--panel);
   color: var(--fg);
 }
@@ -1079,23 +1128,23 @@ kbd {
   background: rgb(0 0 0 / 0.6);
 }
 .settings h2 {
-  margin: 0 0 16px;
+  margin: 0 0 24px;
+  font-size: 22px;
   font-weight: 500;
 }
 .settings h3 {
-  margin: 18px 0 12px;
-  color: var(--accent);
+  margin: 24px 0 16px;
+  color: var(--dim);
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 .setting {
   display: grid;
-  grid-template-columns: 10em minmax(0, 1fr) 6.5em 3.2em;
+  grid-template-columns: 10em minmax(0, 1fr) 7em;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  font-size: 14px;
 }
 .switch {
   grid-column: 2 / -1;
@@ -1111,14 +1160,16 @@ kbd {
   cursor: pointer;
 }
 .switch button.on {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: #73528e;
+  background: #33283d;
+  color: #e0c9f1;
 }
 .setting input {
   width: 100%;
-  accent-color: var(--accent);
+  accent-color: #b785dd;
 }
 .setting output {
+  color: #c7c7cc;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -1142,10 +1193,9 @@ kbd {
   cursor: pointer;
 }
 .settings-actions .primary {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: #000;
-  font-weight: 600;
+  border-color: #73528e;
+  background: #33283d;
+  color: #e0c9f1;
 }
 
 .goto {

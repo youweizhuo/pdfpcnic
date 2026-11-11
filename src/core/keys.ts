@@ -48,7 +48,7 @@ export type ViewAction =
   | "resetLayout"
   | "timesOfDay"
   | "earlyLate"
-  // The buttons by the clock, with no key: Save run, and End comparison in its place while comparing.
+  // The button beside Open, with no key: Save run, and End comparison in its place while comparing.
   | "saveRun"
   | "endCompare"
   | "settings";
@@ -159,7 +159,7 @@ export const HELP: Array<[string, Array<[string, string, highlight?: "key" | "mo
       ["Shift+N / Shift+P", "next / previous, even hidden"],
       ["Shift+Backspace / Space", "back / forward after a jump"],
       ["g", "go to a slide by its number"],
-      ["Tab", "overview"],
+      ["Tab", "overview", "key"],
       ["m / Shift+M", "bookmark / back to it"],
       ["Mouse to the right edge", "the thumbnails: rest on one to see it large, click to jump", "mouse"],
     ],
@@ -190,7 +190,7 @@ export const HELP: Array<[string, Array<[string, string, highlight?: "key" | "mo
       ["Drag a divider", "resize columns, or slides and notes", "mouse"],
       ["Drop a .pdfpc file", "its notes and timing; with another name than the deck's, compared with it", "mouse"],
       ["w", "presenter fullscreen"],
-      [", / ?", "settings / this help"],
+      [", / ?", "settings / this help", "key"],
     ],
   ],
 ];

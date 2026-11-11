@@ -266,7 +266,9 @@ export class Talk {
         if (s.timer.pausedAt === null) return "The clock is running. Pause it first (p), then reset, or click Reset twice.";
         s.timer = T.freshTimer();
         this.forgetVisits();
-        return "Clock reset to 0:00:00. It starts again at your next move, or press s.";
+        return s.page === 0
+          ? "Clock reset to 0:00:00. Press any key to start."
+          : "Clock reset to 0:00:00. It starts again at your next move, or press s.";
       case "endSlide":
         s.endSlide = slide;
         this.replan();

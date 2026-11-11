@@ -89,6 +89,9 @@ try {
 
     await check(`${build}: keys step through, the clock runs, pace shows`, async () => {
       await page.keyboard.press("ArrowRight");
+      assert.equal(await page.evaluate(() => window.pdfpcnic.state.page), 0);
+      assert.ok(await page.evaluate(() => window.pdfpcnic.state.timer.startedAt));
+      await page.keyboard.press("ArrowRight");
       await sleep(2200);
       assert.equal(await page.evaluate(() => window.pdfpcnic.state.page), 1);
       assert.match(await page.$eval("#timer", (e) => e.textContent), /^0:00:0[12]$/);
@@ -101,7 +104,7 @@ try {
       const audience = pages.at(-1);
       assert.notEqual(audience, page, "no audience window");
       // The stable projector label is shared across platforms; guidance explains Firefox fullscreen.
-      assert.equal(await page.$eval("#audience-button", (e) => e.textContent), "Audience: projector");
+      assert.equal(await page.$eval("#audience-button", (e) => e.textContent), "Projector");
       assert.equal(await page.$eval("#audience-button", (e) => e.getAttribute("aria-pressed")), "false");
       assert.equal(await page.$eval("#sharing-controls", (e) => e.getAttribute("aria-pressed")), "false");
       await page.keyboard.press("ArrowRight");

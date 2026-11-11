@@ -80,7 +80,11 @@ final class SmokeTest {
             let url = "https://raw.githubusercontent.com/youweizhuo/pdfpcnic/main/demo/demo.pdfpc"
             try await until("the fetch") { try await js("return (await fetch('\(url)')).ok") as? Bool == true }
         }
-        await check("keys step through the slides") {
+        await check("the first key starts the clock; the next key advances") {
+            try await press("ArrowRight")
+            try await until("the clock started on page 1") {
+                try await js("return window.pdfpcnic.state.page === 0 && window.pdfpcnic.state.timer.startedAt !== null") as? Bool == true
+            }
             try await press("ArrowRight")
             try await until("page 2") { try await page() == 1 }
         }
@@ -102,10 +106,9 @@ final class SmokeTest {
             try Self.save(app.audience.view, to: out.appendingPathComponent("audience.png"))
             try await Self.save(web, to: out.appendingPathComponent("presenter.png"))
         }
-        await check("w makes the presenter fullscreen, its button lit, and back") {
+        await check("w makes the presenter fullscreen and back") {
             try await press("w")
             try await until("fullscreen") { app.presenter.fullscreen }
-            try await until("its button lit") { try await js("return document.querySelector('#presenter-button.on') !== null") as? Bool == true }
             try await press("w")
             try await until("windowed") { !app.presenter.fullscreen }
         }
@@ -139,8 +142,8 @@ final class SmokeTest {
             if !oneScreen, !app.audience.isFullscreen { throw Failure("Esc took the audience out of fullscreen") }
         }
         await check("Screen sharing fills the same window, including after fullscreen, and slides keep updating") {
-            guard try await js("return !document.querySelector('#sharing-controls').hidden && document.querySelector('[data-action=prepareSharing]').textContent === 'Audience: sharing'") as? Bool == true else {
-                throw Failure("the Audience: sharing button is missing")
+            guard try await js("return !document.querySelector('#sharing-controls').hidden && document.querySelector('[data-action=prepareSharing]').textContent === 'Sharing'") as? Bool == true else {
+                throw Failure("the Sharing button is missing")
             }
             @MainActor func prepare(click: Bool = false) async throws {
                 // Repeated calls must await completion: the already-ready state can't acknowledge a new call.

@@ -95,10 +95,9 @@ export function guideLine(s: Situation): Line | null {
       : a.mode === "fullscreen"
         ? `Audience fullscreen${a.screen ? ` on ${a.screen}` : ""}`
         : undefined;
-    return { kind: "next", text: "Ready: press s to start the clock.", fact };
+    return fact ? { kind: "fact", text: fact } : null;
   }
   if (s.finished) return { kind: "hint", text: "Click Save run to keep this run's times, to compare with the plan." };
-  if (s.clock === "paused") return { kind: "hint", text: "Paused: p or a click on the clock resumes; ⇧R resets." };
   if (s.laser) return { kind: "hint", text: "Laser on: + and − size the dot; l turns it off." };
   if (s.lastPlanned) return { kind: "fact", text: "Last planned slide: backup slides follow." };
   return null;

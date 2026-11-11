@@ -161,6 +161,6 @@ final class SlideView: NSView {
             36: "Enter", 76: "Enter", 49: " ", 51: "Backspace", 117: "Delete", 53: "Escape", 48: "Tab",
         ]
         guard let key = named[event.keyCode] ?? event.charactersIgnoringModifiers, !key.isEmpty else { return nil }
-        return ["key": key, "ctrlKey": flags.contains(.control), "altKey": flags.contains(.option), "shiftKey": flags.contains(.shift), "metaKey": false]
+        return ["key": key, "ctrlKey": flags.contains(.control), "altKey": flags.contains(.option), "shiftKey": flags.contains(.shift), "metaKey": false, "repeat": event.isARepeat]
     }
 }

@@ -261,6 +261,9 @@ export class Settings {
     for (const b of document.querySelectorAll<HTMLButtonElement>("#set-dim button")) {
       b.classList.toggle("on", (b.dataset.dim === "on") === this.dimNotes);
     }
+    for (const b of document.querySelectorAll<HTMLButtonElement>("#settings .switch button")) {
+      b.setAttribute("aria-pressed", String(b.classList.contains("on")));
+    }
     for (const key of LEVELS) {
       const v = this.slack[key];
       const input = $<HTMLInputElement>(`set-${key}`);

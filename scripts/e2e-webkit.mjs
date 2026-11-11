@@ -90,10 +90,13 @@ try {
       assert.match(await text("#notes"), /Welcome/);
       // Only the audience window can make itself fullscreen here: the guide explains the extra step.
       await page.waitForFunction(() => /^Drag the audience window to the projector, then double-click it/.test(document.querySelector("#guide").textContent), null, { timeout: 5000 });
-      assert.equal(await text("#audience-button"), "Audience: projector");
+      assert.equal(await text("#audience-button"), "Projector");
     });
 
     await check(`${build}: keys step through, the clock runs, pace shows, and the audience follows`, async () => {
+      await page.keyboard.press("ArrowRight");
+      assert.equal(await page.evaluate(() => window.pdfpcnic.state.page), 0);
+      assert.ok(await page.evaluate(() => window.pdfpcnic.state.timer.startedAt));
       await page.keyboard.press("ArrowRight");
       await sleep(2200);
       assert.equal(await page.evaluate(() => window.pdfpcnic.state.page), 1);

@@ -4,7 +4,7 @@
   "endSlide": 6,
   "disableMarkdown": false,
   "pages": [
-    { "idx": 0, "label": "1", "overlay": 0, "note": "[45s] **Welcome.** This is the title slide.\n\nThe clock starts when you leave this page, like pdfpc. Press **?** for all keys." },
+    { "idx": 0, "label": "1", "overlay": 0, "note": "[45s] **Welcome.** This is the title slide.\n\nPress any key to start the clock here. Press **→** or **Space** again to advance. Open **Help** for all keys." },
     { "idx": 1, "label": "2", "overlay": 0, "note": "[105s] The audience window opens with the deck; in the Mac app, behind this one. If the browser blocked it, press **o**.\n\n- **Shift+W** here puts it fullscreen on the projector (Chrome, Edge, the Mac app)\n- Otherwise drag it to the projector and double-click it" },
     { "idx": 2, "label": "3", "overlay": 0, "note": "[60s] Three reveal steps share one page label, so they count as **one slide**.\n\n*Next* on the right shows the next slide, not the next step." },
     { "idx": 3, "label": "3", "overlay": 1, "note": "[40s] Step two of three. A step can take its own time." },

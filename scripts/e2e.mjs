@@ -173,9 +173,16 @@ try {
 
   await page.screenshot({ path: `${out}/ready.png` });
 
-  await check("timer starts on leaving the first slide; the line under the bar has said what to do with the audience until then", async () => {
+  await check("the first key starts the clock on slide 1; the next key advances", async () => {
     assert.equal((await state()).timer.startedAt, null);
     if (mode === "site") await textMatches("#guide", /^Press ⇧W to make the audience window fullscreen on /);
+    assert.equal(await text("#timer-state span"), "Press any key to start");
+    await press("ArrowRight");
+    assert.equal((await state()).page, 0);
+    assert.ok((await state()).timer.startedAt > 0);
+    assert.equal(await page.$eval("#timer-state", (e) => e.hidden), true);
+    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", repeat: true })));
+    assert.equal((await state()).page, 0, "holding the starting key advanced the slide");
     await press("ArrowRight");
     const s = await state();
     assert.equal(s.page, 1);
@@ -229,7 +236,7 @@ try {
   if (mode !== "site") {
     await check("blocked, the window that comes with the deck is left to its button, with no error", async () => {
       assert.equal((await browser.pages()).length, 1, "a window opened");
-      assert.equal(await text("#audience-button"), "Audience: projector");
+      assert.equal(await text("#audience-button"), "Projector");
       assert.equal(await page.$eval("#error", (e) => e.hidden), true);
     });
     await page.evaluate(() => (window.open = window.allowed));
@@ -300,7 +307,6 @@ try {
     await full(audience, true);
     await press("w");
     await full(page, true);
-    await page.waitForSelector("#presenter-button.on", { timeout: 3000 });
     await press("l", "?");
     await press("Escape");
     assert.equal(await page.$eval("#help", (e) => e.hidden), true, "the help stayed");
@@ -614,6 +620,7 @@ try {
     assert.match(await cls("#finish"), /t-on/);
     await page.screenshot({ path: `${out}/pace.png` });
     await press(",");
+    await page.click("#pace-settings > summary");
     await page.click('#set-unit [data-unit="share"]');
     assert.match(await page.$eval("#set-early + output", (e) => e.textContent), /^\d+% \(/);
     await page.$eval("#set-early", (e) => {
@@ -631,15 +638,27 @@ try {
   const toggle = () => page.$eval("#timer-toggle > :not(.off)", (e) => e.firstChild.textContent.trim());
   const ctaIs = (sel, on) => page.waitForFunction((sel, on) => document.querySelector(sel).classList.contains("cta") === on, { timeout: 5000 }, sel, on);
 
-  await check("the button by the clock pauses and resumes the timer; paused, the guide says how to go on", async () => {
+  await check("the button by the clock pauses and resumes the timer; the slide indicator explains how to continue", async () => {
     assert.equal(await toggle(), "Pause");
     const notesHeight = () => page.$eval("#next-notes", (e) => e.getBoundingClientRect().height);
     const running = await notesHeight();
     await page.click("#timer-toggle");
     assert.ok((await state()).timer.pausedAt > 0);
     assert.equal(await toggle(), "Resume");
-    assert.match(await text("#guide"), /^Paused: /);
-    assert.equal(await page.$eval("#guide", (e) => e.classList.contains("hint")), true);
+    assert.equal(await page.$eval("#timer-state", (e) => e.hidden), false);
+    assert.equal(await text("#timer-state strong"), "Clock paused");
+    assert.equal(await cta("#timer-toggle"), true);
+    assert.equal(await page.$eval("#timer-toggle", (e) => getComputedStyle(e).borderColor), "rgb(168, 85, 247)");
+    // Pausing affects the clock only; audience notices can coexist with it.
+    assert.equal((await state()).black, false);
+    assert.equal((await state()).frozen, null);
+    await press("b");
+    assert.equal(await page.$eval("#audience-state", (e) => e.hidden), false);
+    assert.equal(await page.$eval("#timer-state", (e) => e.hidden), false);
+    const notices = await page.$$eval(".slide-states > div", (els) => els.map((e) => ({ top: e.getBoundingClientRect().top, bottom: e.getBoundingClientRect().bottom, left: e.getBoundingClientRect().left, right: e.getBoundingClientRect().right })));
+    assert.ok(notices[0].right <= notices[1].left || notices[0].bottom <= notices[1].top, "the pause and audience notices overlap");
+    await press("b");
+    assert.doesNotMatch(await text("#guide"), /Paused:|click Resume|press s to start/);
     // The hint and the target end read as large as the buttons' labels.
     const sizes = await page.evaluate(() => ["#guide", "#target-at", "#timer-toggle"].map((s) => getComputedStyle(document.querySelector(s)).fontSize));
     assert.deepEqual(sizes, ["15px", "15px", "15px"]);
@@ -657,15 +676,17 @@ try {
     assert.equal(await page.$eval("#timer", (e) => e.classList.contains("paused")), true);
     // The guide's line is kept while empty: the next notes over it keep their size.
     assert.equal(await notesHeight(), running);
-    // Audience modes stay neutral until prepared; Reset stands out only once the audience is ready.
+    // Resume stays prominent when paused, including once the audience is ready.
     assert.equal(await cta("#timer-reset"), false);
     assert.equal(await cta("#audience-button"), false);
     await press("Shift+W");
-    await ctaIs("#timer-reset", true);
+    await ctaIs("#timer-reset", false);
     assert.equal(await cta("#audience-button"), false);
-    assert.equal(await cta("#timer-toggle"), false);
+    assert.equal(await cta("#timer-toggle"), true);
     await page.click("#timer-toggle");
     assert.equal((await state()).timer.pausedAt, null);
+    assert.equal(await page.$eval("#timer-state", (e) => e.hidden), true);
+    assert.equal(await cta("#timer-toggle"), false);
     await ctaIs("#timer-reset", false);
     await page.click("#timer-toggle");
     assert.ok((await state()).timer.pausedAt > 0);
@@ -689,6 +710,10 @@ try {
     assert.equal(await text("#timer"), "0:00:00");
     assert.match(await text("#toast"), /next move/);
     assert.equal(await toggle(), "Start");
+    assert.equal(await page.$eval("#timer-state", (e) => e.hidden), false);
+    assert.equal(await text("#timer-state strong"), "Clock not started");
+    assert.equal(await text("#timer-state span"), "Press s to start");
+    assert.equal(await page.$eval("#timer-toggle", (e) => getComputedStyle(e).borderColor), "rgb(168, 85, 247)");
     assert.equal(await cta("#timer-toggle"), true, "Start doesn't stand out before the talk");
     assert.equal(await page.$eval("#timer-reset", (e) => e.disabled), true);
     assert.equal(await barTop(), runningTop);
@@ -729,10 +754,11 @@ try {
     mkdirSync(downloads, { recursive: true });
     const cdp = await browser.target().createCDPSession();
     await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: downloads });
-    // Where the buttons, the clock and the guide's line are: a comparison moves none of them.
+    // Comparison keeps the controls' rows and the clock in place. The footer's
+    // Save run label widens to End comparison, so Help may move along that row.
     const spots = () =>
       page.$$eval(".slide-tools button, .timer-controls button, .foot button, #timer, #guide", (els) =>
-        els.map((e) => [e.id || e.dataset.action, Math.round(e.getBoundingClientRect().x), Math.round(e.getBoundingClientRect().y)]),
+        els.map((e) => [e.id || e.dataset.action, e.closest(".foot") ? null : Math.round(e.getBoundingClientRect().x), Math.round(e.getBoundingClientRect().y)]),
       );
     // A second and a half on this slide, so the run has some time to save, however quick the checks before.
     await new Promise((r) => setTimeout(r, 1500));
@@ -777,6 +803,8 @@ try {
     assert.equal(await text("#timer"), clock);
     assert.deepEqual((await state()).timer, timer);
     assert.deepEqual(await page.$$eval("#timer-toggle, #timer-reset", (els) => els.map((e) => e.disabled)), [true, true]);
+    assert.equal(await page.$eval("#timer-state", (e) => e.hidden), true);
+    assert.equal(await cta("#timer-toggle"), false);
     assert.equal(await text("#save-run"), "End comparison");
     await page.screenshot({ path: `${out}/compare-run.png` });
 
@@ -850,8 +878,11 @@ try {
   });
 
   await check("settings: slide and notes sizes, and back to defaults", async () => {
-    await page.click('.toolbar [data-action="settings"]');
+    await page.click("#help-button");
+    await page.click('#help [data-action="settings"]');
+    assert.equal(await page.$eval("#help", (e) => e.hidden), true);
     assert.equal(await page.$eval("#settings", (e) => e.open), true);
+    assert.equal(await page.$("#settings kbd"), null);
     assert.equal(await page.$eval("#set-stage + output", (e) => e.textContent), "100%");
     const width = () => page.$eval("#current", (e) => e.getBoundingClientRect().width);
     const before = await width();
@@ -955,6 +986,8 @@ try {
   await check("help sheet", async () => {
     await press("?");
     assert.equal(await page.$eval("#help", (e) => e.hidden), false);
+    assert.equal(await page.$('.foot [data-action="settings"], .foot [data-action="overview"]'), null);
+    assert.equal(await page.$$eval("#help-grid tr.key .help-link", (els) => els.length), 2);
     await page.screenshot({ path: `${out}/help.png` });
     const help = await page.evaluate(() => ({
       groups: [...document.querySelectorAll("#help-grid h3")].map((h) => h.textContent),
@@ -974,7 +1007,7 @@ try {
     // The demo deck isn't kept; load it as a user would, then reload.
     await input.uploadFile(resolve("demo/demo.pdf"), resolve("demo/demo.pdfpc"));
     await page.waitForFunction(() => window.pdfpcnic.state?.page === 0);
-    await press("ArrowRight", "ArrowRight");
+    await press("ArrowRight", "ArrowRight", "ArrowRight");
     await new Promise((r) => setTimeout(r, 600));
     const before = await state();
     await page.reload();

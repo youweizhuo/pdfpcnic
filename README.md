@@ -37,7 +37,7 @@ to take anywhere.
 1. Drop the PDF on the page, with its `.pdfpc` file if it has one, and press **Present**. The audience window opens
    with it.
 2. `Shift+W` puts the audience fullscreen on the projector, `w` the presenter.
-3. `→` to begin. The clock starts when you leave the first slide.
+3. Press any key to start the clock on the first slide. Press `→` or Space again to advance.
 
 The button outlined in yellow is the next one to press; filled yellow means on. The line over the buttons says what to
 do next in yellow, what's in the way in orange, and hints in purple. Set the displays to **Extend**, not mirror. If the

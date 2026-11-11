@@ -225,7 +225,15 @@ export async function start(platform: Platform): Promise<void> {
     const table = el("table");
     for (const [keys, what, highlight] of rows) {
       const row = el("tr", highlight ?? "");
-      row.append(el("td", "", keys), el("td", "", what));
+      const description = el("td", "", what);
+      if (keys === "Tab" || keys === ", / ?") {
+        const link = el("button", "help-link", keys === "Tab" ? what : "settings");
+        link.type = "button";
+        link.dataset.action = keys === "Tab" ? "overview" : "settings";
+        description.replaceChildren(link);
+        if (keys !== "Tab") description.append(" / this help");
+      }
+      row.append(el("td", "", keys), description);
       table.append(row);
     }
     const section = el("section");

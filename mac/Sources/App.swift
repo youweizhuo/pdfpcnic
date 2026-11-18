@@ -104,10 +104,6 @@ final class App: NSObject, NSApplicationDelegate {
             pdfs.close(args.int("id"))
             return nil
         }
-        bridge.on("audienceShow") { [unowned self] args in
-            audience.show(pdfs[args.int("doc")])
-            return nil
-        }
         bridge.on("audienceOpen") { [unowned self] args in
             audience.open(behind: args.bool("behind"))
             return nil
@@ -123,6 +119,7 @@ final class App: NSObject, NSApplicationDelegate {
         bridge.on("audienceRender") { [unowned self] args in
             let laser = (args["laser"] as? [String: Any]).map { CGPoint(x: $0.double("x"), y: $0.double("y")) }
             audience.render(page: args.int("page"), black: args.bool("black"), laser: laser, size: args.double("laserSize"))
+            if let doc = args["doc"] as? NSNumber { audience.show(pdfs[doc.intValue]) }
             return nil
         }
         bridge.on("presenterFullscreen") { [unowned self] args in

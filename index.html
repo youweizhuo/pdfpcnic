@@ -56,7 +56,7 @@
       </div>
     </section>
 
-    <main id="presenter" class="presenter" hidden>
+    <main id="presenter" class="presenter" tabindex="-1" hidden>
       <div id="current"></div>
       <div class="slide-states">
         <div id="audience-state" class="audience-state" role="status" hidden><strong></strong><span></span></div>
@@ -106,12 +106,12 @@
         <p id="guide" class="guide"></p>
         <!-- Audience preparation modes stay named alike and highlight only while prepared. -->
         <nav class="toolbar foot">
-          <button type="button" id="audience-button" data-action="prepareProjector" title="Open the audience window and make it fullscreen on the projector. Shift+W toggles fullscreen.">Projector</button>
-          <button type="button" id="sharing-controls" data-action="prepareSharing" title="Shift+O: enlarge the audience window without fullscreen, then select it in your meeting app" hidden>Sharing</button>
+          <button type="button" id="audience-button" data-action="prepareProjector">Projector</button>
+          <button type="button" id="sharing-controls" data-action="prepareSharing" hidden>Sharing</button>
           <button type="button" id="open-files">Open…</button>
           <!-- Saves the run's times, to compare with the plan; while comparing, ends the comparison. -->
-          <button id="save-run" class="ctl" type="button" data-action="saveRun" disabled>Save run</button>
-          <button id="help-button" type="button" data-action="help" aria-controls="help">Help <kbd>?</kbd></button>
+          <button id="save-run" class="ctl" type="button" data-action="saveRun" hidden>Save run</button>
+          <button id="help-button" type="button" data-action="help" aria-haspopup="dialog" aria-controls="help">Help <kbd>?</kbd></button>
         </nav>
       </aside>
 
@@ -121,13 +121,20 @@
 
     <div id="solo" class="solo" hidden></div>
 
-    <section id="overview" class="overview" hidden>
+    <section id="overview" class="overview" role="dialog" aria-modal="true" aria-labelledby="overview-title" hidden>
+      <header class="overlay-head">
+        <h2 id="overview-title">Overview</h2>
+        <button type="button" data-action="overview">Close</button>
+      </header>
       <ol id="overview-grid" class="overview-grid"></ol>
     </section>
 
-    <section id="help" class="help" hidden>
+    <section id="help" class="help" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
       <div class="help-card">
-        <h2>Help</h2>
+        <header class="overlay-head">
+          <h2 id="help-title">Help</h2>
+          <button id="help-close" type="button" data-action="help">Close</button>
+        </header>
         <div id="help-grid" class="help-grid"></div>
         <section class="legend">
           <h3>Pace</h3>
@@ -160,7 +167,7 @@
             </div>
           </dl>
         </section>
-        <p class="help-foot">Same keys as pdfpc. Click a slide to step on, right-click to step back; double-click the audience window for fullscreen. Click the clock to switch time displays, where the talk would end for how early or late.</p>
+        <p class="help-foot">Click a slide to step on or right-click to step back. Double-click the audience window for fullscreen. Click the clock to switch time displays, or click the projected end to show how early or late the talk is.</p>
       </div>
     </section>
 

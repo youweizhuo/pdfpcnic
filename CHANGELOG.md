@@ -3,6 +3,23 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the notes' length tags are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.8.0 (2026-11-18)
+
+### Changed
+
+- **Tab moves focus.** Open Overview from Help or with `v`. Setup shortcuts work before the clock starts.
+  The first advance key on the title slide starts the clock, and the next press advances.
+- **Save run appears on the last planned slide** after the clock has started.
+- **The presenter adapts to smaller windows.** Notes, clock and controls stay within reach, with a smaller next-slide
+  preview beside the clock on narrow screens.
+
+### Fixed
+
+- **Recover the audience window.** The guide names the button to reopen it, and that button has a dashed red outline.
+  Resuming after reload restores blackout and the frozen slide.
+- **Keep notes when a replacement fails.** A broken `.pdfpc` file shows its name and the error without replacing the
+  active notes or interrupting the run.
+
 ## 1.7.0 (2026-11-11)
 
 ### Changed

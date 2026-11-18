@@ -53,13 +53,20 @@ export interface AudienceEvents {
   change(): void;
 }
 
+export interface AudienceFrame {
+  page: number;
+  black: boolean;
+  laser: Point | null;
+  laserSize: number;
+}
+
 /** The window the room sees: one slide, fullscreen on the projector. */
 export interface Audience {
   readonly status: AudienceStatus;
   /** Device pixels across the slide it shows, for drawing ahead at that size; 0 when it draws its own. */
   readonly pixelWidth: number;
   /** Shows this deck: the window draws it from the PDF, or from the pictures the presenter has drawn of it. */
-  bind(deck: Deck, pdf: Pdf, pages: PageCache): void;
+  bind(deck: Deck, pdf: Pdf, pages: PageCache, frame: AudienceFrame): void;
   /**
    * Opens it on this screen, or brings it forward. Call from a key press or click. Throws, saying what to do, if it
    * can't. `behind`, as a deck opens: behind the presenter where the platform can put it, and left as it is if open.
@@ -69,7 +76,7 @@ export interface Audience {
   toggleFullscreen(): void;
   /** Enlarges a desktop window for meeting apps, without entering a fullscreen Space. */
   prepareSharing?(): Promise<void>;
-  render(page: number, black: boolean, laser: Point | null, laserSize: number): void;
+  render(frame: AudienceFrame): void;
 }
 
 /** The presenter's window. */

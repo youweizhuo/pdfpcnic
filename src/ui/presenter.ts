@@ -51,6 +51,7 @@ export class Presenter {
   private thumbs = new Map<number, Thumb[]>();
   private stripItems: HTMLElement[] = [];
   private overviewItems: HTMLElement[] = [];
+  private focusBeforeOverlay: HTMLElement | null = null;
   /** Each thumbnail's slide line, by slide, shown while comparing. */
   private thumbLines: { strip: HTMLElement[]; overview: HTMLElement[] } = { strip: [], overview: [] };
   private observers = new Map<HTMLElement, IntersectionObserver>();
@@ -72,6 +73,8 @@ export class Presenter {
   private comparison: Comparison | null = null;
   /** When the run whose times were last saved started, so the guide stops asking. */
   private savedRun: number | null = null;
+  /** Which existing control reopens the audience after it closes. */
+  private reconnectAction: "prepareProjector" | "prepareSharing" = "prepareProjector";
 
   constructor(
     private platform: Platform,
@@ -95,10 +98,11 @@ export class Presenter {
     this.next = new SlideView($("next"), deck, this.cache, 2, { align: "start" });
     this.next.onLayout = () => this.fitLine($("talkbar"), this.next.canvas);
     this.cache.onRender((page) => this.thumbs.get(page)?.forEach((t) => t.draw()));
-    audience.bind(deck, pdf, this.cache);
+    audience.bind(deck, pdf, this.cache, { ...this.talk.audience, laserSize: this.settings.laserSize });
 
     $("start").hidden = true;
     $("presenter").hidden = false;
+    $("presenter").focus({ preventScroll: true });
     this.settings.apply();
     this.current.start();
     this.next.start();
@@ -129,6 +133,7 @@ export class Presenter {
     $("solo").hidden = true;
     $("overview").hidden = true;
     $("help").hidden = true;
+    if (this.view.help || this.view.overview) this.restoreOverlayFocus();
   }
 
   // Input
@@ -149,7 +154,6 @@ export class Presenter {
     const v = this.view;
     switch (action) {
       case "overview":
-        v.help = false;
         return this.setOverview(!v.overview);
       case "goto":
         return this.openGoto();
@@ -168,8 +172,7 @@ export class Presenter {
         else this.setSolo(!v.solo);
         return;
       case "help":
-        v.help = !v.help;
-        return this.render();
+        return this.setHelp(!v.help);
       case "openAudience":
         try {
           this.audience.open();
@@ -198,10 +201,8 @@ export class Presenter {
         toast(`Slides at ${Math.round(this.settings.stage * 100)}% of their columns.`, 1500);
         return;
       case "settings":
-        if (v.help) {
-          v.help = false;
-          this.render();
-        }
+        if (v.help) this.setHelp(false);
+        if (v.overview) this.setOverview(false);
         return this.settings.open();
       case "timesOfDay":
         return this.settings.setTimeOfDay(!this.settings.timeOfDay);
@@ -230,10 +231,8 @@ export class Presenter {
   private escape(): boolean {
     const v = this.view;
     const s = this.talk.state;
-    if (v.help) {
-      v.help = false;
-      this.render();
-    } else if (v.overview) this.setOverview(false);
+    if (v.help) this.setHelp(false);
+    else if (v.overview) this.setOverview(false);
     else if (v.solo) this.setSolo(false);
     else if (s.black || s.frozen !== null || s.laser) return false;
     else if (this.audience.status.mode === "fullscreen" && this.platform.window.extended === false) this.audience.toggleFullscreen();
@@ -246,38 +245,35 @@ export class Presenter {
   private startKey: string | null = null;
 
   onKey(e: KeyboardEvent): void {
-    // Text fields and dialogs retain their keyboard interaction before the talk starts.
-    const editing = e.target instanceof HTMLElement && (
-      e.target.matches("input, textarea, select") || e.target.isContentEditable
-    );
-    if (editing || document.querySelector("dialog[open]")) {
-      if (isIgnored(e)) e.preventDefault();
+    if (e.defaultPrevented || e.isComposing) return;
+    if (isIgnored(e)) {
+      e.preventDefault();
       return;
     }
+    // The audience can forward events from another window, whose HTMLElement type is different.
+    const target = e.target as HTMLElement | null;
+    if (target?.matches?.("input, textarea, select") || target?.isContentEditable || document.querySelector("dialog[open]")) return;
     if (e.repeat && this.startKey === e.key) {
       e.preventDefault();
       return;
     }
     if (!e.repeat) this.startKey = null;
-    if (this.talk.state.page === 0 && this.talk.state.timer.startedAt === null &&
-        !this.view.help && !this.view.overview && !this.comparison &&
-        !e.ctrlKey && !e.metaKey && !e.altKey && !e.isComposing &&
-        !["Shift", "Control", "Alt", "Meta", "CapsLock", "Fn", "Unidentified"].includes(e.key)) {
+    const action = actionFor(e);
+    if (!action) return;
+    if ((e.key === "Enter" || e.key === " ") && target?.closest?.("button, a[href], summary")) return;
+    if (this.view.help || this.view.overview) {
+      if (this.view.overview && this.overviewKey(e)) {
+        e.preventDefault();
+        return;
+      }
+      if (action !== "help" && action !== "overview" && action !== "escape" && action !== "settings") return;
+    }
+    if (action === "next" && this.talk.state.page === 0 && this.talk.state.timer.startedAt === null && !this.comparison) {
       e.preventDefault();
       this.startKey = e.key;
       this.act("timerStart");
       return;
     }
-    if (isIgnored(e)) {
-      e.preventDefault();
-      return;
-    }
-    if (this.view.overview && this.overviewKey(e)) {
-      e.preventDefault();
-      return;
-    }
-    const action = actionFor(e);
-    if (!action) return;
     e.preventDefault();
     this.act(action);
   }
@@ -354,8 +350,8 @@ export class Presenter {
     const toggle = $("timer-toggle");
     toggle.addEventListener(
       "click",
-      () => {
-        toggle.blur();
+      (e) => {
+        if (e.detail) toggle.blur();
         this.act(this.talk.state.timer.startedAt === null ? "timerStart" : "timerPause");
       },
       { signal },
@@ -363,8 +359,8 @@ export class Presenter {
     const reset = $("timer-reset");
     reset.addEventListener(
       "click",
-      () => {
-        reset.blur();
+      (e) => {
+        if (e.detail) reset.blur();
         // Running, it takes a second click, so a stray one can't wipe the talk's time.
         if (this.talk.state.timer.pausedAt === null && !this.resetArmed) {
           this.resetArmed = window.setTimeout(() => {
@@ -382,18 +378,19 @@ export class Presenter {
       { signal },
     );
 
-    for (const b of document.querySelectorAll<HTMLButtonElement>("#presenter [data-action], #help [data-action]")) {
+    for (const b of document.querySelectorAll<HTMLButtonElement>("#presenter [data-action], #help [data-action], #overview [data-action]")) {
       b.addEventListener(
         "click",
-        () => {
-          b.blur();
-          this.act(b.dataset.action as Action);
+        (e) => {
+          const action = b.dataset.action as Action;
+          if (e.detail && action !== "help" && action !== "overview") b.blur();
+          this.act(action);
         },
         { signal },
       );
     }
     $("help").addEventListener("click", (e) => {
-      if (!(e.target as Element).closest("[data-action]")) this.act("help");
+      if (e.target === e.currentTarget) this.setHelp(false);
     }, { signal });
     this.settings.wire(signal);
 
@@ -464,6 +461,8 @@ export class Presenter {
       : `Press f to move it to slide ${here.slide + 1}`;
 
     const status = this.audience.status;
+    if (status.mode === "fullscreen") this.reconnectAction = "prepareProjector";
+    else if (status.forSharing) this.reconnectAction = "prepareSharing";
     $("sharing-controls").hidden = !this.audience.prepareSharing;
 
     const on: Partial<Record<Action, boolean>> = {
@@ -480,6 +479,13 @@ export class Presenter {
       const active = !!on[b.dataset.action as Action];
       b.classList.toggle("on", active);
       if (b.dataset.action === "prepareProjector" || b.dataset.action === "prepareSharing") {
+        const closed = status.mode === "closed" && !this.view.solo && b.dataset.action === this.reconnectAction;
+        b.classList.toggle("audience-closed", closed);
+        b.title = closed
+          ? "The audience window is closed. Click to reopen it."
+          : b.dataset.action === "prepareProjector"
+            ? "Open the audience window and make it fullscreen on the projector. Shift+W toggles fullscreen."
+            : "Shift+O: enlarge the audience window without fullscreen, then select it in your meeting app.";
         b.setAttribute("aria-pressed", String(active));
       }
     }
@@ -510,7 +516,7 @@ export class Presenter {
     const room = this.talk.audience;
     const size = this.settings.laserSize;
     this.current.setLaser(s.laser ? s.laserAt : null, size);
-    this.audience.render(room.page, room.black, room.laser, size);
+    this.audience.render({ ...room, laserSize: size });
     this.solo?.setLaser(room.laser, size);
   }
 
@@ -569,7 +575,7 @@ export class Presenter {
       toggle.title = until
         ? `The talk starts at ${T.formatClock(now + until)}, in ${T.format(until)}.`
         : this.talk.state.page === 0
-          ? "Press any key to start the clock without advancing the slide."
+          ? "Start the clock without advancing the slide (s, →, ↓, Page Down, Enter, or Space)."
           : "Starts the clock. It also starts at your next move.";
     } else toggle.title = "";
     const comparing = !!this.comparison;
@@ -577,11 +583,11 @@ export class Presenter {
     const waiting = t.startedAt === null;
     const firstPage = this.talk.state.page === 0;
     const heading = waiting ? "Clock not started" : "Clock paused";
-    const instruction = waiting ? firstPage ? "Press any key to start" : "Press s to start" : "Press p to resume";
+    const instruction = waiting ? firstPage ? "Press s or → to start" : "Press s to start" : "Press p to resume";
     if (card.querySelector("strong")!.textContent !== heading) card.querySelector("strong")!.textContent = heading;
     if (card.querySelector("span")!.textContent !== instruction) card.querySelector("span")!.textContent = instruction;
     card.title = waiting
-      ? firstPage ? "Press any key or click Start to begin without advancing the slide" : "Press s or click Start to begin"
+      ? firstPage ? "Start the clock without advancing the slide (s, →, ↓, Page Down, Enter, or Space)" : "Press s or click Start to begin"
       : "Press p or click Resume to continue";
     card.hidden = running || comparing;
     toggle.disabled = comparing;
@@ -590,11 +596,11 @@ export class Presenter {
     reset.title = running ? "While the clock runs, click twice." : "";
     reset.disabled = t.startedAt === null || comparing;
     reset.classList.toggle("cta", ours && stale && running && !this.resetArmed && !comparing);
-    // Save run, once the clock has run; while comparing, the same place ends the comparison.
+    // Save run appears at the end of the plan. The same button ends a comparison on any slide.
     const save = $<HTMLButtonElement>("save-run");
     save.dataset.action = comparing ? "endCompare" : "saveRun";
     label(save, comparing ? "End comparison" : "Save run");
-    save.disabled = !comparing && t.startedAt === null;
+    save.hidden = !comparing && (t.startedAt === null || this.talk.slide !== this.talk.state.endSlide);
     save.title = comparing ? "" : "Saves the times this run took as a .pdfpc file, to compare with the plan: drop it on this window.";
     reset.classList.toggle("confirm", !!this.resetArmed);
     label(reset, this.resetArmed ? "Click again to reset" : "Reset", "⇧R");
@@ -605,8 +611,10 @@ export class Presenter {
   private renderGuide(now: number): void {
     const s = this.talk.state;
     const until = T.untilStart(this.deck, now);
+    const lastPlanned = this.talk.slide === s.endSlide;
     const line = guideLine({
       audience: this.audience.status,
+      reopenWith: this.reconnectAction === "prepareSharing" ? "Sharing" : "Projector",
       solo: this.view.solo,
       oneScreen: this.platform.window.extended === false,
       system: this.platform.window.system,
@@ -614,8 +622,8 @@ export class Presenter {
       stale: this.talk.stale,
       startsAt: until ? { time: T.formatClock(now + until), in: T.format(until) } : null,
       laser: s.laser,
-      lastPlanned: this.talk.slide === s.endSlide && s.endSlide < this.deck.slides.length - 1,
-      finished: this.talk.finished && this.savedRun !== s.timer.startedAt,
+      lastPlanned: lastPlanned && s.endSlide < this.deck.slides.length - 1,
+      finished: lastPlanned && this.talk.finished && this.savedRun !== s.timer.startedAt,
       comparing: this.comparison?.name ?? null,
     });
     const p = $("guide");
@@ -870,13 +878,37 @@ export class Presenter {
   }
 
   private setOverview(open: boolean): void {
+    if (open && this.view.help) this.setHelp(false);
     this.view.overview = open;
     $("overview").hidden = !open;
     if (open) {
+      this.rememberOverlayFocus();
       this.view.selected = this.talk.slide;
       this.buildOverview();
-    }
+    } else this.restoreOverlayFocus();
     this.render();
+  }
+
+  private setHelp(open: boolean): void {
+    if (open && this.view.overview) this.setOverview(false);
+    this.view.help = open;
+    this.render();
+    if (open) {
+      this.rememberOverlayFocus();
+      $("help-close").focus();
+    } else this.restoreOverlayFocus();
+  }
+
+  private rememberOverlayFocus(): void {
+    const active = document.activeElement;
+    this.focusBeforeOverlay = active instanceof HTMLElement ? active : null;
+    $("presenter").inert = $("solo").inert = true;
+  }
+
+  private restoreOverlayFocus(): void {
+    $("presenter").inert = $("solo").inert = false;
+    this.focusBeforeOverlay?.focus({ preventScroll: true });
+    this.focusBeforeOverlay = null;
   }
 
   private buildOverview(): void {
@@ -891,13 +923,20 @@ export class Presenter {
       li.classList.toggle("hidden", !t.slideVisible(slide));
       li.classList.toggle("current", slide === t.slide);
       const thumb = this.thumb(t.lastOf(slide));
-      const cap = el("div", "cap");
+      const cap = el("span", "cap");
+      const detail = [pages.length > 1 ? `${pages.length} steps` : "", t.slideVisible(slide) ? "" : "hidden"].filter(Boolean).join(" · ");
       cap.append(
         el("span", "", String(slide + 1)),
-        el("span", "", [pages.length > 1 ? `${pages.length} steps` : "", t.slideVisible(slide) ? "" : "hidden"].filter(Boolean).join(" · ")),
+        el("span", "", detail),
       );
-      li.append(thumb.canvas, (this.thumbLines.overview[slide] = el("i", "cmp")), cap);
-      li.addEventListener("click", () => this.pick(slide));
+      const button = el("button");
+      button.type = "button";
+      button.tabIndex = -1;
+      button.setAttribute("aria-label", `Slide ${slide + 1}${detail ? `, ${detail}` : ""}`);
+      if (slide === t.slide) button.setAttribute("aria-current", "true");
+      button.append(thumb.canvas, (this.thumbLines.overview[slide] = el("i", "cmp")), cap);
+      button.addEventListener("click", () => this.pick(slide));
+      li.append(button);
       this.overviewItems[slide] = li;
       items.push([li, thumb]);
       return li;
@@ -909,11 +948,19 @@ export class Presenter {
 
   private select(slide: number): void {
     const v = this.view;
-    this.overviewItems[v.selected]?.classList.remove("selected");
+    const previous = this.overviewItems[v.selected];
+    previous?.classList.remove("selected");
+    const previousButton = previous?.querySelector("button");
+    if (previousButton) previousButton.tabIndex = -1;
     v.selected = Math.max(0, Math.min(this.deck.slides.length - 1, slide));
     const item = this.overviewItems[v.selected];
+    const button = item?.querySelector("button");
     item?.classList.add("selected");
     item?.scrollIntoView({ block: "nearest" });
+    if (button) {
+      button.tabIndex = 0;
+      button.focus({ preventScroll: true });
+    }
   }
 
   private pick(slide: number): void {
@@ -926,7 +973,7 @@ export class Presenter {
     const items = this.overviewItems;
     const top = items[0]?.offsetTop;
     const columns = Math.max(1, items.filter((i) => i.offsetTop === top).length);
-    const moves: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns, ArrowUp: -columns };
+    const moves: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns, ArrowUp: -columns, PageDown: 1, PageUp: -1 };
     if (e.key in moves && !e.shiftKey) {
       this.select(v.selected + moves[e.key]);
       return true;

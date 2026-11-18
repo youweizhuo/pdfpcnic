@@ -34,6 +34,8 @@ export interface SavedSession {
   pdfName: string;
   page: number;
   timer: T.TimerState;
+  black?: boolean;
+  frozen?: number | null;
   endSlide?: number;
   bookmark?: number | null;
   /** Seconds spent on each planned window, by the presenter's keys. */
@@ -99,10 +101,11 @@ export class Talk {
   constructor(deck: Deck, saved: SavedSession | undefined, now: number) {
     this.deck = deck;
     const from = resumes(saved, deck.name, now) && saved.page < deck.pages.length ? saved : undefined;
+    const frozen = from?.frozen ?? -1;
     this.state = {
       page: from?.page ?? 0,
-      frozen: null,
-      black: false,
+      frozen: Number.isInteger(frozen) && frozen >= 0 && frozen < deck.pages.length ? frozen : null,
+      black: from?.black === true,
       laser: false,
       laserAt: null,
       timer: from?.timer ?? T.freshTimer(),
@@ -267,7 +270,7 @@ export class Talk {
         s.timer = T.freshTimer();
         this.forgetVisits();
         return s.page === 0
-          ? "Clock reset to 0:00:00. Press any key to start."
+          ? "Clock reset to 0:00:00. Press s or → to start."
           : "Clock reset to 0:00:00. It starts again at your next move, or press s.";
       case "endSlide":
         s.endSlide = slide;
@@ -379,7 +382,10 @@ export class Talk {
     const spent = new Map(this.spent);
     const v = this.visit;
     if (v) spent.set(v.key, (spent.get(v.key) ?? 0) + Math.floor(T.elapsed(s.timer, now) / 1000) - v.since);
-    return { pdfName: this.deck.name, page: s.page, timer: s.timer, endSlide: s.endSlide, bookmark: s.bookmark, spent: Object.fromEntries(spent), savedAt: now };
+    return {
+      pdfName: this.deck.name, page: s.page, timer: s.timer, black: s.black, frozen: s.frozen,
+      endSlide: s.endSlide, bookmark: s.bookmark, spent: Object.fromEntries(spent), savedAt: now,
+    };
   }
 
   /**

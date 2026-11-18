@@ -27,7 +27,6 @@ test("the audience is ready fullscreen or in solo mode, but not in an ordinary w
 
 test("before the talk, in yellow: the audience's step, by the button that does it", () => {
   const next = (a) => guideLine(at({ audience: status(a) }));
-  assert.deepEqual(next({ mode: "closed" }), { kind: "next", text: "Press o to open the audience window for the projector." });
   assert.equal(next({ screen: "DELL U2720Q" }).text, "Press ⇧W to make the audience window fullscreen on DELL U2720Q.");
   // Not knowing the screens, it goes fullscreen where it is: there first.
   assert.equal(next({}).text, "Drag the audience window to the projector, then press ⇧W.");
@@ -83,8 +82,7 @@ test("during the talk: no duplicate pause hint; laser and last-slide guidance re
   assert.deepEqual(talk({ clock: "paused", laser: true }), { kind: "hint", text: "Laser on: + and − size the dot; l turns it off." });
   assert.deepEqual(talk({ laser: true, lastPlanned: true }), { kind: "hint", text: "Laser on: + and − size the dot; l turns it off." });
   assert.deepEqual(talk({ lastPlanned: true }), { kind: "fact", text: "Last planned slide: backup slides follow." });
-  // An audience window closed mid-talk is left to its button.
-  assert.equal(guideLine(at({ audience: status({ mode: "closed" }), clock: "running" })), null);
+  assert.match(talk({ audience: status({ mode: "closed" }) }).text, /Projector/);
 });
 
 test("at the end of a run, in purple, the button that saves its times", () => {

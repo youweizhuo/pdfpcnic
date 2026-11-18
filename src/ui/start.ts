@@ -18,6 +18,15 @@ const GITHUB_MARK =
 
 type PdfpcText = NonNullable<Source["pdfpc"]>;
 
+function readNotes(notes: PdfpcText): PdfpcFile {
+  try {
+    return parsePdfpc(notes.text);
+  } catch (err) {
+    if (!(err instanceof PdfpcError)) throw err;
+    throw new PdfpcError(`Couldn't load ${notes.name}. ${err.message}`);
+  }
+}
+
 /** Files given at once: a PDF, and `.pdfpc` files (the deck's own, and one to compare with it). */
 async function readFiles(files: Iterable<File>): Promise<{ pdf?: Source["pdf"]; pdfpcs: PdfpcText[] }> {
   const out: { pdf?: Source["pdf"]; pdfpcs: PdfpcText[] } = { pdfpcs: [] };
@@ -79,16 +88,17 @@ export async function start(platform: Platform): Promise<void> {
     }
   }
 
-  /** Reads a deck from its files. */
-  async function prepare(source: Source): Promise<Prepared> {
+  /** Reads a deck from its files. A new PDF can open even if its notes can't be read. */
+  async function prepare(source: Source, invalidNotes: "skip" | "reject" = "skip"): Promise<Prepared> {
     let meta: PdfpcFile | null = null;
     const notices: string[] = [];
     if (source.pdfpc) {
       try {
-        meta = parsePdfpc(source.pdfpc.text);
+        meta = readNotes(source.pdfpc);
       } catch (err) {
         if (!(err instanceof PdfpcError)) throw err;
-        notices.push(`${source.pdfpc.name}: ${err.message} Continuing without it.`);
+        if (invalidNotes === "reject") throw err;
+        notices.push(`${err.message} You can present the PDF on its own or try another notes file.`);
         source = { pdf: source.pdf };
       }
     }
@@ -141,6 +151,9 @@ export async function start(platform: Platform): Promise<void> {
     $("ready-info").textContent = `${n} slide${n === 1 ? "" : "s"}` + (deck.duration ? ` · ${deck.duration} min` : "");
     $("drop").hidden = $("actions").hidden = true;
     $("ready").hidden = false;
+    const status = $("start-error");
+    status.textContent = p.notices.join(" ");
+    status.hidden = !p.notices.length;
     $("present").focus();
   }
 
@@ -163,9 +176,10 @@ export async function start(platform: Platform): Promise<void> {
         status.hidden = false;
         status.textContent = `Opening ${got.pdf.name}…`;
         const prepared = { ...(await prepare({ pdf: got.pdf, pdfpc })), other };
-        if (now) await present(prepared);
-        else showReady(prepared);
-        status.hidden = true;
+        if (now) {
+          await present(prepared);
+          status.hidden = true;
+        } else showReady(prepared);
       } else if (got.pdfpcs.length && presenter) {
         const p = presenter;
         const [pdfpc, other] = deckFirst(got.pdfpcs, p.deck.name);
@@ -173,21 +187,47 @@ export async function start(platform: Platform): Promise<void> {
         // Another name than the deck's own .pdfpc file: compared with it, in place of any other. The same name, a new
         // export say, or a deck without one: its notes and timing, keeping the place, the clock and any comparison.
         if (own && !other && pdfpc.name !== own.name) return compare(pdfpc);
+        if (other) readNotes(other);
+        const prepared = await prepare({ pdf: p.opened.source.pdf, pdfpc }, "reject");
+        if (presenter !== p) {
+          await prepared.pdf.close();
+          return;
+        }
         const kept = p.comparing;
         const s = p.talk.state;
-        await openSource(
-          { pdf: p.opened.source.pdf, pdfpc },
+        await present(
+          prepared,
           // Kept and tracked as the deck was: notes dropped on the demo don't make it the deck to resume.
-          { saved: { pdfName: p.deck.name, page: s.page, timer: s.timer, bookmark: s.bookmark, savedAt: Date.now() }, keep: p.track, track: p.track },
+          {
+            saved: {
+              pdfName: p.deck.name,
+              page: s.page,
+              timer: s.timer,
+              bookmark: s.bookmark,
+              black: s.black,
+              frozen: s.frozen,
+              savedAt: Date.now(),
+            },
+            keep: p.track,
+            track: p.track,
+          },
         );
         toast(`Loaded notes from ${pdfpc.name}.`);
         const again = other ?? kept;
         if (again) compare(again);
       } else if (got.pdfpcs.length && ready) {
-        const [pdfpc, other] = deckFirst(got.pdfpcs, ready.source.pdf.name);
-        const own = ready.source.pdfpc;
-        if (own && !other && pdfpc.name !== own.name) showReady({ ...ready, other: pdfpc });
-        else showReady({ ...(await prepare({ pdf: ready.source.pdf, pdfpc })), other });
+        const previous = ready;
+        const [pdfpc, other] = deckFirst(got.pdfpcs, previous.source.pdf.name);
+        const own = previous.source.pdfpc;
+        if (own && !other && pdfpc.name !== own.name) {
+          readNotes(pdfpc);
+          showReady({ ...previous, other: pdfpc });
+        } else {
+          if (other) readNotes(other);
+          const prepared = await prepare({ pdf: previous.source.pdf, pdfpc }, "reject");
+          if (ready === previous) showReady({ ...prepared, other });
+          else await prepared.pdf.close();
+        }
       } else if (got.pdfpcs.length) {
         throw new Error("That's the .pdfpc file. Add the PDF too (you can select both at once).");
       }
@@ -226,12 +266,12 @@ export async function start(platform: Platform): Promise<void> {
     for (const [keys, what, highlight] of rows) {
       const row = el("tr", highlight ?? "");
       const description = el("td", "", what);
-      if (keys === "Tab" || keys === ", / ?") {
-        const link = el("button", "help-link", keys === "Tab" ? what : "settings");
+      if (keys === "v" || keys === ", / ?") {
+        const link = el("button", "help-link", keys === "v" ? what : "settings");
         link.type = "button";
-        link.dataset.action = keys === "Tab" ? "overview" : "settings";
+        link.dataset.action = keys === "v" ? "overview" : "settings";
         description.replaceChildren(link);
-        if (keys !== "Tab") description.append(" / this help");
+        if (keys !== "v") description.append(" / this help");
       }
       row.append(el("td", "", keys), description);
       table.append(row);

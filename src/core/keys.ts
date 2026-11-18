@@ -1,6 +1,6 @@
 // pdfpc's default key bindings, plus `l` for the laser, `o` to open the
 // audience window, `[` `]` and `0` for the slides' size, `t` and `e` for the
-// clocks, `,` for settings, and `.` for a presentation remote's black button.
+// clocks, `v` for overview, `,` for settings, and `.` for a presentation remote's black button.
 
 /** What a key does to the talk itself: where it is, what the audience sees, the clock (see talk.ts). */
 const TALK_ACTIONS = [
@@ -86,7 +86,7 @@ const BINDINGS: Record<string, Action> = {
   End: "last",
   "Shift+Backspace": "back",
   "Shift+Space": "forward",
-  Tab: "overview",
+  v: "overview",
   g: "goto",
   m: "bookmark",
   "Shift+m": "toBookmark",
@@ -159,7 +159,7 @@ export const HELP: Array<[string, Array<[string, string, highlight?: "key" | "mo
       ["Shift+N / Shift+P", "next / previous, even hidden"],
       ["Shift+Backspace / Space", "back / forward after a jump"],
       ["g", "go to a slide by its number"],
-      ["Tab", "overview", "key"],
+      ["v", "overview", "key"],
       ["m / Shift+M", "bookmark / back to it"],
       ["Mouse to the right edge", "the thumbnails: rest on one to see it large, click to jump", "mouse"],
     ],

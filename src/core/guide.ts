@@ -1,7 +1,7 @@
 // What the presenter is told to do: the audience's button at the foot of the
 // column, and the one line over the buttons, colored by what it says. Yellow is
 // the next thing to do, as the outlined button it names; orange, something in
-// the way that no button fixes; purple, a hint; grey, a fact. While two plans
+// the way; purple, a hint; grey, a fact. While two plans
 // are compared, it names the other file.
 //
 // It goes by what the platform can do with the audience window, never by which
@@ -27,6 +27,8 @@ export type System = "mac" | "windows" | "linux" | null;
 
 export interface Situation {
   audience: AudienceStatus;
+  /** Which control reopens the audience window. */
+  reopenWith?: "Projector" | "Sharing";
   /** Presenting in the presenter's own window. */
   solo: boolean;
   /** The platform sees one screen only, or two mirrored. */
@@ -66,7 +68,6 @@ const EXTEND = {
 
 /** The audience's next step, while it doesn't see the slides. */
 function audienceStep(a: AudienceStatus): string {
-  if (a.mode === "closed") return "Press o to open the audience window for the projector.";
   if (!a.remote) return "Drag the audience window to the projector, then double-click it.";
   return a.screen ? `Press ⇧W to make the audience window fullscreen on ${a.screen}.` : "Drag the audience window to the projector, then press ⇧W.";
 }
@@ -74,9 +75,16 @@ function audienceStep(a: AudienceStatus): string {
 /** The line over the buttons, or null for none. */
 export function guideLine(s: Situation): Line | null {
   const a = s.audience;
+  const comparing = s.comparing ? `Comparing with ${s.comparing}` : undefined;
+  if (a.mode === "closed" && !s.solo) {
+    return {
+      kind: "blocked",
+      text: `Audience window closed. Click ${s.reopenWith ?? "Projector"} to reopen it.`,
+      fact: comparing,
+    };
+  }
   const ready = audienceReady(a, s.solo);
-  // Looking through the plans, not presenting: nothing else matters.
-  if (s.comparing) return { kind: "hint", text: `Comparing with ${s.comparing}.` };
+  if (comparing) return { kind: "hint", text: `${comparing}.` };
   // In the way, whenever it is.
   if (s.oneScreen && !ready) return { kind: "blocked", text: `One screen only: ${EXTEND[s.system ?? "other"]}.` };
   if (a.mode === "window" && a.refused) {

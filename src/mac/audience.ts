@@ -4,8 +4,8 @@
 import type { Deck, LinkTarget } from "../core/deck.ts";
 import type { AudienceStatus } from "../core/guide.ts";
 import type { KeyPress } from "../core/keys.ts";
-import type { Point } from "../core/talk.ts";
-import type { Audience, AudienceEvents, Pdf } from "../platform.ts";
+import type { Audience, AudienceEvents, AudienceFrame, Pdf } from "../platform.ts";
+import type { PageCache } from "../ui/page-cache.ts";
 import { call, on } from "./bridge.ts";
 import type { MacPdf } from "./pdf.ts";
 
@@ -26,9 +26,9 @@ export class MacAudience implements Audience {
     on<LinkTarget>("audienceFollow", (to) => events.follow(to));
   }
 
-  bind(_deck: Deck, pdf: Pdf): void {
-    this.shown = "";
-    void call("audienceShow", { doc: (pdf as MacPdf).id });
+  bind(_deck: Deck, pdf: Pdf, _pages: PageCache, frame: AudienceFrame): void {
+    this.shown = JSON.stringify(frame);
+    void call("audienceRender", { ...frame, doc: (pdf as MacPdf).id });
   }
 
   open(behind = false): void {
@@ -43,11 +43,10 @@ export class MacAudience implements Audience {
     await call("audiencePrepareSharing");
   }
 
-  render(page: number, black: boolean, laser: Point | null, laserSize: number): void {
-    const view = { page, black, laser, laserSize };
-    const key = JSON.stringify(view);
+  render(frame: AudienceFrame): void {
+    const key = JSON.stringify(frame);
     if (key === this.shown) return;
     this.shown = key;
-    void call("audienceRender", view);
+    void call("audienceRender", { ...frame });
   }
 }

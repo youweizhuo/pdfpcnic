@@ -37,17 +37,19 @@ to take anywhere.
 1. Drop the PDF on the page, with its `.pdfpc` file if it has one, and press **Present**. The audience window opens
    with it.
 2. `Shift+W` puts the audience fullscreen on the projector, `w` the presenter.
-3. Press any key to start the clock on the first slide. Press `→` or Space again to advance.
+3. Click **Start** or press `s` to start the clock. On the first slide, the first press of an advance key such as `→`,
+   Space or Page Down also starts the clock. Press it again to advance.
 
-The button outlined in yellow is the next one to press; filled yellow means on. The line over the buttons says what to
-do next in yellow, what's in the way in orange, and hints in purple. Set the displays to **Extend**, not mirror. If the
-browser blocked the audience window, allow pop-ups and press `o`. For the thumbnails, move the mouse to the right
-edge; rest on one to see it large in the next slide's place.
+The button outlined in yellow is the next one to press; filled yellow means on. A dashed red outline on
+**Projector** or **Sharing** means the audience window is closed. The guide above the buttons tells you which one to click.
+The line over the buttons says what to do next in yellow, what's in the way in orange, and hints in purple. Set the
+displays to **Extend**, not mirror. If the browser blocked the audience window, allow pop-ups and press `o`. For the
+thumbnails, move the mouse to the right edge; rest on one to see it large in the next slide's place.
 
 | Key | |
 | --- | --- |
 | `→` `Space` click / `←` right-click | next / back |
-| `g` / `Tab` | go to a slide / overview |
+| `g` / `v` | go to a slide / overview |
 | `b` or `.` / `f` | black / freeze the audience |
 | `l` | laser pointer on / off (`2` / `1` too, as in pdfpc) |
 | `s` / `p` | start / pause the clock |
@@ -109,7 +111,7 @@ time, then turns orange as it runs over. Under the next slide, the whole talk: t
 this pace, and a red line at the target. Orange, deeper from a minute late, means hurry; blue, more than a minute
 early, means slow down. Without lengths, the `.pdfpc` file's `duration` is split evenly over the slides.
 
-**Save run**, by the clock, saves the times you took as a `.pdfpc` file of lengths. Drop that file on the window,
+On the last planned slide, **Save run** saves the times you took as a `.pdfpc` file of lengths. Drop that file on the window,
 or any `.pdfpc` file with another name than the deck's (an earlier export, say), to compare the two. The lines, and
 each thumbnail's, then show the talk run again in the other file's times: blue where a slide is shorter, orange to red
 where longer, with both times and the difference under them. The other file's notes take the next slide's notes'

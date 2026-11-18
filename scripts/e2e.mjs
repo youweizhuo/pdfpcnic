@@ -173,10 +173,17 @@ try {
 
   await page.screenshot({ path: `${out}/ready.png` });
 
-  await check("the first key starts the clock on slide 1; the next key advances", async () => {
+  await check("setup keys work on slide 1; the first advance key starts the clock", async () => {
     assert.equal((await state()).timer.startedAt, null);
     if (mode === "site") await textMatches("#guide", /^Press ⇧W to make the audience window fullscreen on /);
-    assert.equal(await text("#timer-state span"), "Press any key to start");
+    await press("Tab");
+    assert.equal(await page.evaluate(() => document.activeElement.dataset.action), "blank");
+    await press("Space");
+    assert.equal((await state()).black, true, "Space did not activate the focused Black button");
+    await press("b", "?");
+    assert.equal(await page.$eval("#help", (e) => e.hidden), false);
+    await press("Escape");
+    assert.equal((await state()).timer.startedAt, null, "a setup key started the clock");
     await press("ArrowRight");
     assert.equal((await state()).page, 0);
     assert.ok((await state()).timer.startedAt > 0);
@@ -187,7 +194,6 @@ try {
     const s = await state();
     assert.equal(s.page, 1);
     assert.ok(s.timer.startedAt > 0);
-    assert.equal(await text("#guide"), "");
   });
 
   await check("a step into a new slide finds the next slide's place drawn ahead, at full size, not dark or blurry", async () => {
@@ -409,12 +415,18 @@ try {
     await press("1");
   });
 
-  await check("overview opens with Tab, picks with arrows and Enter", async () => {
-    await press("Tab");
+  await check("overview opens from Help or v and picks with arrows and Enter", async () => {
+    await press("?");
+    await page.click('#help [data-action="overview"]');
+    await page.click('#overview [data-action="overview"]');
+    assert.equal(await page.$eval("#overview", (e) => e.hidden), true);
+    await press("v");
     assert.equal(await page.$eval("#overview", (e) => e.hidden), false);
     await new Promise((r) => setTimeout(r, 600));
     await page.screenshot({ path: `${out}/overview.png` });
-    await press("ArrowRight", "ArrowRight", "Enter");
+    await press("PageDown");
+    assert.equal((await state()).page, 0, "Page Down changed the live slide while in overview");
+    await press("ArrowRight", "Enter");
     assert.equal(await page.$eval("#overview", (e) => e.hidden), true);
     assert.equal((await state()).page, 2);
   });
@@ -761,6 +773,7 @@ try {
         els.map((e) => [e.id || e.dataset.action, e.closest(".foot") ? null : Math.round(e.getBoundingClientRect().x), Math.round(e.getBoundingClientRect().y)]),
       );
     // A second and a half on this slide, so the run has some time to save, however quick the checks before.
+    assert.equal(await page.$eval("#save-run", (e) => e.hidden), true);
     await new Promise((r) => setTimeout(r, 1500));
     await press("End");
     await textMatches("#guide", /^Click Save run to keep this run's times, to compare with the plan\.$/);
@@ -779,6 +792,9 @@ try {
     for (const p of run.pages) if (p.note) assert.match(p.note, /^\[\d+s\]$/);
     assert.ok(run.pages.some((p) => p.note), "no slide took time");
     assert.equal(await text("#guide"), "Last planned slide: backup slides follow.", "saved, the guide stops asking");
+    await press("ArrowRight");
+    assert.equal(await page.$eval("#save-run", (e) => e.hidden), true, "Save run showed on a backup slide");
+    await press("ArrowLeft");
 
     await input.uploadFile(join(downloads, saved));
     await page.waitForSelector("#presenter.comparing", { timeout: 5000 });
@@ -820,6 +836,21 @@ try {
     assert.deepEqual(await marked(), [["planned"], ["due"]]);
     assert.equal(await text("#compare-slide"), "1:00 1:00 same");
     await page.screenshot({ path: `${out}/compare-notes.png` });
+
+    // A broken re-export leaves the active notes, comparison and paused run in place.
+    const beforeInvalid = await state();
+    const beforeInvalidNotes = await text("#notes");
+    await page.evaluate(() => {
+      const files = new DataTransfer();
+      files.items.add(new File(["{"], "demo.pdfpc"));
+      window.dispatchEvent(new DragEvent("drop", { dataTransfer: files, cancelable: true }));
+    });
+    await page.waitForSelector("#error:not([hidden])");
+    assert.match(await text("#error-text"), /demo\.pdfpc.*JSON/);
+    assert.equal(await text("#notes"), beforeInvalidNotes);
+    assert.deepEqual(await state(), beforeInvalid);
+    assert.match(await text("#guide"), /^Comparing with demo-v2\.pdfpc\.$/);
+    await page.click("#error-close");
 
     // A new export of the deck's own file keeps the comparison; Esc doesn't end it, End comparison does.
     await input.uploadFile(resolve("demo/demo.pdfpc"));
@@ -986,8 +1017,6 @@ try {
   await check("help sheet", async () => {
     await press("?");
     assert.equal(await page.$eval("#help", (e) => e.hidden), false);
-    assert.equal(await page.$('.foot [data-action="settings"], .foot [data-action="overview"]'), null);
-    assert.equal(await page.$$eval("#help-grid tr.key .help-link", (els) => els.length), 2);
     await page.screenshot({ path: `${out}/help.png` });
     const help = await page.evaluate(() => ({
       groups: [...document.querySelectorAll("#help-grid h3")].map((h) => h.textContent),
@@ -1003,11 +1032,26 @@ try {
     assert.equal(await page.$eval("#help", (e) => e.hidden), true);
   });
 
-  await check("a reload offers to resume at the same page with the timer", async () => {
+  await check("a narrow presenter keeps notes, clock and controls visible", async () => {
+    const viewport = page.viewport();
+    try {
+      await page.setViewport({ width: 760, height: 600 });
+      const fits = await page.evaluate(() => {
+        const bottom = (selector) => document.querySelector(selector).getBoundingClientRect().bottom;
+        const notes = document.querySelector("#notes").getBoundingClientRect();
+        return notes.height >= 100 && bottom(".clock") <= innerHeight && bottom(".foot") <= innerHeight;
+      });
+      assert.equal(fits, true);
+    } finally {
+      await page.setViewport(viewport);
+    }
+  });
+
+  await check("a reload resumes the page, timer, and what the audience was seeing", async () => {
     // The demo deck isn't kept; load it as a user would, then reload.
     await input.uploadFile(resolve("demo/demo.pdf"), resolve("demo/demo.pdfpc"));
     await page.waitForFunction(() => window.pdfpcnic.state?.page === 0);
-    await press("ArrowRight", "ArrowRight", "ArrowRight");
+    await press("ArrowRight", "ArrowRight", "f", "ArrowRight", "b");
     await new Promise((r) => setTimeout(r, 600));
     const before = await state();
     await page.reload();
@@ -1018,6 +1062,8 @@ try {
     const after = await state();
     assert.equal(after.page, 2);
     assert.equal(after.timer.startedAt, before.timer.startedAt);
+    assert.equal(after.black, true);
+    assert.equal(after.frozen, 1);
   });
 
   await check("links on the slide: outlined for the presenter, jump in either window, back returns", async () => {
@@ -1132,8 +1178,17 @@ try {
       await sharing.click('[data-action="prepareSharing"]');
       assert.equal(popup.target(), target, "preparing sharing replaced the captured window");
       assert.equal(await popup.evaluate(() => !!document.fullscreenElement), false);
+      await sharing.bringToFront();
+      await sharing.keyboard.press("ArrowRight");
       await popup.close();
-      await sharing.waitForFunction(() => !window.pdfpcnic.audience.status.forSharing);
+      await sharing.waitForSelector("#sharing-controls.audience-closed", { timeout: 5000 });
+      assert.match(await sharing.$eval("#guide", (e) => e.textContent), /Sharing.*reopen/);
+      const reopening = browser.waitForTarget((t) => t.opener() === sharing.target());
+      await sharing.click("#sharing-controls");
+      const reopened = await (await reopening).page();
+      await sharing.waitForFunction(() => window.pdfpcnic.audience.status.forSharing);
+      assert.doesNotMatch(await sharing.$eval("#guide", (e) => e.textContent), /Audience window closed/);
+      await reopened.close();
     } finally {
       await sharing.close();
     }

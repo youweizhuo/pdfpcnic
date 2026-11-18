@@ -182,7 +182,9 @@ final class SmokeTest {
             for url in runs() { try? FileManager.default.removeItem(at: url) }
             // A second and a half on this slide, so the run has some time to save, however quick the checks before.
             try await Task.sleep(nanoseconds: 1_500_000_000)
-            _ = try await js("document.querySelector('#save-run').click(); return null")
+            try await press("End")
+            _ = try await js("document.querySelector('#save-run:not([hidden])').click(); return null")
+            try await press("Backspace", shift: true)
             try await until("the file") { !runs().isEmpty }
             let text = try String(contentsOf: runs()[0], encoding: .utf8)
             for url in runs() { try? FileManager.default.removeItem(at: url) }

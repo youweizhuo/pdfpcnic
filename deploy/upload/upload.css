@@ -54,7 +54,16 @@ td input {
   color: inherit;
   font: inherit;
 }
-button {
+.deck-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.download {
+  text-decoration: none;
+}
+button,
+.download {
   padding: 4px 10px;
   border: 1px solid var(--line);
   border-radius: 6px;

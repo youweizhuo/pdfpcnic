@@ -133,6 +133,7 @@ can get around one such as ufw, and a machine with a public address needs that p
 To add a deck, open `http://<private address>:28614/` and drop the PDF with its `.pdfpc` file. Each upload is a new deck
 with its own six-character link. **Add version** stores `talk.v2.pdf` beside `talk.pdf`: the link stays the same and opens
 the highest version, with the notes of that version only, so upload them together.
+Use **Download PDF** to save the latest version and **Download notes** to save its matching `.pdfpc` file, when present.
 
 Anyone with a link can read that deck, notes included, so don't keep secrets here. Removing a deck is done on the server,
 as `podman exec pdfpcnic rm -r /data/decks/<token>`. To keep a copy, back up the volume `pdfpcnic-decks`. Uploads aren't

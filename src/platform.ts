@@ -4,7 +4,6 @@
 // the talk (src/core/) and the presenter page (src/ui/).
 
 import type { Deck, LinkTarget, OutlineEntry, PageInfo } from "./core/deck.ts";
-import type { DeckLink } from "./core/decklink.ts";
 import type { AudienceStatus, System } from "./core/guide.ts";
 import type { Point, SavedSession } from "./core/talk.ts";
 import type { PageCache } from "./ui/page-cache.ts";
@@ -18,17 +17,29 @@ export interface Platform {
   window: PresenterWindow;
   store: Store;
   /** Fetches a deck by its link, where this build has a network. */
-  fetchDeck: ((link: DeckLink, onProgress?: (status: string) => void) => Promise<File[]>) | null;
+  fetchDeck: ((token: string, onProgress?: (progress: DeckDownload) => void, signal?: AbortSignal) => Promise<File[]>) | null;
   /** The demo deck, where this build can get it. */
   demo: (() => Promise<{ pdf: ArrayBuffer; pdfpc: string }>) | null;
   /** Hands over files the platform opens itself, such as a PDF double-clicked in the Finder. */
   files?(open: (files: File[]) => void): void;
-  /** Tells when a newer version has installed itself, to open at the next launch. */
-  updated?(show: (version: string) => void): void;
+  /** Reports the progress of a newer version download and installation. */
+  updates?(show: (update: AppUpdate) => void): void;
   /** The `.pdfpc` file beside a PDF the page was given, found by the PDF's name, as pdfpc finds it. */
   notes?(pdfName: string): Promise<string | null>;
   /** Saves a file the presenter makes, a run's times: beside the PDF where the platform can, and says where; null for the browser's downloads. */
   save(name: string, text: string, pdfName: string): Promise<string | null>;
+}
+
+export interface DeckDownload {
+  name: string;
+  received: number;
+  /** Zero while unknown. */
+  total: number;
+}
+
+export interface AppUpdate {
+  phase: "downloading" | "installing" | "installed" | "failed";
+  version: string;
 }
 
 /** A PDF, opened by the platform's engine: pdf.js in the browser, PDFKit on the Mac. */

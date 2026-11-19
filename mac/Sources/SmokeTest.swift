@@ -25,8 +25,8 @@ final class SmokeTest {
     func run(_ app: App) async {
         try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
         let web = app.presenter.web
-        func js(_ body: String) async throws -> Any? {
-            try await web.callAsyncJavaScript(body, arguments: [:], in: nil, contentWorld: .page)
+        func js(_ body: String, arguments: [String: Any] = [:]) async throws -> Any? {
+            try await web.callAsyncJavaScript(body, arguments: arguments, in: nil, contentWorld: .page)
         }
         func until(_ what: String, seconds: Double = 20, _ test: () async throws -> Bool) async throws {
             let end = Date().addingTimeInterval(seconds)
@@ -53,9 +53,50 @@ final class SmokeTest {
         await check("the presenter page loads") {
             try await until("the page") { try await js("return !!window.pdfpcnic") as? Bool == true }
         }
+        await check("the Mac start screen has the file picker and the source link beside its title") {
+            try await until("the start screen") {
+                try await js("return !!document.querySelector('#drop input') && !!document.querySelector('#start-header .source')") as? Bool == true
+            }
+            let aligned = try await js("""
+                const title = document.querySelector('#start-header h1').getBoundingClientRect();
+                const source = document.querySelector('#start-header .source').getBoundingClientRect();
+                const centerDifference = Math.abs((source.top + source.bottom - title.top - title.bottom) / 2);
+                return source.left >= title.right && centerDifference < 2;
+                """) as? Bool
+            guard aligned == true else { throw Failure("the source link isn't aligned with the title") }
+            let clean = try await js("return !document.querySelector('.start-intro, .deck-link, .deck-progress')") as? Bool
+            guard clean == true else { throw Failure("the start screen shows the intro or deck-link controls") }
+            try await Self.save(web, to: out.appendingPathComponent("start.png"))
+            let drag = try await js("""
+                const drop = document.querySelector('#drop');
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(new File([''], 'talk.pdf', { type: 'application/pdf' }));
+                window.dispatchEvent(new DragEvent('dragenter', { dataTransfer }));
+                const highlighted = drop.classList.contains('over');
+                window.dispatchEvent(new DragEvent('dragleave', { dataTransfer }));
+                return highlighted && !drop.classList.contains('over');
+                """) as? Bool
+            guard drag == true else { throw Failure("the file drag highlight didn't follow the drag") }
+        }
+        await check("a newer release is shown while it downloads and installs") {
+            app.reportUpdate(.init(phase: .downloading, version: "9.9.9"))
+            try await until("the update download notice") {
+                try await js("return document.querySelector('#update:not([hidden])').textContent.includes('9.9.9 available. Downloading')") as? Bool == true
+            }
+            app.reportUpdate(.init(phase: .installing, version: "9.9.9"))
+            try await until("the installation notice") {
+                try await js("return document.querySelector('#update:not([hidden])').textContent.includes('Installing update 9.9.9')") as? Bool == true
+            }
+        }
         // The PDF alone: its notes come from the .pdfpc file beside it.
         app.open([files[0]])
-        await check("the deck opens as from the Finder, with the notes beside it, and PDFKit draws the slides") {
+        await check("a file opened from the Finder waits for Present and its nearby notes come along") {
+            let name = files.map(\.lastPathComponent).joined(separator: " + ")
+            try await until("the Finder deck ready") {
+                try await js("return !document.querySelector('#ready').hidden && document.querySelector('#ready-name').textContent === name", arguments: ["name": name]) as? Bool == true
+            }
+            guard app.audience.view.window == nil else { throw Failure("the audience window opened before Present") }
+            _ = try await js("document.querySelector('#present').click(); return null")
             try await until("the deck") { (try await js("return window.pdfpcnic.deck?.slides.length ?? 0") as? Int ?? 0) > 0 }
             try await until("the notes") { (try await js("return document.querySelector('#notes-body').textContent.length") as? Int ?? 0) > 20 }
             try await until("the current slide drawn") { try await js(Self.painted("#current canvas")) as? Bool == true }
@@ -74,11 +115,6 @@ final class SmokeTest {
                 let line = try await js("return document.querySelector('#guide').textContent") as? String ?? ""
                 return line.hasPrefix("Press ⇧W to make the audience window fullscreen on") || line.hasPrefix("One screen only:")
             }
-        }
-        await check("the box for a deck's link is on the start page, and a server's files can be read: the page's policy and the web view let it") {
-            try await until("the box") { try await js("return !!document.querySelector('.deck-link input')") as? Bool == true }
-            let url = "https://raw.githubusercontent.com/youweizhuo/pdfpcnic/main/demo/demo.pdfpc"
-            try await until("the fetch") { try await js("return (await fetch('\(url)')).ok") as? Bool == true }
         }
         await check("the first key starts the clock; the next key advances") {
             try await press("ArrowRight")
@@ -207,7 +243,7 @@ final class SmokeTest {
             }
         }
         await check("a version that installed itself is named for the next launch") {
-            app.installed("9.9.9")
+            app.reportUpdate(.init(phase: .installed, version: "9.9.9"))
             try await until("the hint") {
                 (try await js("return document.querySelector('#update:not([hidden])')?.textContent ?? ''") as? String ?? "").hasPrefix("9.9.9 is installed")
             }

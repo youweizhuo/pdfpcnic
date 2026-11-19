@@ -3,8 +3,7 @@
 
 import demoPdf from "../../demo/demo.pdf?url";
 import demoPdfpc from "../../demo/demo.pdfpc?raw";
-import type { Platform } from "../platform.ts";
-import { fetchDeck } from "../web/decks.ts";
+import type { AppUpdate, Platform } from "../platform.ts";
 import { store } from "../web/store.ts";
 import { MacAudience } from "./audience.ts";
 import { call, on } from "./bridge.ts";
@@ -17,9 +16,9 @@ export const mac: Platform = {
   window: presenterWindow,
   // The app's web view keeps the browser's storage, on this Mac.
   store,
-  fetchDeck,
+  fetchDeck: null,
   demo: async () => ({ pdf: await (await fetch(demoPdf)).arrayBuffer(), pdfpc: demoPdfpc }),
-  updated: (show) => on<string>("updated", show),
+  updates: (show) => on<AppUpdate>("update", show),
   files(open) {
     // Opened from the Finder or File > Open: the app serves each file's bytes.
     on<Array<{ name: string }>>("open", async (files) =>

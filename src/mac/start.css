@@ -1,0 +1,26 @@
+.start-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.start-header #links {
+  flex: none;
+}
+.update {
+  margin: 12px 0 0;
+  color: var(--dim);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.update[data-phase="installed"] {
+  color: var(--accent);
+}
+.update[data-phase="failed"] {
+  color: var(--over);
+}
+.update.toast {
+  margin: 0;
+  color: var(--fg);
+}

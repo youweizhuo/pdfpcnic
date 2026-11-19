@@ -80,8 +80,8 @@ If the browser blocks automatic resizing, enlarge the audience manually (on macO
 The same presenter, without a browser's limits: the audience window opens behind the presenter, frameless, and `Shift+W`
 puts it fullscreen on the projector at once, with nothing to allow. macOS draws the slides itself, as Preview does. Open
 a PDF from the Finder, File › Open or by dropping it, and the `.pdfpc` file of the same name beside it comes along, as
-in pdfpc. The app updates itself, and the new version opens at the next launch, never mid-talk. To install it, paste
-this into Terminal:
+in pdfpc. The start screen loads the deck, then **Present** opens the audience window. The app shows when an update is
+downloading and opens the new version at the next launch. To install it, paste this into Terminal:
 
 ```sh
 curl -fsSL https://github.com/youweizhuo/pdfpcnic/releases/latest/download/pdfpcnic-mac.zip -o /tmp/pdfpcnic.zip && ditto -x -k /tmp/pdfpcnic.zip /Applications && open /Applications/pdfpcnic.app
@@ -94,8 +94,8 @@ then **Open Anyway** at the bottom of System Settings › Privacy & Security. ma
 ## Decks by link
 
 To present without carrying the files, keep the deck on a [deck server](docs/self-hosting.md#a-deck-server) and open its
-link, like `pdfpcnic.youwei.xyz/#k3j9x2`, in the address bar: no password, and nothing to install. The Mac app has a box on
-its start page to paste the link in. The public website and the offline file don't load decks by link.
+link, like `pdfpcnic.youwei.xyz/#k3j9x2`, in the browser's address bar. **Present** becomes available after the deck loads.
+To use the Mac app, choose **Download PDF** in the deck management page and **Download notes** when available, then open the files.
 
 ## Pacing a talk
 
@@ -151,7 +151,7 @@ Not supported: Beamer notes on half pages, transitions, movies, drawing and spot
 ## Privacy
 
 Decks open in the browser and aren't sent anywhere. On the website, a Content Security Policy lets the page connect
-only to its own site; the Mac app connects only to GitHub, for updates, and to a deck server when you paste its link. To
+only to its own site. The Mac app connects to GitHub for updates. To
 resume after a reload, the browser keeps the last deck in its own storage; **Forget** on the start page removes it.
 
 ## Contributing

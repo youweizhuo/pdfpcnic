@@ -23,8 +23,9 @@ final class App: NSObject, NSApplicationDelegate {
     /// Files to hand to the page once it's ready for them.
     private var waiting: [URL] = []
     private var ready = false
-    /// The version that installed itself, to open at the next launch: the page says so.
-    private var pending: String?
+    private var updateStatus: Updates.Status?
+    private var stagedUpdate: String?
+    private var checkingForUpdates = false
 
     override init() {
         scheme = PageScheme(pdfs: pdfs)
@@ -41,7 +42,7 @@ final class App: NSObject, NSApplicationDelegate {
         } else {
             Task {
                 try? await Task.sleep(nanoseconds: 5_000_000_000)
-                if let newest = await Updates.check(quietly: true) { installed(newest) }
+                await update(quietly: true)
             }
         }
     }
@@ -65,10 +66,18 @@ final class App: NSObject, NSApplicationDelegate {
         presenter.emit("open", files.map { ["name": $0.0] })
     }
 
-    /// A newer version is in place, to open at the next launch: the page says so, again after a reload.
-    func installed(_ version: String) {
-        pending = version
-        presenter.emit("updated", version)
+    /// The current update stage, available again when the page reloads.
+    func reportUpdate(_ status: Updates.Status) {
+        updateStatus = status
+        if status.phase == .installed { stagedUpdate = status.version }
+        presenter.emit("update", status.message)
+    }
+
+    private func update(quietly: Bool) async {
+        guard !checkingForUpdates else { return }
+        checkingForUpdates = true
+        defer { checkingForUpdates = false }
+        await Updates.check(quietly: quietly, staged: stagedUpdate, report: reportUpdate)
     }
 
     /// Each of the page's calls, to the part that answers it.
@@ -84,7 +93,7 @@ final class App: NSObject, NSApplicationDelegate {
             // A fresh page has no deck open, whatever the last one had.
             presenter.keepAwake(false)
             presenter.onChange()
-            if let pending { presenter.emit("updated", pending) }
+            if let updateStatus { presenter.emit("update", updateStatus.message) }
             open([])
             return nil
         }
@@ -188,7 +197,7 @@ final class App: NSObject, NSApplicationDelegate {
     }
 
     @objc private func checkForUpdates() {
-        Task { if let newest = await Updates.check(quietly: false) { installed(newest) } }
+        Task { await update(quietly: false) }
     }
 
     @objc private func openHelp() {

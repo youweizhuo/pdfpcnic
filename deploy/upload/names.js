@@ -1,5 +1,4 @@
-// What to call what's uploaded: a deck's token, its next version, and which files
-// go together. Nothing here touches the page, so the unit tests read it too.
+// Deck file names and versions, shared by the management page and the viewer.
 
 const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 
@@ -11,10 +10,35 @@ const parts = (name) => {
   return m && { base: m[1], version: Number(m[2] ?? 1), kind: m[3].toLowerCase() };
 };
 
+/** @param {string[]} names */
+function latestPdf(names) {
+  let newest = null;
+  for (const name of names) {
+    const parsed = parts(name);
+    if (parsed?.kind === "pdf" && (!newest || parsed.version > newest.version)) newest = { name, ...parsed };
+  }
+  return newest;
+}
+
+/**
+ * The latest PDF and the notes of that version, if present.
+ * @param {string[]} names
+ * @returns {{ pdf: string, notes?: string } | null}
+ */
+export function newestFiles(names) {
+  const newest = latestPdf(names);
+  if (!newest) return null;
+  const notes = names.find((name) => {
+    const parsed = parts(name);
+    return parsed?.kind === "pdfpc" && parsed.base === newest.base && parsed.version === newest.version;
+  });
+  return notes ? { pdf: newest.name, notes } : { pdf: newest.name };
+}
+
 /** The stem for a deck's next version: `talk.v3`, after `talk.pdf` and `talk.v2.pdf`. */
 export function nextVersion(names) {
-  const pdfs = names.map(parts).filter((p) => p?.kind === "pdf");
-  const newest = pdfs.reduce((a, b) => (b.version > a.version ? b : a));
+  const newest = latestPdf(names);
+  if (!newest) throw new Error("This deck no longer has a PDF.");
   return `${newest.base}.v${newest.version + 1}`;
 }
 

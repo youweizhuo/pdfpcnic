@@ -2,7 +2,7 @@
 // site, the offline file or the Mac app. nginx does the file work; this picks
 // each deck's token and version, and shows the links.
 
-import { newToken, nextVersion, pairFiles } from "./names.js";
+import { newestFiles, newToken, nextVersion, pairFiles } from "./names.js";
 
 const $ = (id) => document.getElementById(id);
 const say = (text, bad = false) => {
@@ -11,6 +11,15 @@ const say = (text, bad = false) => {
 };
 const megabytes = (bytes) => `${(bytes / 1048576).toFixed(1)} MB`;
 const at = (token, name = "") => `decks/${token}/${encodeURIComponent(name)}`;
+
+function download(token, name, label) {
+  const link = document.createElement("a");
+  link.className = "download";
+  link.href = at(token, name);
+  link.download = name;
+  link.textContent = label;
+  return link;
+}
 
 async function list(path) {
   const res = await fetch(path);
@@ -82,7 +91,8 @@ async function linkFor(token) {
 async function row(token) {
   const files = await list(at(token));
   const pdfs = files.filter((f) => /\.pdf$/i.test(f.name));
-  if (!pdfs.length) return null;
+  const latest = newestFiles(files.map((f) => f.name));
+  if (!latest) return null;
   const when = new Date(Math.max(...files.map((f) => Date.parse(f.mtime))));
   const tr = document.createElement("tr");
   tr.dataset.token = token;
@@ -116,7 +126,12 @@ async function row(token) {
     versionFor = token;
     $("version-files").click();
   });
-  cell(add);
+  const actions = document.createElement("div");
+  actions.className = "deck-actions";
+  actions.append(download(token, latest.pdf, "Download PDF"));
+  if (latest.notes) actions.append(download(token, latest.notes, "Download notes"));
+  actions.append(add);
+  cell(actions);
   return { tr, when };
 }
 

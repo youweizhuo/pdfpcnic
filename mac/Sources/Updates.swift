@@ -9,6 +9,14 @@ enum Updates {
     private static let releases = "https://github.com/youweizhuo/pdfpcnic/releases"
     static var version: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0" }
 
+    struct Status {
+        enum Phase: String { case downloading, installing, installed, failed }
+        let phase: Phase
+        let version: String
+
+        var message: [String: String] { ["phase": phase.rawValue, "version": version] }
+    }
+
     static func newer(_ a: String, than b: String) -> Bool {
         let x = a.split(separator: ".").map { Int($0) ?? 0 }
         let y = b.split(separator: ".").map { Int($0) ?? 0 }
@@ -43,24 +51,34 @@ enum Updates {
         return original.takeRetainedValue() as URL
     }
 
-    /// Installs the latest release if it's newer, and says which it installed.
-    /// Quietly, at launch, nothing else says so; asked from the menu, it says how it went.
-    static func check(quietly: Bool) async -> String? {
+    /// Installs a newer release and reports its progress. A check from the menu also reports its outcome in an alert.
+    static func check(quietly: Bool, staged: String?, report: @MainActor (Status) -> Void) async {
+        var target: String?
         do {
             let newest = try await latest()
-            guard newer(newest, than: version) else {
-                if !quietly { await tell("This is the latest pdfpcnic (\(version)).") }
-                return nil
+            guard newer(newest, than: staged ?? version) else {
+                if !quietly {
+                    if let staged { await tell(installedMessage(staged)) }
+                    else { await tell("This is the latest pdfpcnic (\(version)).") }
+                }
+                return
             }
+            target = newest
+            await report(Status(phase: .downloading, version: newest))
             let (zip, response) = try await URLSession.shared.data(from: URL(string: "\(releases)/download/v\(newest)/pdfpcnic-mac.zip")!)
             guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw Failure("pdfpcnic \(newest) didn't download.") }
+            await report(Status(phase: .installing, version: newest))
             try await install(zip, over: location)
-            if !quietly { await tell("pdfpcnic \(newest) is installed. It opens the next time you start the app.") }
-            return newest
+            await report(Status(phase: .installed, version: newest))
+            if !quietly { await tell(installedMessage(newest)) }
         } catch {
+            if let target { await report(Status(phase: .failed, version: target)) }
             if !quietly { await offer(error) }
-            return nil
         }
+    }
+
+    private static func installedMessage(_ version: String) -> String {
+        "pdfpcnic \(version) is installed. It opens the next time you start the app."
     }
 
     /// Unpacks a release's zip and puts its app in place of the one at `app`.

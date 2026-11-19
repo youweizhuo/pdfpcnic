@@ -56,14 +56,14 @@ function pdfjsResources(): Plugin {
 /**
  * Mac build: the page on the Mac platform (src/mac/). Its policy keeps
  * everything inside the app: the script and styles are inline, and the only
- * fetches go to the app (pdfpcnic:), data: URLs, and HTTPS for deck links.
+ * fetches go to the app (pdfpcnic:) and data: URLs.
  */
 function macPage(): Plugin {
   const policy = [
     "default-src 'none'",
     "script-src 'unsafe-inline'",
     "style-src 'unsafe-inline'",
-    "connect-src pdfpcnic: data: https:",
+    "connect-src pdfpcnic: data:",
     "img-src data: blob:",
     "font-src data:",
     "worker-src blob:",
@@ -74,7 +74,9 @@ function macPage(): Plugin {
     transformIndexHtml: {
       order: "pre",
       handler: (html) => ({
-        html: html.replace('src="./src/main.ts"', 'src="./src/mac/main.ts"'),
+        html: html
+          .replace('src="./src/main.ts"', 'src="./src/mac/main.ts"')
+          .replace(/^[ \t]*<div class="start-intro">[\s\S]*?<\/div>\r?\n/m, ""),
         tags: [
           { tag: "meta", attrs: { "http-equiv": "Content-Security-Policy", content: policy }, injectTo: "head-prepend" },
         ],
@@ -95,7 +97,7 @@ export default defineConfig(({ mode }) => {
     define: {
       __BUILD__: JSON.stringify(build),
       __VERSION__: JSON.stringify(pkg.version),
-      __DECKS__: JSON.stringify(build === "mac" || (build === "site" && deckServer)),
+      __DECKS__: JSON.stringify(build === "site" && deckServer),
     },
     resolve: {
       alias: {

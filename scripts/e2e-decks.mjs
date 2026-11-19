@@ -106,6 +106,11 @@ for (const [engine, [type, options]] of Object.entries(engines)) {
   };
   const ready = (page, name) => page.waitForFunction((name) => document.querySelector("#ready-name")?.textContent === name, name, { timeout: 15000 });
   const said = (page, re) => page.waitForFunction((re) => new RegExp(re).test(document.querySelector("#start-error").textContent), re.source, { timeout: 15000 });
+  const saves = async (page, row, label, name, bytes) => {
+    const [download] = await Promise.all([page.waitForEvent("download"), row.getByRole("link", { name: label }).click()]);
+    assert.equal(download.suggestedFilename(), name);
+    assert.deepEqual(readFileSync(await download.path()), bytes);
+  };
   const uploads = [
     { name: `${LONG}.pdf`, mimeType: "application/pdf", buffer: pdf },
     { name: `${LONG}.pdfpc`, mimeType: "application/json", buffer: notes },
@@ -139,6 +144,15 @@ for (const [engine, [type, options]] of Object.entries(engines)) {
     await context.close();
   });
 
+  await check(`${engine}: the manager downloads the PDF and matching notes`, async () => {
+    const { context, page } = await fresh();
+    await page.goto(upload);
+    const row = page.locator(`#decks tr[data-token="${token}"]`);
+    await saves(page, row, "Download PDF", `${LONG}.pdf`, pdf);
+    await saves(page, row, "Download notes", `${LONG}.pdfpc`, notes);
+    await context.close();
+  });
+
   await check(`${engine}: a link opens the deck and its notes with no password, the token leaves the address, and Present works`, async () => {
     const { context, page, errors } = await fresh();
     await page.goto(`${view}#${token}`);
@@ -161,6 +175,9 @@ for (const [engine, [type, options]] of Object.entries(engines)) {
     await chooser.setFiles({ name: "anything.pdf", mimeType: "application/pdf", buffer: pdf });
     await page.waitForFunction(() => /^Uploaded .*\.v2/.test(document.querySelector("#status").textContent));
     assert.equal(await page.textContent(`#decks tr[data-token="${token}"] td:nth-child(3)`), "2");
+    const row = page.locator(`#decks tr[data-token="${token}"]`);
+    await saves(page, row, "Download PDF", `${LONG}.v2.pdf`, pdf);
+    assert.equal(await row.getByRole("link", { name: "Download notes" }).count(), 0);
     const opener = await context.newPage();
     await opener.goto(`${view}#${token}`);
     await ready(opener, `${LONG}.v2.pdf`);

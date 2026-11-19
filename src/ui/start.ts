@@ -2,7 +2,7 @@
 // visit left off. It hands each deck to a fresh presenter.
 
 import { buildDeck } from "../core/deck.ts";
-import { deckLink } from "../core/decklink.ts";
+import { deckToken } from "../core/decklink.ts";
 import { HELP } from "../core/keys.ts";
 import { parsePdfpc, PdfpcError, type PdfpcFile } from "../core/pdfpc.ts";
 import { resumes, type SavedSession } from "../core/talk.ts";
@@ -67,6 +67,42 @@ interface OpenOptions {
 
 export async function start(platform: Platform): Promise<void> {
   let presenter: Presenter | null = null;
+  const status = $("start-error");
+  const progress = __DECKS__ ? el("progress", "deck-progress") : null;
+  const update = $("update");
+  let deckLoad: AbortController | undefined;
+  let updateTimer = 0;
+
+  function startStatus(message = "", failed = false): void {
+    status.classList.toggle("error", failed);
+    if (status.textContent !== message) status.textContent = message;
+    status.hidden = !message;
+  }
+
+  function endDeckLoad(load: AbortController): void {
+    if (load !== deckLoad) return;
+    deckLoad = undefined;
+    if (progress) progress.hidden = true;
+  }
+
+  function cancelDeckLoad(): void {
+    if (!deckLoad) return;
+    deckLoad.abort();
+    endDeckLoad(deckLoad);
+    startStatus();
+  }
+
+  function beginDeckLoad(): AbortController {
+    cancelDeckLoad();
+    return (deckLoad = new AbortController());
+  }
+
+  function dismissUpdateSoon(): void {
+    window.clearTimeout(updateTimer);
+    if (presenter && (update.dataset.phase === "installed" || update.dataset.phase === "failed")) {
+      updateTimer = window.setTimeout(() => (update.hidden = true), 5000);
+    }
+  }
   const audience = platform.audience({
     key: (e) => presenter?.onKey(e),
     step: (d) => presenter?.act(d > 0 ? "next" : "prev"),
@@ -76,9 +112,8 @@ export async function start(platform: Platform): Promise<void> {
 
   /**
    * Opens the audience window, behind the presenter where the platform can put
-   * it. A browser opens one only during a click or key, so Present, Resume and
-   * the demo call this in their click, before the deck is read. Blocked, the
-   * button by the clock offers it, as it does once the window is closed.
+   * it. Browser actions also call this in their click, while the browser
+   * allows a popup. The button by the clock can reopen it.
    */
   function openAudience(): void {
     try {
@@ -119,6 +154,11 @@ export async function start(platform: Platform): Promise<void> {
     previous?.dispose();
     await previous?.opened.pdf.close();
     presenter = new Presenter(platform, audience, opened, saved, track);
+    if (__BUILD__ === "mac" && !update.classList.contains("toast")) {
+      update.classList.add("toast");
+      $("toasts").append(update);
+      dismissUpdateSoon();
+    }
     openAudience();
     if (other) compare(other);
     if (keep) {
@@ -140,10 +180,10 @@ export async function start(platform: Platform): Promise<void> {
   }
 
   /** The deck on the start page, waiting for Present. */
-  let ready: Prepared | null = null;
-  function showReady(p: Prepared): void {
-    if (ready && ready.pdf !== p.pdf) void ready.pdf.close();
-    ready = p;
+  let ready: { prepared: Prepared; options?: OpenOptions } | null = null;
+  function showReady(p: Prepared, options?: OpenOptions): void {
+    if (ready && ready.prepared.pdf !== p.pdf) void ready.prepared.pdf.close();
+    ready = { prepared: p, options };
     const { source, deck } = p;
     const n = deck.slides.length;
     $("ready-name").textContent =
@@ -151,20 +191,16 @@ export async function start(platform: Platform): Promise<void> {
     $("ready-info").textContent = `${n} slide${n === 1 ? "" : "s"}` + (deck.duration ? ` · ${deck.duration} min` : "");
     $("drop").hidden = $("actions").hidden = true;
     $("ready").hidden = false;
-    const status = $("start-error");
-    status.textContent = p.notices.join(" ");
-    status.hidden = !p.notices.length;
+    startStatus(p.notices.join(" "));
     $("present").focus();
   }
 
-  /**
-   * Opens a deck from its files: on the start page, it waits there for
-   * Present; with a deck open, or from the Finder, it opens at once.
-   */
-  async function openFiles(files: Iterable<File>, now = presenter !== null): Promise<void> {
-    const status = $("start-error");
+  /** Reads a deck from its files. On the start page it waits for Present. */
+  async function openFiles(files: Iterable<File>, signal?: AbortSignal): Promise<void> {
+    const now = presenter !== null;
     try {
       const got = await readFiles(files);
+      if (signal?.aborted) return;
       if (got.pdf) {
         let [pdfpc, other] = deckFirst(got.pdfpcs, got.pdf.name);
         // A PDF brings the notes beside it, where the platform can look (the Mac app), as in pdfpc; a .pdfpc file
@@ -173,12 +209,13 @@ export async function start(platform: Platform): Promise<void> {
           const text = await platform.notes?.(got.pdf.name);
           if (text) [pdfpc, other] = [{ name: `${stem(got.pdf.name)}.pdfpc`, text }, pdfpc];
         }
-        status.hidden = false;
-        status.textContent = `Opening ${got.pdf.name}…`;
+        if (signal?.aborted) return;
+        startStatus(`Preparing ${got.pdf.name}…`);
         const prepared = { ...(await prepare({ pdf: got.pdf, pdfpc })), other };
+        if (signal?.aborted) return await prepared.pdf.close();
         if (now) {
           await present(prepared);
-          status.hidden = true;
+          startStatus();
         } else showReady(prepared);
       } else if (got.pdfpcs.length && presenter) {
         const p = presenter;
@@ -212,48 +249,60 @@ export async function start(platform: Platform): Promise<void> {
         const again = other ?? kept;
         if (again) compare(again);
       } else if (got.pdfpcs.length && ready) {
-        const previous = ready;
+        const staged = ready;
+        const { prepared: previous, options } = staged;
         const [pdfpc, other] = deckFirst(got.pdfpcs, previous.source.pdf.name);
         const own = previous.source.pdfpc;
         if (own && !other && pdfpc.name !== own.name) {
           readNotes(pdfpc);
-          showReady({ ...previous, other: pdfpc });
+          showReady({ ...previous, other: pdfpc }, options);
         } else {
           if (other) readNotes(other);
           const prepared = await prepare({ pdf: previous.source.pdf, pdfpc }, "reject");
-          if (ready === previous) showReady({ ...prepared, other });
+          if (ready === staged) showReady({ ...prepared, other }, options);
           else await prepared.pdf.close();
         }
       } else if (got.pdfpcs.length) {
         throw new Error("That's the .pdfpc file. Add the PDF too (you can select both at once).");
       }
     } catch (err) {
+      if (signal?.aborted) return;
       const message = reasonOf(err);
       if (presenter) report(message);
-      else {
-        status.hidden = false;
-        status.textContent = message;
-      }
+      else startStatus(message, true);
     }
   }
 
-  $("version").textContent = __BUILD__ === "mac" ? `${__VERSION__} for Mac` : __VERSION__;
-  // The Mac app updates itself quietly; once the new version is in place, a word that the next launch opens it.
-  platform.updated?.((version) => {
-    $("update").textContent = `${version} is installed: it opens at the next launch.`;
-    $("update").hidden = false;
-    toast(`pdfpcnic ${version} is installed. It opens the next time you start the app.`);
-  });
-  if (__BUILD__ === "mac") {
-    $("tagline").textContent = "Present PDF slides with a pdfpc-style presenter view, on your Mac.";
-    $("private").textContent = "";
+  function openLocalFiles(files: File[]): void {
+    cancelDeckLoad();
+    void openFiles(files);
   }
-  $("offline-note").innerHTML = {
-    site: `<a href="./pdfpcnic.html" download>Download the offline copy</a> (one HTML file).`,
-    single: "This is the offline copy: it needs no network.",
-    mac: "",
-  }[__BUILD__];
-  $("links").innerHTML =
+
+  platform.updates?.(({ phase, version }) => {
+    update.textContent = {
+      downloading: `Update ${version} available. Downloading…`,
+      installing: `Installing update ${version}…`,
+      installed: `${version} is installed. Restart pdfpcnic to use it.`,
+      failed: `Couldn’t update to ${version}. Use Check for Updates to try again.`,
+    }[phase];
+    update.dataset.phase = phase;
+    update.hidden = false;
+    dismissUpdateSoon();
+  });
+  $("version").textContent = __BUILD__ === "mac" ? `${__VERSION__} for Mac` : __VERSION__;
+  const links = $("links");
+  if (__BUILD__ === "mac") {
+    const footer = links.parentElement;
+    $("start-header").append(links);
+    footer?.remove();
+    $("forget").title = "Remove the saved deck from this Mac";
+  } else {
+    $("offline-note").innerHTML =
+      __BUILD__ === "site"
+        ? `<a href="./pdfpcnic.html" download>Download the offline copy</a> (one HTML file).`
+        : "This is the offline copy: it needs no network.";
+  }
+  links.innerHTML =
     `<a class="source" href="https://github.com/youweizhuo/pdfpcnic" target="_blank" rel="noopener">${GITHUB_MARK}Source</a>` +
     (__BUILD__ === "site" ? ` · <a href="./licenses.txt" target="_blank">licenses</a>` : "");
 
@@ -279,33 +328,38 @@ export async function start(platform: Platform): Promise<void> {
 
   const input = $<HTMLInputElement>("files");
   input.addEventListener("change", () => {
-    if (input.files?.length) void openFiles([...input.files]);
+    if (input.files?.length) openLocalFiles([...input.files]);
     input.value = "";
   });
   $("open-files").addEventListener("click", () => input.click());
   $("choose-other").addEventListener("click", () => input.click());
   $("present").addEventListener("click", () => {
     if (!ready) return;
-    openAudience();
-    void present(ready).catch((err) => {
-      $("start-error").hidden = false;
-      $("start-error").textContent = reasonOf(err);
-    });
+    cancelDeckLoad();
+    if (__BUILD__ !== "mac") openAudience();
+    void present(ready.prepared, ready.options).catch((err) => startStatus(reasonOf(err), true));
     ready = null;
   });
   const demo = $("demo");
   const load = platform.demo;
   if (load) {
-    demo.addEventListener("click", () => {
-      openAudience();
-      void load()
-        .then(({ pdf, pdfpc }) =>
-          openSource({ pdf: { name: "demo.pdf", data: pdf }, pdfpc: { name: "demo.pdfpc", text: pdfpc } }, { keep: false, track: false }),
-        )
-        .catch((err) => {
-          $("start-error").hidden = false;
-          $("start-error").textContent = reasonOf(err);
-        });
+    demo.addEventListener("click", async () => {
+      const opening = beginDeckLoad();
+      if (__BUILD__ !== "mac") openAudience();
+      startStatus("Loading the demo deck…");
+      try {
+        const { pdf, pdfpc } = await load();
+        if (opening.signal.aborted) return;
+        const prepared = await prepare({ pdf: { name: "demo.pdf", data: pdf }, pdfpc: { name: "demo.pdfpc", text: pdfpc } });
+        const options = { keep: false, track: false };
+        if (opening.signal.aborted) await prepared.pdf.close();
+        else if (__BUILD__ === "mac") showReady(prepared, options);
+        else await present(prepared, options);
+      } catch (err) {
+        if (!opening.signal.aborted) startStatus(reasonOf(err), true);
+      } finally {
+        endDeckLoad(opening);
+      }
     });
   } else demo.remove();
 
@@ -313,18 +367,20 @@ export async function start(platform: Platform): Promise<void> {
   let depth = 0;
   window.addEventListener("dragenter", (e) => {
     e.preventDefault();
+    if (!e.dataTransfer?.types.includes("Files")) return;
     depth++;
     drop.classList.add("over");
   });
   window.addEventListener("dragleave", () => {
-    if (--depth <= 0) drop.classList.remove("over");
+    depth = Math.max(0, depth - 1);
+    if (depth === 0) drop.classList.remove("over");
   });
   window.addEventListener("dragover", (e) => e.preventDefault());
   window.addEventListener("drop", (e) => {
     e.preventDefault();
     depth = 0;
     drop.classList.remove("over");
-    if (e.dataTransfer?.files.length) void openFiles([...e.dataTransfer.files]);
+    if (e.dataTransfer?.files.length) openLocalFiles([...e.dataTransfer.files]);
   });
 
   window.addEventListener("keydown", (e) => presenter?.onKey(e));
@@ -343,7 +399,7 @@ export async function start(platform: Platform): Promise<void> {
     },
   });
 
-  platform.files?.((files) => void openFiles(files, true));
+  platform.files?.(openLocalFiles);
 
   // Offer to pick up where an earlier visit left off (an accidental reload, say).
   const [deck, session] = await Promise.all([platform.store.loadDeck(), platform.store.loadSession()]);
@@ -361,68 +417,64 @@ export async function start(platform: Platform): Promise<void> {
       resume.remove();
       forget.remove();
       void platform.store.forget();
-      toast(`Removed ${deck.pdfName} from this browser.`);
+      toast(`Removed ${deck.pdfName} from ${__BUILD__ === "mac" ? "this Mac" : "this browser"}.`);
     });
     resume.addEventListener("click", () => {
-      openAudience();
+      cancelDeckLoad();
+      if (__BUILD__ !== "mac") openAudience();
       const source: Source = {
         pdf: { name: deck.pdfName, data: deck.pdf },
         pdfpc: deck.pdfpc && deck.pdfpcName ? { name: deck.pdfpcName, text: deck.pdfpc } : undefined,
       };
-      void openSource(source, { saved: recent ? session : undefined, keep: false }).catch((err) => {
-        $("start-error").hidden = false;
-        $("start-error").textContent = String(err);
-      });
+      void openSource(source, { saved: recent ? session : undefined, keep: false }).catch((err) => startStatus(reasonOf(err), true));
     });
   }
 
-  // Only a deck server's own site, which opens them from its address, and the Mac app, which has a box to paste them in.
-  if (__DECKS__ && platform.fetchDeck) {
+  // A deck server's own site reads the deck named in its address.
+  if (progress && platform.fetchDeck) {
+    progress.max = 1;
+    progress.ariaLabel = "Deck download progress";
+    progress.hidden = true;
+    status.after(progress);
     const fetchDeck = platform.fetchDeck;
-    const status = $("start-error");
     const open = async (text: string) => {
-      const link = deckLink(text);
-      status.hidden = false;
-      if (!link) {
-        status.textContent = "That isn't a deck's link. It looks like example.com/#k3j9x2.";
+      const token = deckToken(text);
+      if (!token) {
+        cancelDeckLoad();
+        startStatus("That isn't a deck's link. It looks like example.com/#k3j9x2.", true);
         return;
       }
-      status.textContent = "Fetching the deck…";
+      const loading = beginDeckLoad();
+      const { signal } = loading;
+      progress.removeAttribute("value");
+      progress.hidden = false;
+      startStatus("Connecting to the deck server…");
       try {
-        const files = await fetchDeck(link, (progress) => (status.textContent = progress));
-        if (__BUILD__ === "mac") platform.store.setPref("deckLink", text);
+        const files = await fetchDeck(token, ({ name, received, total }) => {
+          if (signal.aborted) return;
+          const knownTotal = total > 0 && received <= total;
+          if (knownTotal) progress.value = received / total;
+          else progress.removeAttribute("value");
+          const amount = knownTotal ? ` (${Math.round(progress.value * 100)}%)` : received ? ` (${(received / 1_048_576).toFixed(1)} MB)` : "";
+          startStatus(`Downloading ${name}${amount}…`);
+        }, signal);
+        if (signal.aborted) return;
+        progress.hidden = true;
         // The token leaves the address, which may be on the wall.
-        else history.replaceState(null, "", location.pathname + location.search);
-        await openFiles(files);
+        history.replaceState(null, "", location.pathname + location.search);
+        await openFiles(files, signal);
       } catch (err) {
-        status.textContent = reasonOf(err);
+        if (!signal.aborted) startStatus(reasonOf(err), true);
+      } finally {
+        endDeckLoad(loading);
       }
     };
 
-    if (__BUILD__ === "mac") {
-      const form = el("form", "deck-link");
-      const field = el("input");
-      field.type = "text";
-      field.placeholder = "Deck link, like example.com/#k3j9x2";
-      field.ariaLabel = "Deck link";
-      field.autocapitalize = "none";
-      field.spellcheck = false;
-      field.value = platform.store.pref("deckLink", "");
-      const go = el("button", "", "Open link");
-      go.type = "submit";
-      form.append(field, go);
-      form.addEventListener("submit", (e) => {
-        e.preventDefault();
-        void open(field.value);
-      });
-      $("actions").prepend(form);
-    } else {
-      // The address names a deck: at once, unless a reload mid-talk has one to resume, with its clock.
-      const fromAddress = () => {
-        if (!presenter && !midTalk && location.hash.length > 1) void open(location.hash);
-      };
-      window.addEventListener("hashchange", fromAddress);
-      fromAddress();
-    }
+    // Load a linked deck unless a reload mid-talk has a deck and its clock to resume.
+    const fromAddress = () => {
+      if (!presenter && !midTalk && location.hash.length > 1) void open(location.hash);
+    };
+    window.addEventListener("hashchange", fromAddress);
+    fromAddress();
   }
 }

@@ -852,10 +852,26 @@ try {
     assert.match(await text("#guide"), /^Comparing with demo-v2\.pdfpc\.$/);
     await page.click("#error-close");
 
-    // A new export of the deck's own file keeps the comparison; Esc doesn't end it, End comparison does.
+    // A new export of the deck's own file keeps the comparison, spent times, and a moved endSlide; Esc doesn't end it, End comparison does.
+    await press("ArrowLeft", "Control+e");
+    assert.equal((await state()).endSlide, 4);
+    await page.$eval("#toast", (e) => (e.textContent = ""));
     await input.uploadFile(resolve("demo/demo.pdfpc"));
     // The notes reload, the marks gone a moment, and the guide's line the same throughout: this toast is when they're back.
     await textMatches("#toast", /^Loaded notes from demo\.pdfpc\.$/);
+    assert.equal((await state()).endSlide, 4, "reloading unchanged .pdfpc lost Ctrl+E endSlide");
+    const resetEnd = JSON.parse(readFileSync("demo/demo.pdfpc", "utf8"));
+    resetEnd.endSlide = 5;
+    writeFileSync(`${out}/demo.pdfpc`, JSON.stringify(resetEnd));
+    await page.$eval("#toast", (e) => (e.textContent = ""));
+    await input.uploadFile(`${out}/demo.pdfpc`);
+    await textMatches("#toast", /^Loaded notes from demo\.pdfpc\.$/);
+    assert.equal((await state()).endSlide, 5, "an edited endSlide in .pdfpc didn't apply");
+    await page.$eval("#toast", (e) => (e.textContent = ""));
+    await input.uploadFile(resolve("demo/demo.pdfpc"));
+    await textMatches("#toast", /^Loaded notes from demo\.pdfpc\.$/);
+    assert.equal((await state()).endSlide, 6);
+    await press("End");
     await textMatches("#guide", /^Comparing with demo-v2\.pdfpc\.$/);
     assert.deepEqual(await marked(), [["planned"], ["due"]]);
     await press("Escape");
@@ -863,6 +879,7 @@ try {
     await page.click("#save-run");
     assert.equal(await page.$("#presenter.comparing"), null);
     assert.equal(await text("#save-run"), "Save run");
+    assert.match(await text("#guide"), /^Click Save run/, "reloading .pdfpc lost the run's spent times");
     assert.deepEqual(await marked(), [[], []]);
     assert.match(await text("#next-notes"), /^Backup material/, "the next slide's notes are back");
     assert.equal(await lines(), 0);

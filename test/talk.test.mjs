@@ -193,13 +193,33 @@ test("a reload picks up the talk where it was, with its time per slide", () => {
   talk.act("next", T0);
   talk.progress(T0, SLACK.time);
   const saved = talk.save(sec(30));
-  assert.deepEqual(saved.spent, { "1:60:180": 30 });
+  assert.deepEqual(saved.spent, { "1": 30 });
 
   const again = new Talk(d, saved, sec(40));
   assert.equal(again.state.page, 1);
   assert.equal(again.state.timer.startedAt, T0);
   again.progress(sec(40), SLACK.time);
   assert.equal(again.progress(sec(50), SLACK.time).slide.over, 30 + 10 - 120);
+
+  // Saved sessions from before 1.9 ("slide:start:end") still resume.
+  const legacy = new Talk(d, { ...saved, spent: { "1:60:180": 30 } }, sec(40));
+  legacy.progress(sec(40), SLACK.time);
+  assert.equal(legacy.progress(sec(50), SLACK.time).slide.over, 30 + 10 - 120);
+
+  // Re-loading .pdfpc with edited lengths keeps time already spent on that slide.
+  const edited = deck(["1", "2", "3"], { meta: pdfpc({ 0: "[60s]", 1: "[90s]", 2: "[60s]" }) });
+  const reloaded = new Talk(edited, saved, sec(30));
+  assert.equal(reloaded.progress(sec(40), SLACK.time).slide.over, 40 - 90);
+});
+
+test("reveal steps with their own lengths keep their own spent times", () => {
+  const d = deck(["1", "2", "2", "3"], { meta: pdfpc({ 0: "[30s]", 1: "[40s] Step 1.", 2: "[50s] Step 2.", 3: "[30s]" }) });
+  const talk = new Talk(d, undefined, T0);
+  talk.act("next", sec(0));
+  talk.act("next", sec(35));
+  talk.act("next", sec(90));
+  assert.deepEqual(talk.spentByPage(sec(110)), [0, 35, 55, 20]);
+  assert.deepEqual(talk.spentBySlide(sec(110)), [0, 90, 20]);
 });
 
 test("an old or another deck's session starts afresh", () => {

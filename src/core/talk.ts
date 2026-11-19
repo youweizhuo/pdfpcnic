@@ -114,8 +114,14 @@ export class Talk {
       back: [],
       forward: [],
     };
-    if (from?.spent) this.spent = new Map(Object.entries(from.spent));
     this.replan();
+    if (from?.spent) {
+      for (const [raw, seconds] of Object.entries(from.spent)) {
+        const key = this.migrateKey(raw);
+        this.spent.set(key, (this.spent.get(key) ?? 0) + seconds);
+      }
+    }
+    this.book(now);
   }
 
   // Navigation
@@ -319,6 +325,20 @@ export class Talk {
     return out;
   }
 
+  /** Seconds spent on each planned window's opening page by `now`, over all its visits. */
+  spentByPage(now: number): number[] {
+    const out = this.deck.pages.map(() => 0);
+    for (const [key, seconds] of Object.entries(this.save(now).spent ?? {})) {
+      const [s, step] = key.split("@");
+      const slide = Number(s);
+      if (!(slide in this.deck.slides)) continue;
+      const candidate = step !== undefined ? this.deck.slides[slide][Number(step)] : this.firstOf(slide);
+      const page = candidate !== undefined && !this.deck.pages[candidate].hidden ? candidate : this.firstOf(slide);
+      if (!this.deck.pages[page].hidden) out[page] += seconds;
+    }
+    return out;
+  }
+
   // Pace
 
   /** How the talk keeps to its plan at `now`. */
@@ -399,7 +419,38 @@ export class Talk {
     const length = Math.round(T.talkLength(s.timer, this.deck, now) / 1000);
     const plan = slide > s.endSlide ? null : (this.timed && this.pagePlans[s.page]) || this.planOf(slide, length);
     const budget = plan ? plan.end - plan.start : slideLength(this.deck.pages, this.deck.slides[slide]);
-    return { slide, length, plan, budget, key: plan ? `${slide}:${plan.start}:${plan.end}` : String(slide) };
+    const anchor = this.anchorOf(s.page);
+    const key = anchor === this.firstOf(slide) ? String(slide) : `${slide}@${this.deck.pages[anchor].step}`;
+    return { slide, length, plan, budget, key };
+  }
+
+  /** The page that opens `page`'s planned window, or the slide's first visible page. */
+  private anchorOf(page: number): number {
+    const d = this.deck;
+    const here = d.pages[page];
+    const own = d.slides[here.slide];
+    if (here.slide <= this.state.endSlide && this.timed && this.pagePlans[page]) {
+      for (let i = here.step; i >= 0; i--) {
+        const q = own[i];
+        if (d.pages[q].seconds !== null) return q;
+      }
+    }
+    return this.firstOf(here.slide);
+  }
+
+  /** Maps a saved key (including older "slide:start:end" keys) onto this deck's window keys. */
+  private migrateKey(raw: string): string {
+    if (!raw.includes(":")) return raw;
+    const [slide, start, end] = raw.split(":").map(Number);
+    const own = this.deck.slides[slide];
+    if (own) {
+      const match = own.find((p) => {
+        const w = this.pagePlans[p];
+        return this.deck.pages[p].seconds !== null && w !== null && w.start === start && w.end === end;
+      });
+      if (match !== undefined && match !== this.firstOf(slide)) return `${slide}@${this.deck.pages[match].step}`;
+    }
+    return String(slide);
   }
 
   /** Books your time on the window you were on, once you're on another: at every move, and whenever the pace is read. */

@@ -43,18 +43,28 @@ export function otherPages(deck: Deck, meta: PdfpcFile): Page[] {
 }
 
 /**
- * A run's times as a `.pdfpc` file: each slide that took time opens with how
- * long the run spent on it, and its steps go on with that. Notes are left
- * out: they're the deck's.
+ * A run's times as a `.pdfpc` file: each slide or timed step that took time
+ * opens with how long the run spent on it, keeping hidden pages and forced
+ * overlays intact. Notes are left out: they're the deck's.
  */
-export function runFile(deck: Deck, endSlide: number, spent: number[]): string {
+export function runFile(deck: Deck, endSlide: number, spent: number[], byPage = false): string {
+  const firstVisible = new Set(
+    deck.slides.map((own) => own.find((p) => !deck.pages[p].hidden)).filter((p): p is number => p !== undefined),
+  );
   // Each page as pdfpc names it: by its label, and its place among the pages with that label.
   let overlay = 0;
   const pages = deck.pages.map((p, i) => {
     overlay = i > 0 && deck.pages[i - 1].label === p.label ? overlay + 1 : 0;
-    const seconds = p.step === 0 ? Math.round(spent[p.slide]) : 0;
+    const seconds = p.hidden ? 0 : byPage ? Math.round(spent[i] ?? 0) : firstVisible.has(i) ? Math.round(spent[p.slide] ?? 0) : 0;
     const note = seconds ? `[${seconds}s]` : "";
-    return JSON.stringify({ idx: i, label: p.label, overlay, ...(note ? { note } : {}) });
+    return JSON.stringify({
+      idx: i,
+      label: p.label,
+      overlay,
+      ...(p.forcedOverlay ? { forcedOverlay: true } : {}),
+      ...(p.hidden ? { hidden: true } : {}),
+      ...(note ? { note } : {}),
+    });
   });
   const head = { pdfpcFormat: 2, ...(deck.duration ? { duration: deck.duration } : {}), endSlide };
   const fields = Object.entries(head).map(([k, v]) => `  ${JSON.stringify(k)}: ${JSON.stringify(v)},`);

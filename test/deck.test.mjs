@@ -22,6 +22,7 @@ test("without labels, each page is a slide, labeled by its number", () => {
 test("a forced overlay joins the slide before it, whatever its label", () => {
   const d = deck(["1", "2", "3"], { meta: { pages: [{ idx: 2, label: "3", forcedOverlay: true }] } });
   assert.deepEqual(d.slides, [[0], [1, 2]]);
+  assert.equal(d.pages[2].forcedOverlay, true);
 });
 
 test("notes in the PDF win over the .pdfpc file's", () => {

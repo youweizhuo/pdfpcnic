@@ -63,6 +63,37 @@ test("the deck's plan and another, slide by slide: windows, lengths, notes", () 
   assert.equal(other[2].note, "More.");
 });
 
+test("runFile preserves hidden pages, forced overlays, and per-step times", () => {
+  const d = deck(["1", "2", "2", "3", "4"], {
+    meta: {
+      pages: [
+        { idx: 0, label: "1", note: "[30s]" },
+        { idx: 1, label: "2", overlay: 0, hidden: true, note: "[40s]" },
+        { idx: 2, label: "2", overlay: 1, note: "[40s] First visible." },
+        { idx: 3, label: "3", forcedOverlay: true, note: "[25s] Step two." },
+        { idx: 4, label: "4", note: "[30s]" },
+      ],
+    },
+  });
+  const talk = new Talk(d, undefined, T0);
+  talk.act("next", sec(0)); // skips hidden idx 1, lands on idx 2
+  talk.act("next", sec(35)); // lands on forcedOverlay idx 3
+  talk.act("next", sec(65)); // lands on idx 4
+  const file = parsePdfpc(runFile(d, 2, talk.spentByPage(sec(95)), true));
+  assert.deepEqual(
+    file.pages.map((p) => ({ label: p.label, hidden: p.hidden, forced: p.forcedOverlay, note: p.note })),
+    [
+      { label: "1", hidden: undefined, forced: undefined, note: undefined },
+      { label: "2", hidden: true, forced: undefined, note: undefined },
+      { label: "2", hidden: undefined, forced: undefined, note: "[35s]" },
+      { label: "3", hidden: undefined, forced: true, note: "[30s]" },
+      { label: "4", hidden: undefined, forced: undefined, note: "[30s]" },
+    ],
+  );
+  const run = plansOf("run.pdfpc", otherPages(d, file), d, 2);
+  assert.deepEqual(run.lengths, [0, 65, 30]);
+});
+
 test("the run file is named for the PDF and when it was saved", () => {
   assert.equal(runName("talk.pdf", new Date(2026, 9, 28, 14, 5)), "talk-20261028-1405.pdfpc");
 });

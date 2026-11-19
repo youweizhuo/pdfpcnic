@@ -1057,7 +1057,7 @@ export class Presenter {
     const now = Date.now();
     const name = runName(this.deck.name, new Date(now));
     try {
-      const where = await this.platform.save(name, runFile(this.deck, t.state.endSlide, t.spentBySlide(now)), this.deck.name);
+      const where = await this.platform.save(name, runFile(this.deck, t.state.endSlide, t.spentByPage(now), true), this.deck.name);
       this.savedRun = started;
       toast(`${where ? `Saved ${where}` : `Downloaded ${name}`}. Drop it on this window to compare it with the plan.`, 8000);
       this.renderGuide(now);

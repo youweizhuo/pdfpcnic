@@ -194,19 +194,15 @@ export async function start(platform: Platform): Promise<void> {
           return;
         }
         const kept = p.comparing;
-        const s = p.talk.state;
+        const saved = p.talk.save(Date.now());
         await present(
           prepared,
           // Kept and tracked as the deck was: notes dropped on the demo don't make it the deck to resume.
           {
             saved: {
-              pdfName: p.deck.name,
-              page: s.page,
-              timer: s.timer,
-              bookmark: s.bookmark,
-              black: s.black,
-              frozen: s.frozen,
-              savedAt: Date.now(),
+              ...saved,
+              page: Math.min(saved.page, prepared.deck.pages.length - 1),
+              endSlide: prepared.deck.endSlide !== p.deck.endSlide ? prepared.deck.endSlide : saved.endSlide,
             },
             keep: p.track,
             track: p.track,

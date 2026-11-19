@@ -45,6 +45,7 @@ export interface Page {
   slide: number;
   /** 0-based reveal step inside its slide. */
   step: number;
+  forcedOverlay?: boolean;
   hidden: boolean;
   note: string;
   /** Planned seconds from here on, from the note's length; null for a page that goes on with the step before: a hidden one has none, and a note repeated on a slide's steps counts once. */
@@ -133,6 +134,7 @@ export function buildDeck(name: string, info: PageInfo[], meta: PdfpcFile | null
       label: label(i),
       slide,
       step: slides[slide].length,
+      ...(forced.has(i) ? { forcedOverlay: true } : {}),
       hidden: hidden.has(i),
       note,
       seconds: counts ? seconds : null,

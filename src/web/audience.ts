@@ -115,6 +115,7 @@ export class PopupAudience implements Audience {
   /** Fullscreen asked for from the presenter and refused, until the audience goes fullscreen. */
   private refused = false;
   private forSharing = false;
+  private freshOpen = false;
   private refuse = () => {
     this.refused = true;
     this.events.change();
@@ -126,7 +127,20 @@ export class PopupAudience implements Audience {
   bind(deck: Deck, _pdf: Pdf, cache: PageCache, frame: AudienceFrame): void {
     this.deck = deck;
     this.cache = cache;
-    if (this.isOpen) this.mount();
+    if (this.isOpen) {
+      this.mount();
+      if (!this.win!.document.fullscreenElement) {
+        if (this.forSharing) this.fitForSharing();
+        else if (this.freshOpen) {
+          this.freshOpen = false;
+          const { left, top, width, height } = centered(this.win!.screen, this.aspect(), this.win!);
+          this.win!.moveTo(left, top);
+          this.win!.resizeTo(width, height);
+        }
+      } else {
+        this.freshOpen = false;
+      }
+    }
     this.render(frame);
   }
 
@@ -165,11 +179,12 @@ export class PopupAudience implements Audience {
       if (!behind && !this.win!.document.fullscreenElement) this.win!.focus();
       return;
     }
-    const { left, top, width, height } = centered();
+    const { left, top, width, height } = centered(screen, this.aspect());
     const features = `popup,left=${left},top=${top},width=${width},height=${height}`;
     const blocked = () => new Error("The browser blocked the audience window. Allow pop-ups for this page, then press o again.");
     let win = window.open("", NAME, features);
     if (!win) throw blocked();
+    this.freshOpen = !this.deck;
     try {
       this.attach(win);
     } catch {
@@ -192,22 +207,50 @@ export class PopupAudience implements Audience {
     else this.goFullscreen();
   }
 
-  /** A large ordinary window stays on the desktop when the presenter covers it. */
+  /** A large ordinary window fitted to the slide's proportions stays on the desktop when the presenter covers it. */
   async prepareSharing(): Promise<void> {
     // Open before awaiting anything: a new popup needs the original user gesture.
     this.open();
     const win = this.win!;
     if (win.document.fullscreenElement) await win.document.exitFullscreen();
     if (win.closed || this.win !== win) return;
-    const s = win.screen;
+    this.freshOpen = false;
     // Resize the existing popup: replacing it would break an active window share.
     // Browsers may ignore these calls; the presenter also explains the manual option.
-    win.moveTo(s.availLeft ?? 0, s.availTop ?? 0);
-    win.resizeTo(s.availWidth, s.availHeight);
+    this.fitForSharing();
+    // Leaving fullscreen can restore the window's titlebar only after the first resize; refine once if needed.
+    if (Math.abs(win.innerWidth / Math.max(1, win.innerHeight) - this.aspect(this.view?.current ?? 0)) > 0.02) {
+      this.fitForSharing();
+    }
     this.forSharing = true;
     this.refused = false;
     win.document.getElementById("hint")!.hidden = true;
     this.events.change();
+  }
+
+  private aspect(page = 0): number {
+    const p = this.deck?.pages[page] ?? this.deck?.pages[0];
+    return p && p.width > 0 && p.height > 0 ? p.width / p.height : 16 / 9;
+  }
+
+  private fitForSharing(): void {
+    const win = this.win;
+    if (!win || win.closed) return;
+    const s = win.screen;
+    const chromeW = Math.max(0, win.outerWidth - win.innerWidth);
+    const chromeH = Math.max(0, win.outerHeight - win.innerHeight);
+    const maxW = Math.max(1, s.availWidth - chromeW);
+    const maxH = Math.max(1, s.availHeight - chromeH);
+    const ratio = this.aspect(this.view?.current ?? 0);
+    const wider = maxW / maxH >= ratio;
+    const innerW = wider ? Math.round(maxH * ratio) : maxW;
+    const innerH = wider ? maxH : Math.round(maxW / ratio);
+    const width = Math.min(s.availWidth, innerW + chromeW);
+    const height = Math.min(s.availHeight, innerH + chromeH);
+    const left = Math.round((s.availLeft ?? 0) + (s.availWidth - width) / 2);
+    const top = Math.round((s.availTop ?? 0) + (s.availHeight - height) / 2);
+    win.moveTo(left, top);
+    win.resizeTo(width, height);
   }
 
   render({ page, black, laser, laserSize }: AudienceFrame): void {
@@ -324,14 +367,21 @@ export class PopupAudience implements Audience {
     this.win = null;
     this.refused = false;
     this.forSharing = false;
+    this.freshOpen = false;
     this.events.change();
   }
 }
 
-function centered() {
-  const width = Math.round(screen.availWidth * 0.6);
-  const height = Math.round((width * 9) / 16);
-  const left = Math.round((screen.availLeft ?? 0) + (screen.availWidth - width) / 2);
-  const top = Math.round((screen.availTop ?? 0) + (screen.availHeight - height) / 2);
+function centered(s: Screen = screen, aspect = 16 / 9, existing?: Window) {
+  const chromeW = existing ? Math.max(0, existing.outerWidth - existing.innerWidth) : 0;
+  const chromeH = existing ? Math.max(0, existing.outerHeight - existing.innerHeight) : 0;
+  const maxW = s.availWidth * 0.6;
+  const maxH = Math.max(1, s.availHeight * 0.75 - chromeH);
+  const innerW = Math.round(Math.min(maxW, maxH * aspect));
+  const innerH = Math.round(innerW / aspect);
+  const width = innerW + chromeW;
+  const height = innerH + chromeH;
+  const left = Math.round((s.availLeft ?? 0) + (s.availWidth - width) / 2);
+  const top = Math.round((s.availTop ?? 0) + (s.availHeight - height) / 2);
   return { left, top, width, height };
 }

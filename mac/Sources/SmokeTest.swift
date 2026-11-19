@@ -154,7 +154,8 @@ final class SmokeTest {
                     app.audience.status["forSharing"] as? Bool == true && !app.audience.isFullscreen
                 }
                 guard let window = app.audience.view.window, let screen = window.screen,
-                      window.frame == screen.visibleFrame else { throw Failure("the audience didn't fill the desktop") }
+                      window.frame == Audience.fittedFrame(in: screen.visibleFrame, aspect: app.audience.slideAspect)
+                else { throw Failure("the audience didn't fit the slide's proportions on the desktop") }
             }
             try await prepare(click: true)
             let window = app.audience.view.window

@@ -1189,7 +1189,12 @@ try {
       watch(popup, "sharing audience");
       const target = popup.target();
       await sharing.click('[data-action="prepareSharing"]');
-      await popup.waitForFunction(() => !document.fullscreenElement && outerWidth >= screen.availWidth - 16 && outerHeight >= screen.availHeight - 16);
+      await popup.waitForFunction(
+        () =>
+          !document.fullscreenElement &&
+          (outerWidth >= screen.availWidth - 16 || outerHeight >= screen.availHeight - 16) &&
+          Math.abs(innerWidth / innerHeight - 16 / 9) < 0.02,
+      );
       assert.equal(await sharing.evaluate(() => window.pdfpcnic.audience.status.forSharing), true);
       assert.equal(await sharing.$eval("#audience-button", (e) => e.classList.contains("cta")), false);
       await sharing.click('[data-action="prepareSharing"]');

@@ -17,6 +17,7 @@ final class Audience: NSObject, NSWindowDelegate {
     /// The screen it's fullscreen on.
     private var fullscreenOn: NSScreen?
     private var forSharing = false
+    private var freshOpen = false
     private var changingSpace = false
     private var sharingWaiters: [CheckedContinuation<Void, Error>] = []
 
@@ -50,8 +51,48 @@ final class Audience: NSObject, NSWindowDelegate {
         emit("audience", status)
     }
 
+    var slideAspect: CGFloat {
+        if let cg = view.doc?.cg, let p = cg.page(at: view.page + 1) ?? cg.page(at: 1) {
+            let s = PageBox(p).size
+            if s.width > 0, s.height > 0 { return s.width / s.height }
+        }
+        return 16.0 / 9.0
+    }
+
+    static func fittedFrame(in area: NSRect, aspect: CGFloat) -> NSRect {
+        let ratio = aspect > 0 ? aspect : 16.0 / 9.0
+        let wider = area.width / area.height >= ratio
+        let width = wider ? (area.height * ratio).rounded() : area.width
+        let height = wider ? area.height : (area.width / ratio).rounded()
+        return NSRect(
+            x: (area.minX + (area.width - width) / 2).rounded(),
+            y: (area.minY + (area.height - height) / 2).rounded(),
+            width: width,
+            height: height
+        )
+    }
+
+    static func initialFrame(in area: NSRect, aspect: CGFloat) -> NSRect {
+        let ratio = aspect > 0 ? aspect : 16.0 / 9.0
+        let width = min(area.width * 0.6, area.height * 0.75 * ratio).rounded()
+        let height = (width / ratio).rounded()
+        return NSRect(x: (area.midX - width / 2).rounded(), y: (area.midY - height / 2).rounded(), width: width, height: height)
+    }
+
     func show(_ doc: Documents.Doc?) {
         view.doc = doc
+        guard let window, !isFullscreen else {
+            freshOpen = false
+            return
+        }
+        if forSharing {
+            let screen = window.screen ?? presenter()?.screen ?? NSScreen.screens[0]
+            window.setFrame(Self.fittedFrame(in: screen.visibleFrame, aspect: slideAspect), display: true)
+        } else if freshOpen {
+            freshOpen = false
+            let area = (window.screen ?? presenter()?.screen ?? NSScreen.screens[0]).visibleFrame
+            window.setFrame(Self.initialFrame(in: area, aspect: slideAspect), display: true)
+        }
     }
 
     func render(page: Int, black: Bool, laser: CGPoint?, size: Double) {
@@ -70,10 +111,9 @@ final class Audience: NSObject, NSWindowDelegate {
             return
         }
         let area = (presenter()?.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
-        let width = (area.width * 0.6).rounded()
-        let height = (width * 9 / 16).rounded()
+        freshOpen = view.doc == nil
         let window = AudienceWindow(
-            contentRect: NSRect(x: area.midX - width / 2, y: area.midY - height / 2, width: width, height: height),
+            contentRect: Self.initialFrame(in: area, aspect: slideAspect),
             styleMask: [.borderless, .resizable],
             backing: .buffered,
             defer: false
@@ -111,9 +151,10 @@ final class Audience: NSObject, NSWindowDelegate {
 
     private func fillForSharing() {
         guard let window else { return }
+        freshOpen = false
         let screen = fullscreenOn ?? window.screen ?? presenter()?.screen ?? NSScreen.screens[0]
         fullscreenOn = nil
-        window.setFrame(screen.visibleFrame, display: true)
+        window.setFrame(Self.fittedFrame(in: screen.visibleFrame, aspect: slideAspect), display: true)
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(view)
         forSharing = true
@@ -211,6 +252,7 @@ final class Audience: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         window = nil
         forSharing = false
+        freshOpen = false
         changingSpace = false
         finishSharing(error: Failure("The audience window was closed."))
         changed()

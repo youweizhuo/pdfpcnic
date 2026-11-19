@@ -1225,6 +1225,57 @@ try {
     }
   });
 
+  await check("reloading notes fits the sharing window to the restored audience slide", async () => {
+    const pdf = `${out}/mixed.pdf`;
+    const notes = `${out}/mixed.pdfpc`;
+    writeFileSync(
+      pdf,
+      pdfFrom([
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 800 450] /Resources <<>> >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 450 800] /Resources <<>> >>",
+      ]),
+    );
+    writeFileSync(notes, JSON.stringify({ pdfpcFormat: 2, pages: [] }));
+    const sharing = await browser.newPage();
+    try {
+      watch(sharing, "mixed-size presenter");
+      await sharing.goto(url);
+      const opened = browser.waitForTarget((t) => t.opener() === sharing.target());
+      const input = await sharing.$("#files");
+      await input.uploadFile(pdf, notes);
+      await sharing.waitForSelector("#ready:not([hidden])");
+      await sharing.click("#present");
+      const popup = await (await opened).page();
+      watch(popup, "mixed-size audience");
+      await sharing.waitForFunction(() => window.pdfpcnic.state?.page === 0);
+      await sharing.bringToFront();
+      await sharing.keyboard.press("End");
+      await sharing.waitForFunction(() => window.pdfpcnic.state?.page === 1);
+      await sharing.click('[data-action="prepareSharing"]');
+      await sharing.waitForFunction(() => window.pdfpcnic.audience.status.forSharing);
+      // Check the requested viewport size because Chrome can constrain the popup's actual bounds.
+      await popup.evaluate(() => {
+        const resize = window.resizeTo;
+        window.resizeTo = (width, height) => {
+          const viewportWidth = width - Math.max(0, outerWidth - innerWidth);
+          const viewportHeight = height - Math.max(0, outerHeight - innerHeight);
+          window.requestedAspect = viewportWidth / viewportHeight;
+          resize.call(window, width, height);
+        };
+      });
+
+      await input.uploadFile(notes);
+      await sharing.waitForFunction(() => document.querySelector("#toast").textContent === "Loaded notes from mixed.pdfpc.");
+      const ratio = await popup.evaluate(() => window.requestedAspect);
+      assert.ok(Math.abs(ratio - 450 / 800) < 0.02, `the restored portrait slide requested window aspect ratio ${ratio}`);
+      await popup.close();
+    } finally {
+      await sharing.close();
+    }
+  });
+
   await check("no errors in either window", async () => {
     assert.deepEqual(errors, []);
   });

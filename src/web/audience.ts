@@ -130,10 +130,10 @@ export class PopupAudience implements Audience {
     if (this.isOpen) {
       this.mount();
       if (!this.win!.document.fullscreenElement) {
-        if (this.forSharing) this.fitForSharing();
+        if (this.forSharing) this.fitForSharing(this.aspect(frame.page));
         else if (this.freshOpen) {
           this.freshOpen = false;
-          const { left, top, width, height } = centered(this.win!.screen, this.aspect(), this.win!);
+          const { left, top, width, height } = centered(this.win!.screen, this.aspect(frame.page), this.win!);
           this.win!.moveTo(left, top);
           this.win!.resizeTo(width, height);
         }
@@ -217,10 +217,11 @@ export class PopupAudience implements Audience {
     this.freshOpen = false;
     // Resize the existing popup: replacing it would break an active window share.
     // Browsers may ignore these calls; the presenter also explains the manual option.
-    this.fitForSharing();
+    const ratio = this.aspect(this.view?.current ?? 0);
+    this.fitForSharing(ratio);
     // Leaving fullscreen can restore the window's titlebar only after the first resize; refine once if needed.
-    if (Math.abs(win.innerWidth / Math.max(1, win.innerHeight) - this.aspect(this.view?.current ?? 0)) > 0.02) {
-      this.fitForSharing();
+    if (Math.abs(win.innerWidth / Math.max(1, win.innerHeight) - ratio) > 0.02) {
+      this.fitForSharing(ratio);
     }
     this.forSharing = true;
     this.refused = false;
@@ -233,7 +234,7 @@ export class PopupAudience implements Audience {
     return p && p.width > 0 && p.height > 0 ? p.width / p.height : 16 / 9;
   }
 
-  private fitForSharing(): void {
+  private fitForSharing(ratio: number): void {
     const win = this.win;
     if (!win || win.closed) return;
     const s = win.screen;
@@ -241,7 +242,6 @@ export class PopupAudience implements Audience {
     const chromeH = Math.max(0, win.outerHeight - win.innerHeight);
     const maxW = Math.max(1, s.availWidth - chromeW);
     const maxH = Math.max(1, s.availHeight - chromeH);
-    const ratio = this.aspect(this.view?.current ?? 0);
     const wider = maxW / maxH >= ratio;
     const innerW = wider ? Math.round(maxH * ratio) : maxW;
     const innerH = wider ? maxH : Math.round(maxW / ratio);

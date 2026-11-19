@@ -15,17 +15,19 @@
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='6' width='28' height='18' rx='3' fill='%23111' stroke='%23ffd60a' stroke-width='2'/%3E%3Ccircle cx='21' cy='15' r='3' fill='%23ff453a'/%3E%3C/svg%3E" />
     <!-- pdfpcnic, MIT. Includes PDF.js (Apache-2.0), marked (MIT) and DOMPurify (Apache-2.0 or MPL-2.0). -->
-    <script type="module" crossorigin src="./assets/index-BA0iwZMv.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-BqDBdxQY.css">
+    <script type="module" crossorigin src="./assets/index-BhKgV8AA.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BMXvmO4J.css">
   </head>
   <body>
     <section id="start" class="start">
       <div class="start-inner">
-        <h1 class="wordmark">pdfpcnic <span id="version" class="version"></span></h1>
-        <p class="say">pronounced “PDF picnic”</p>
-        <!-- The Mac app's word that a newer version installed itself. -->
-        <p id="update" class="say update" hidden></p>
-        <p id="tagline" class="tagline">Present PDF slides with a pdfpc-style presenter view, in the browser.</p>
+        <header id="start-header" class="start-header">
+          <h1 class="wordmark">pdfpcnic <span id="version" class="version"></span></h1>
+        </header>
+        <div class="start-intro">
+          <p class="say">pronounced “PDF picnic”</p>
+          <p class="tagline">Present PDF slides with a pdfpc-style presenter view, in the browser.</p>
+        </div>
 
         <label id="drop" class="drop">
           <input id="files" type="file" accept=".pdf,.pdfpc,.json,application/pdf" multiple />
@@ -50,7 +52,8 @@
           <button id="demo" type="button">Try the demo deck</button>
         </div>
 
-        <p id="start-error" class="start-error" hidden></p>
+        <p id="start-error" class="start-status" role="status" hidden></p>
+        <p id="update" class="update" role="status" hidden></p>
 
         <footer class="start-foot">
           <span id="private">Your slides open in this browser; they aren't sent anywhere.</span>
@@ -145,7 +148,7 @@
           <dl>
             <div>
               <dt>Under the slide</dt>
-              <dd>A line that fills as you spend this slide's planned time, over all your visits to it, then turns the late colors. A backup slide's runs against its own length.</dd>
+              <dd>A line that fills as you spend this slide's planned time, over all your visits to it. It changes color after the late margin (one minute by default). A backup slide's runs against its own length.</dd>
             </div>
             <div>
               <dt>By the clock</dt>
@@ -159,9 +162,9 @@
               <dt><i class="sw this"></i><i class="sw next"></i></dt>
               <dd>The line under the next slide is the whole talk: time spent, then paler to where the talk would end if you moved on now, this slide's planned part in yellow over it. It's colored by the pace, as is the time at the clock's right, where the talk would end:</dd>
               <dt><i class="sw on"></i></dt>
-              <dd>on time, or a little early;</dd>
+              <dd>within the early and late margins (one minute each by default, adjustable in Settings);</dd>
               <dt><i class="sw late"></i><i class="sw serious"></i><i class="sw severe"></i></dt>
-              <dd>late; deeper as it gets serious and very serious (by default 1 and 2 minutes; see Settings);</dd>
+              <dd>late; deeper as it gets serious and very serious (by default at 1:30 and 2:00);</dd>
               <dt><i class="sw early"></i></dt>
               <dd>well ahead: by default more than a minute early.</dd>
             </div>
@@ -226,9 +229,14 @@
             </div>
           </div>
           <label class="setting">
-            <span>Early is fine up to</span>
-            <input id="set-early" type="range" min="0" max="20" step="1" />
+            <span>Early margin</span>
+            <input id="set-early" type="range" min="0" max="180" step="15" />
             <output for="set-early"></output>
+          </label>
+          <label class="setting">
+            <span>Late margin</span>
+            <input id="set-late" type="range" min="0" max="180" step="15" />
+            <output for="set-late"></output>
           </label>
           <label class="setting">
             <span>Late is serious from</span>
@@ -256,7 +264,7 @@
       </form>
     </dialog>
 
-    <div class="toasts">
+    <div id="toasts" class="toasts">
       <div id="error" class="toast error" role="alert" hidden>
         <p id="error-text"></p>
         <button type="button" id="error-close" class="ctl">Close</button>

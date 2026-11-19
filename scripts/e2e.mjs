@@ -991,6 +991,15 @@ try {
     const [notes0, side0] = await widths();
     assert.ok(Math.abs(notes0 - side0) < 2, `the columns aren't equal: ${notes0} ${side0}`);
     assert.equal(await height(), before);
+    // A cancelled pointer drag still clears .dragging.
+    const cancelled = await page.evaluate(() => {
+      const split = document.querySelector("#split");
+      split.dispatchEvent(new PointerEvent("pointerdown", { button: 0, pointerId: 7, bubbles: true }));
+      const active = split.classList.contains("dragging");
+      split.dispatchEvent(new PointerEvent("pointercancel", { pointerId: 7, bubbles: true }));
+      return [active, split.classList.contains("dragging")];
+    });
+    assert.deepEqual(cancelled, [true, false]);
     // The thumbnails stay off the right edge until the mouse rests there, stay while it's over them, and go once it leaves.
     const shown = () => page.$eval("#strip", (e) => e.getBoundingClientRect().left < innerWidth - 50);
     const [w, h] = await page.evaluate(() => [innerWidth, innerHeight]);

@@ -65,24 +65,32 @@ export function draggable(
   signal: AbortSignal,
   on: { start?: (e: PointerEvent) => void; move: (e: PointerEvent) => void; end: () => void },
 ): void {
+  let active: number | null = null;
+  const finish = (e: PointerEvent) => {
+    if (active !== e.pointerId) return;
+    active = null;
+    handle.classList.remove("dragging");
+    on.end();
+  };
   handle.addEventListener(
     "pointerdown",
     (e) => {
-      handle.setPointerCapture(e.pointerId);
+      if (e.button !== 0) return;
+      active = e.pointerId;
+      try {
+        handle.setPointerCapture(e.pointerId);
+      } catch {
+        // Synthetic pointer events in tests have no active pointer to capture.
+      }
       handle.classList.add("dragging");
       on.start?.(e);
     },
     { signal },
   );
-  handle.addEventListener("pointermove", (e) => handle.hasPointerCapture(e.pointerId) && on.move(e), { signal });
-  handle.addEventListener(
-    "pointerup",
-    () => {
-      handle.classList.remove("dragging");
-      on.end();
-    },
-    { signal },
-  );
+  handle.addEventListener("pointermove", (e) => active === e.pointerId && on.move(e), { signal });
+  handle.addEventListener("lostpointercapture", finish, { signal });
+  handle.addEventListener("pointercancel", finish, { signal });
+  handle.addEventListener("pointerup", finish, { signal });
 }
 
 /** Turns wheel or touchpad scrolling into single steps. */

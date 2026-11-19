@@ -3,6 +3,18 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the notes' length tags are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.10.0 (2026-11-19)
+
+### Added
+
+- **Download decks from the deck manager.** Download the latest PDF and its matching `.pdfpc` notes, when available.
+- **Mac update status.** The app shows when a new version is downloading, installing, and ready for the next launch.
+
+### Changed
+
+- **One-minute pace margins.** Early and late margins default to one minute each and can be adjusted independently in Settings. The current-slide bar uses the late margin before changing color.
+- **Mac startup.** Open local files or the demo, then click **Present** to open the audience window. The start screen puts the GitHub link next to the title. Deck servers still open shared links in the browser.
+
 ## 1.9.0 (2026-11-19)
 
 ### Changed

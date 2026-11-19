@@ -18,7 +18,7 @@ export interface Platform {
   window: PresenterWindow;
   store: Store;
   /** Fetches a deck by its link, where this build has a network. */
-  fetchDeck: ((link: DeckLink) => Promise<File[]>) | null;
+  fetchDeck: ((link: DeckLink, onProgress?: (status: string) => void) => Promise<File[]>) | null;
   /** The demo deck, where this build can get it. */
   demo: (() => Promise<{ pdf: ArrayBuffer; pdfpc: string }>) | null;
   /** Hands over files the platform opens itself, such as a PDF double-clicked in the Finder. */

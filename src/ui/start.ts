@@ -389,7 +389,7 @@ export async function start(platform: Platform): Promise<void> {
       }
       status.textContent = "Fetching the deck…";
       try {
-        const files = await fetchDeck(link);
+        const files = await fetchDeck(link, (progress) => (status.textContent = progress));
         if (__BUILD__ === "mac") platform.store.setPref("deckLink", text);
         // The token leaves the address, which may be on the wall.
         else history.replaceState(null, "", location.pathname + location.search);

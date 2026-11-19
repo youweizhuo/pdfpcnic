@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { deckLink, newestFiles } from "../src/core/decklink.ts";
+import { fetchDeck } from "../src/web/decks.ts";
 import { newToken, nextVersion, pairFiles } from "../deploy/upload/names.js";
 
 const file = (name) => ({ name });
@@ -65,4 +66,39 @@ test("files dropped together become decks", () => {
   assert.throws(() => pair("a.pdfpc"), /Add the PDF/);
   assert.throws(() => pair("a.pdf", "b.pdf", "c.pdfpc"), /c\.pdfpc has no PDF/);
   assert.throws(() => pair("a.pdf", "a.html"), /neither/);
+});
+
+test("fetchDeck checks file HTTP status and reports download progress", async () => {
+  const realFetch = globalThis.fetch;
+  const link = { server: "https://slides.example.com/", token: "k3j9x2" };
+  try {
+    // A 502 on the PDF itself fails clearly instead of passing an error page as a PDF.
+    globalThis.fetch = async (url) => {
+      if (String(url).endsWith("/k3j9x2/")) return new Response(JSON.stringify([{ name: "talk.pdf" }]), { status: 200 });
+      return new Response("Bad Gateway", { status: 502 });
+    };
+    await assert.rejects(() => fetchDeck(link), /answered 502 for talk\.pdf/);
+
+    // Streaming progress reports bytes and percentage, and returns the whole file.
+    const chunks = [new Uint8Array(600_000).fill(1), new Uint8Array(600_000).fill(2)];
+    globalThis.fetch = async (url) => {
+      const u = String(url);
+      if (u.endsWith("/k3j9x2/")) return new Response(JSON.stringify([{ name: "talk.pdf" }, { name: "talk.pdfpc" }]), { status: 200 });
+      if (u.endsWith("/talk.pdfpc")) return new Response('{"pdfpcFormat":2,"pages":[]}', { status: 200 });
+      const stream = new ReadableStream({
+        start(c) {
+          for (const chunk of chunks) c.enqueue(chunk);
+          c.close();
+        },
+      });
+      return new Response(stream, { status: 200, headers: { "content-length": "1200000" } });
+    };
+    const seen = [];
+    const files = await fetchDeck(link, (msg) => seen.push(msg));
+    assert.deepEqual(files.map((f) => [f.name, f.size]), [["talk.pdf", 1_200_000], ["talk.pdfpc", 28]]);
+    assert.ok(seen.some((m) => m.includes("50%")), `progress messages: ${seen.join(" | ")}`);
+    assert.ok(seen.some((m) => m.includes("100%")), `progress messages: ${seen.join(" | ")}`);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
 });

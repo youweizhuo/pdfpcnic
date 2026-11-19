@@ -3,6 +3,23 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the notes' length tags are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.9.0 (2026-11-19)
+
+### Changed
+
+- **More timing formats in notes.** Use `[2m]`, `[1m30s]` or `[1:30]`. A likely mistyped length at the start of a note
+  shows a warning. `[ref]` starts a reference at the beginning of a line.
+- **Audience windows fit the slide's proportions** when they open or are prepared for screen sharing.
+- **Deck links show download progress** and report HTTP errors for individual files.
+
+### Fixed
+
+- Reloading notes carries over recorded slide times and keeps a manually chosen end slide if the file's end slide
+  stays the same.
+- Saved runs record individual reveal step timings and preserve hidden pages and forced overlays.
+- Reloading notes while sharing keeps the audience window sized to the restored slide.
+- Cancelled splitter drags clear the active drag styling.
+
 ## 1.8.0 (2026-11-18)
 
 ### Changed

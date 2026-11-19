@@ -76,6 +76,14 @@ test("entries past the end of the PDF are counted in a warning", () => {
   assert.match(d.warnings[0], /^2 pages in the \.pdfpc file are past the end of the PDF/);
 });
 
+test("a mistyped length tag at the start of a note warns once for its slide", () => {
+  const d = deck(["1", "2", "2", "3"], {
+    meta: pdfpc({ 0: "[36] Citation.", 1: "[36 sec] Repeated.", 2: "[36 sec] Repeated.", 3: "[16:9] Ratio." }),
+  });
+  assert.equal(d.warnings.length, 1);
+  assert.match(d.warnings[0], /^Slide 2's note opens with "\[36 sec\]"/);
+});
+
 test("the end and bookmarked slides stay inside the deck", () => {
   const d = deck(["1", "2", "3"], { meta: { pages: [], endSlide: 9, savedSlide: 1 } });
   assert.equal(d.endSlide, 2);

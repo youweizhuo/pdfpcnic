@@ -1,4 +1,4 @@
-import { hasLength, readNote, readOldNote } from "./pace.ts";
+import { badLength, hasLength, readNote, readOldNote } from "./pace.ts";
 import type { PdfpcFile, PdfpcPage } from "./pdfpc.ts";
 
 /** Where a link on a slide leads: a page of the deck, a web page, or a PDF named action (NextPage, GoBack…). */
@@ -108,15 +108,24 @@ export function buildDeck(name: string, info: PageInfo[], meta: PdfpcFile | null
   const raw = info.map((p, i) => p.note || notes.get(i) || "");
   const read = raw.some(hasLength) ? readNote : readOldNote;
   let said = new Set<string>();
+  let badTags = new Set<string>();
   let prev: string | null = null;
   for (let i = 0; i < n; i++) {
     if (slides.length === 0 || (label(i) !== prev && !forced.has(i))) {
       slides.push([]);
       said = new Set();
+      badTags = new Set();
       prev = label(i);
     }
     const slide = slides.length - 1;
     const { seconds, note, said: saying } = read(raw[i]);
+    if (seconds === null && !hidden.has(i)) {
+      const bad = badLength(raw[i]);
+      if (bad && !badTags.has(bad)) {
+        badTags.add(bad);
+        warnings.push(`Slide ${slide + 1}'s note opens with "${bad}", which wasn't read as a length (use [36s], [2m], [1.5min], [1m30s] or [1:30]).`);
+      }
+    }
     const counts = seconds !== null && !hidden.has(i) && !said.has(saying);
     if (counts) said.add(saying);
     pages.push({

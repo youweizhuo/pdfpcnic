@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { actionFor, isIgnored, isTalkAction, keyName } from "../src/core/keys.ts";
-import { grade, SLACK, layOut, readNote, readOldNote, slideLength } from "../src/core/pace.ts";
+import { badLength, grade, SLACK, layOut, readNote, readOldNote, slideLength, splitRef } from "../src/core/pace.ts";
 import { parsePdfpc } from "../src/core/pdfpc.ts";
 import * as T from "../src/core/timer.ts";
 import { at } from "./decks.mjs";
@@ -29,12 +29,39 @@ test("a note's length: seconds or minutes, at its start, on its first line or it
   assert.equal(readNote("[36s]\n\nHello.").note, "Hello.");
   assert.equal(readNote("  [ 45 s ] Hello.").seconds, 45);
   assert.equal(readNote("[1.5min]").seconds, 90);
+  assert.equal(readNote("[2m] Two minutes.").seconds, 120);
+  assert.equal(readNote("[1.5m]").seconds, 90);
+  assert.equal(readNote("[1m30s] One and a half.").seconds, 90);
+  assert.equal(readNote("[1 min 30 s] Spaced.").seconds, 90);
+  assert.equal(readNote("[1:30] Clock form.").seconds, 90);
+  assert.equal(readNote("[0:45] Under a minute.").seconds, 45);
   assert.equal(readNote("[0s]").seconds, 0);
-  for (const text of ["See [36s] here.", "[36 sec] typo", "[36] cite", "[ref] Table 3."]) {
+  for (const text of ["See [36s] here.", "[36 sec] typo", "[36] cite", "[ref] Table 3.", "[2m](https://example.com)", "[16:9] aspect"]) {
     assert.deepEqual(readNote(text).seconds, null, text);
     assert.equal(readNote(text).note, text);
   }
+  assert.equal(badLength("[36 sec] typo"), "[36 sec]");
+  assert.equal(badLength("[2 mins] intro"), "[2 mins]");
+  assert.equal(badLength("[~30s] rough"), "[~30s]");
+  assert.equal(badLength("[1:5] missing zero"), "[1:5]");
+  assert.equal(badLength("[1:75] past 59"), "[1:75]");
+  for (const ok of ["[36s] ok", "[36] cite", "[ref] Table 3.", "[16:9] aspect", "[2m](https://example.com)", "See [36 sec] later."]) {
+    assert.equal(badLength(ok), null, ok);
+  }
   assert.equal(readNote("[9s] Same.\n\n[ref] One.").said, readNote("[9s] Same.\n\n[ref] Two.").said, "references don't make it another note");
+});
+
+test("[ref] starts a reference only at the start of a line outside code fences", () => {
+  assert.deepEqual(splitRef("Spoken.\n\n[ref] Smith 2024."), { body: "Spoken.\n\n", ref: "Smith 2024." });
+  assert.deepEqual(splitRef("Mention `[ref]` inline.\n\n[ref] Real `[ref]` note."), {
+    body: "Mention `[ref]` inline.\n\n",
+    ref: "Real `[ref]` note.",
+  });
+  assert.deepEqual(splitRef("```md\n[ref] Inside fence\n```\n\n[ref] Outside."), {
+    body: "```md\n[ref] Inside fence\n```\n\n",
+    ref: "Outside.",
+  });
+  assert.deepEqual(splitRef("[ref](https://example.com) is a link."), { body: "[ref](https://example.com) is a link.", ref: "" });
 });
 
 test("the plan: lengths add up through the end slide; a slide with none takes no time", () => {

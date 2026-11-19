@@ -5,6 +5,9 @@
 //
 //   [36s] Good morning, everyone.
 //   [1.5min]
+//   [2m]
+//   [1m30s]
+//   [1:30]
 //
 // Anywhere else it's just text. pdfpcnic draws it in the pace panel instead of
 // showing it with the note, and adds the lengths up into the talk's plan.
@@ -22,18 +25,74 @@ export interface ReadNote {
   said: string;
 }
 
-const LENGTH = /^\[\s*(\d+(?:\.\d+)?)\s*(s|min)\s*\]\s*/;
+const SINGLE_LENGTH = /^\[\s*(\d+(?:\.\d+)?)\s*(s|min|m)\s*\](?![(\[:])\s*/;
+const COMPOUND_LENGTH = /^\[\s*(\d+)\s*(?:min|m)\s*(\d+(?:\.\d+)?)\s*s\s*\](?![(\[:])\s*/;
+const CLOCK_LENGTH = /^\[\s*(\d+):([0-5]\d)\s*\](?![(\[:])\s*/;
+const COMMON_RATIOS = new Set(["16:9", "16:10", "4:3", "21:9", "3:2", "1:1"]);
+const SUSPECT_UNIT = /^[~≈]?\s*\d+(?:\.\d+)?\s*(?:s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours)\b/i;
+const SUSPECT_CLOCK = /^\d+\s*:\s*\d+(?::\d+)?\s*[a-z]*$/i;
+
+function matchLength(text: string): { raw: string; seconds: number } | null {
+  const c = COMPOUND_LENGTH.exec(text);
+  if (c) return { raw: c[0], seconds: Math.round(Number(c[1]) * 60 + Number(c[2])) };
+  const s = SINGLE_LENGTH.exec(text);
+  if (s) return { raw: s[0], seconds: Math.round(Number(s[1]) * (s[2] === "s" ? 1 : 60)) };
+  const k = CLOCK_LENGTH.exec(text);
+  if (k) return { raw: k[0], seconds: Number(k[1]) * 60 + Number(k[2]) };
+  return null;
+}
 
 /** Whether a note opens with its length. */
-export const hasLength = (note: string) => LENGTH.test(note.trimStart());
+export const hasLength = (note: string) => matchLength(note.trimStart()) !== null;
+
+/** A leading bracketed tag that looks like a mistyped length (e.g. "[36 sec]"), or null. */
+export function badLength(note: string): string | null {
+  const text = note.trimStart();
+  if (matchLength(text)) return null;
+  const m = /^\[([^\]\r\n]{1,24})\](?![(\[:])/.exec(text);
+  if (!m) return null;
+  const inner = m[1].trim();
+  const compact = inner.replace(/\s+/g, "");
+  if (SUSPECT_UNIT.test(inner)) return m[0];
+  if (SUSPECT_CLOCK.test(inner) && !COMMON_RATIOS.has(compact)) return m[0];
+  return null;
+}
+
+/**
+ * Splits a note into what's spoken and its trailing reference. `[ref]` counts
+ * only at the start of a line outside fenced code blocks, so inline mentions
+ * like `` `[ref]` `` stay in the note.
+ */
+export function splitRef(note: string): { body: string; ref: string } {
+  let fence: { char: string; len: number } | null = null;
+  for (let at = 0; at <= note.length; ) {
+    const nl = note.indexOf("\n", at);
+    const end = nl < 0 ? note.length : nl;
+    const line = end > at && note[end - 1] === "\r" ? note.slice(at, end - 1) : note.slice(at, end);
+    const f = /^[ ]{0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+    if (fence) {
+      if (f && f[1][0] === fence.char && f[1].length >= fence.len && !f[2].trim()) fence = null;
+    } else if (f && (f[1][0] === "~" || !f[2].includes("`"))) {
+      fence = { char: f[1][0], len: f[1].length };
+    } else if (/^[ ]{0,3}\[ref\](?=[ \t]|$)/.test(line)) {
+      return {
+        body: note.slice(0, at),
+        ref: note.slice(at).replace(/^[ ]{0,3}\[ref\](?:[ \t]+|$)/gm, "").trim(),
+      };
+    }
+    if (nl < 0) break;
+    at = nl + 1;
+  }
+  return { body: note, ref: "" };
+}
 
 /** Takes the length off the front of a note. Two notes are the same if they say the same: references don't count. */
 export function readNote(note: string): ReadNote {
   const text = note.trimStart();
-  const said = text.split("[ref]")[0].trim();
-  const m = LENGTH.exec(text);
-  if (!m) return { seconds: null, note, said };
-  return { seconds: Math.round(Number(m[1]) * (m[2] === "min" ? 60 : 1)), note: text.slice(m[0].length), said };
+  const m = matchLength(text);
+  if (!m) return { seconds: null, note, said: splitRef(text).body.trim() };
+  const rest = text.slice(m.raw.length);
+  return { seconds: m.seconds, note: rest, said: (m.raw + splitRef(rest).body).trim() };
 }
 
 // Deprecated: the timing lines of 1.4 and before, read from files with no

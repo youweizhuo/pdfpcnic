@@ -1,5 +1,6 @@
 import DOMPurify from "dompurify";
 import { marked } from "marked";
+import { splitRef } from "../core/pace.ts";
 
 DOMPurify.addHook("afterSanitizeAttributes", (node) => {
   if (node.tagName === "A") {
@@ -8,12 +9,10 @@ DOMPurify.addHook("afterSanitizeAttributes", (node) => {
   }
 });
 
-/** Fills `el` with a note: Markdown (as pdfpc renders it) or plain text. From the first `[ref]` to its end it's a reference, not spoken. */
+/** Fills `el` with a note: Markdown (as pdfpc renders it) or plain text. From a line-opening `[ref]` to its end it's a reference, not spoken. */
 export function renderNote(el: HTMLElement, note: string, markdown: boolean): void {
   el.classList.toggle("plain", !markdown);
-  const at = note.indexOf("[ref]");
-  const said = at < 0 ? note : note.slice(0, at);
-  const ref = at < 0 ? "" : note.slice(at).replaceAll("[ref]", "").trim();
+  const { body: said, ref } = splitRef(note);
   if (!markdown) {
     el.textContent = said;
     if (ref) {

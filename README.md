@@ -120,15 +120,16 @@ place, the changed words marked. Meanwhile the clock stands still; **End compari
 <details>
 <summary>The rules for lengths and references</summary>
 
-A length has to open the note, on the first line or a line of its own; anywhere else it's just text. It's in seconds or
-minutes: `[36s]`, `[1.5min]`. A slide with no length takes no time, once any note in the file has one. A hidden slide's
-time leaves the plan. A backup slide (after `endSlide`) keeps its length, and joins the plan if the end slide moves past
-it.
+A length has to open the note, on the first line or a line of its own; anywhere else it's just text. It's in seconds,
+minutes or both: `[36s]`, `[2m]`, `[1.5min]`, `[1m30s]`, `[1:30]`. A slide with no length takes no time, once any note
+in the file has one. A hidden slide's time leaves the plan. A backup slide (after `endSlide`) keeps its length, and
+joins the plan if the end slide moves past it.
 
 Reveal steps may repeat their slide's note, as Touying exports it, and it counts once. A step with a note and length of
 its own adds that time, and a step with no length goes on with the step before.
 
-From `[ref]` to the end of the note is a reference, not spoken: it shows in grey and the dimming skips it.
+From `[ref]` at the start of a line to the end of the note is a reference, not spoken: it shows in grey and the dimming
+skips it.
 
 The `**01:22 → 01:58** · 36 s` lines and `*ref*` paragraphs of 1.4 are deprecated. They still read in a file with no
 lengths at all, until 2.0.

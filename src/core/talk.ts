@@ -354,8 +354,8 @@ export class Talk {
     if (!planned) return { started, at, planned, target, slide: null, finish: 0, late: 0, tone: "idle", scale: 0, segments: [] };
     const base = this.visit ? (this.spent.get(this.visit.key) ?? 0) - this.visit.since : 0;
 
-    // This slide: its planned time against your time on it. Late always
-    // shows, in three levels. A slide planned to take no time has none.
+    // This slide: its planned time against your time on it, with the late margin.
+    // A slide planned to take no time has no line.
     let own: Progress["slide"] = null;
     if (budget) {
       const over = (this.visit ? base + at : 0) - budget;
@@ -378,7 +378,7 @@ export class Talk {
       slide: own,
       finish,
       late,
-      tone: started ? grade(late, target, slack) : "idle",
+      tone: started || late > 0 ? grade(late, target, slack) : "idle",
       // Fixed, with room past the target end.
       scale: Math.max(target * 1.1, planned),
       segments: this.onBar.map((i) => ({ slide: i, ...this.planOf(i, length)! })),

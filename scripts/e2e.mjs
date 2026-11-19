@@ -520,15 +520,37 @@ try {
     assert.equal(await dim(), null);
     await page.click("#set-defaults");
     await press("Escape");
+    // Fifty seconds over both the slide's time and the projected target, inside the default late margin.
+    await reach(420);
+    await at(590);
+    await settle();
+    assert.match(await cls("#slide-fill"), /t-on/);
+    assert.match(await fill(), /t-on/);
+    await page.click("#finish");
+    assert.equal(await text("#finish"), "on time");
+    await press("e");
+    await press(",");
+    await page.click("#pace-settings > summary");
+    assert.deepEqual(await page.$$eval("#set-early, #set-late", (inputs) => inputs.map((input) => input.value)), ["60", "60"]);
+    await page.$eval("#set-late", (input) => {
+      input.value = 30;
+      input.dispatchEvent(new Event("input"));
+    });
+    assert.equal(await page.$eval("#set-early", (input) => input.value), "60");
+    assert.match(await cls("#slide-fill"), /t-late/);
+    assert.match(await cls("#finish"), /t-late/);
+    await page.click("#set-defaults");
+    assert.match(await cls("#slide-fill"), /t-on/);
+    await page.click("#pace-settings > summary");
+    await press("Escape");
     // Reached 1:30 into its window: moving on now ends a minute early, which
-    // is within the minute of slack, so on time, which needs no words.
+    // is within the early margin.
     await reach(480);
     assert.match(await cls("#finish"), /t-on/);
-    // 2:30 on it: the slide is 30 s over; the talk would end 1:30 late, serious
-    // (the levels are 1 and 2 minutes).
+    // 2:30 on it: the slide is 30 s over, inside its margin; the talk would end 1:30 late, serious.
     await at(630);
     await settle();
-    assert.match(await cls("#slide-fill"), /t-late/);
+    assert.match(await cls("#slide-fill"), /t-on/);
     assert.match(await page.$eval("#finish", (e) => e.title), /: 1:3\d late\./);
     assert.match(await cls("#finish"), /t-serious/);
     // 4:00 on it: two minutes over, very serious; the talk would end 3:00 late.

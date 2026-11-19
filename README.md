@@ -107,9 +107,10 @@ Start a slide's note with how long it should take:
 
 pdfpcnic takes the length off the note, adds the lengths up into the talk's plan and draws them. Any tool that writes
 notes can write this, with nothing else in the `.pdfpc` file changed. Under the current slide, a line fills as you spend the slide's
-time, then turns orange as it runs over. Under the next slide, the whole talk: the time spent, where it would end at
-this pace, and a red line at the target. Orange, deeper from a minute late, means hurry; blue, more than a minute
-early, means slow down. Without lengths, the `.pdfpc` file's `duration` is split evenly over the slides.
+time. Under the next slide, the whole talk shows the time spent, the projected end, and a red line at the target. Both
+bars stay neutral up to a minute late by default. The talk also stays neutral up to a minute early, then turns blue.
+Set the early and late margins independently in **Settings › Pace colors**. Without lengths, the `.pdfpc` file's
+`duration` is split evenly over the slides.
 
 On the last planned slide, **Save run** saves the times you took as a `.pdfpc` file of lengths. Drop that file on the window,
 or any `.pdfpc` file with another name than the deck's (an earlier export, say), to compare the two. The lines, and

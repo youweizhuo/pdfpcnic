@@ -9,14 +9,24 @@ import type { Store } from "../platform.ts";
 import { $, draggable } from "./dom.ts";
 import { Spoken } from "./spoken.ts";
 
-const LEVELS = ["early", "serious", "severe"] as const;
+const LEVELS = ["early", "late", "serious", "severe"] as const;
 type SlackLevel = (typeof LEVELS)[number];
 
 /** Slider ranges for the pace levels: [min, max, step] in seconds, or in percent. */
 const SLACK_RANGE: Record<Slack["unit"], Record<SlackLevel, [number, number, number]>> = {
-  time: { early: [0, 180, 15], serious: [15, 300, 15], severe: [15, 300, 15] },
-  share: { early: [0, 10, 1], serious: [1, 15, 1], severe: [1, 20, 1] },
+  time: { early: [0, 180, 15], late: [0, 180, 15], serious: [15, 300, 15], severe: [15, 300, 15] },
+  share: { early: [0, 10, 1], late: [0, 10, 1], serious: [1, 15, 1], severe: [1, 20, 1] },
 };
+
+/** Leave one slider step for the first late color. */
+function seriousMinimum({ unit, late }: Slack): number {
+  return Math.round(late * (unit === "time" ? 1 : 100)) + SLACK_RANGE[unit].serious[2];
+}
+
+function orderLateLevels(slack: Slack): Slack {
+  const serious = Math.max(slack.serious, seriousMinimum(slack) / (slack.unit === "time" ? 1 : 100));
+  return { ...slack, serious, severe: Math.max(slack.severe, serious) };
+}
 
 export class Settings {
   /** The slides' width as a share of their columns; what the current one gives up goes to its notes. */
@@ -47,8 +57,8 @@ export class Settings {
     this.dimNotes = store.pref<boolean | null>("dimNotes", null) ?? store.pref("notesDim", 0.5) > 0;
     this.timeOfDay = store.pref("barTimeOfDay", false);
     this.earlyLate = store.pref("earlyLate", false);
-    const saved = store.pref<Slack | null>("paceSlack", null);
-    this.slack = saved && saved.unit in SLACK ? { ...SLACK[saved.unit], ...saved } : { ...SLACK.time };
+    const saved = store.pref<(Partial<Slack> & Pick<Slack, "unit">) | null>("paceSlack", null);
+    this.slack = orderLateLevels(saved && saved.unit in SLACK ? { ...SLACK[saved.unit], ...saved } : SLACK.time);
   }
 
   /** Lays the presenter out as last left. */
@@ -115,13 +125,9 @@ export class Settings {
     range("set-stage", (v) => this.setStage(v / 100));
     range("set-notes", (v) => this.setNotesSize(v));
     range("set-laser", (v) => this.setLaserSize(v / 100));
-    // Pace levels: sliders in seconds or percent, as the unit says. The late
-    // levels keep their order: serious never past severe.
+    // Pace levels: sliders in seconds or percent.
     const setSlack = (key: SlackLevel, v: number) => {
-      const s = { ...this.slack, [key]: this.slack.unit === "time" ? v : v / 100 };
-      if (key === "serious") s.severe = Math.max(s.severe, s.serious);
-      if (key === "severe") s.serious = Math.min(s.serious, s.severe);
-      this.useSlack(s);
+      this.useSlack({ ...this.slack, [key]: this.slack.unit === "time" ? v : v / 100 });
     };
     for (const key of LEVELS) range(`set-${key}`, (v) => setSlack(key, v));
     for (const b of document.querySelectorAll<HTMLButtonElement>("#set-unit button")) {
@@ -231,8 +237,8 @@ export class Settings {
   }
 
   private useSlack(slack: Slack): void {
-    this.slack = slack;
-    this.store.setPref("paceSlack", slack);
+    this.slack = orderLateLevels(slack);
+    this.store.setPref("paceSlack", this.slack);
     this.on.pace();
   }
 
@@ -249,6 +255,7 @@ export class Settings {
     show("set-laser", laser, `${laser}%`);
     const { unit } = this.slack;
     const t = this.target();
+    const serious = Math.round(this.slack.serious * (unit === "time" ? 1 : 100));
     for (const b of document.querySelectorAll<HTMLButtonElement>("#set-unit button")) {
       b.classList.toggle("on", b.dataset.unit === unit);
     }
@@ -267,7 +274,9 @@ export class Settings {
     for (const key of LEVELS) {
       const v = this.slack[key];
       const input = $<HTMLInputElement>(`set-${key}`);
-      [input.min, input.max, input.step] = SLACK_RANGE[unit][key].map(String);
+      const [min, max, step] = SLACK_RANGE[unit][key];
+      const floor = key === "serious" ? seriousMinimum(this.slack) : key === "severe" ? serious : min;
+      [input.min, input.max, input.step] = [floor, max, step].map(String);
       // The other unit alongside, for this talk.
       if (unit === "time") show(`set-${key}`, v, t ? `${span(v)} (${Math.round((v / t) * 100)}%)` : span(v));
       else show(`set-${key}`, Math.round(v * 100), t ? `${Math.round(v * 100)}% (${span(v * t)})` : `${Math.round(v * 100)}%`);

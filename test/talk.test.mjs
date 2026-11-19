@@ -132,11 +132,17 @@ test("pace: this slide against its window, the talk against its end", () => {
   assert.equal(p.tone, "early");
   assert.equal(talk.used(sec(90)), 0.75);
 
-  p = talk.progress(sec(200), SLACK.time);
-  assert.equal(p.slide.over, 80);
-  assert.equal(p.slide.tone, "serious");
-  assert.equal(p.late, 20);
-  assert.equal(p.tone, "late");
+  assert.equal(talk.progress(sec(180), SLACK.time).slide.tone, "on");
+  assert.equal(talk.used(sec(180)), 1, "the slide bar stays full during the margin");
+  assert.equal(talk.progress(sec(181), SLACK.time).slide.tone, "late");
+  assert.equal(talk.progress(sec(240), SLACK.time).tone, "on");
+  assert.equal(talk.progress(sec(241), SLACK.time).tone, "late");
+
+  p = talk.progress(sec(270), SLACK.time);
+  assert.equal(p.slide.over, 150);
+  assert.equal(p.slide.tone, "severe");
+  assert.equal(p.late, 90);
+  assert.equal(p.tone, "serious");
 });
 
 test("a slide keeps its time over visits", () => {

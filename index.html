@@ -141,7 +141,7 @@
           <dl>
             <div>
               <dt>Under the slide</dt>
-              <dd>A line that fills as you spend this slide's planned time, over all your visits to it, then turns the late colors. A backup slide's runs against its own length.</dd>
+              <dd>A line that fills as you spend this slide's planned time, over all your visits to it. It changes color after the late margin (one minute by default). A backup slide's runs against its own length.</dd>
             </div>
             <div>
               <dt>By the clock</dt>
@@ -155,9 +155,9 @@
               <dt><i class="sw this"></i><i class="sw next"></i></dt>
               <dd>The line under the next slide is the whole talk: time spent, then paler to where the talk would end if you moved on now, this slide's planned part in yellow over it. It's colored by the pace, as is the time at the clock's right, where the talk would end:</dd>
               <dt><i class="sw on"></i></dt>
-              <dd>on time, or a little early;</dd>
+              <dd>within the early and late margins (one minute each by default, adjustable in Settings);</dd>
               <dt><i class="sw late"></i><i class="sw serious"></i><i class="sw severe"></i></dt>
-              <dd>late; deeper as it gets serious and very serious (by default 1 and 2 minutes; see Settings);</dd>
+              <dd>late; deeper as it gets serious and very serious (by default at 1:30 and 2:00);</dd>
               <dt><i class="sw early"></i></dt>
               <dd>well ahead: by default more than a minute early.</dd>
             </div>
@@ -222,9 +222,14 @@
             </div>
           </div>
           <label class="setting">
-            <span>Early is fine up to</span>
-            <input id="set-early" type="range" min="0" max="20" step="1" />
+            <span>Early margin</span>
+            <input id="set-early" type="range" min="0" max="180" step="15" />
             <output for="set-early"></output>
+          </label>
+          <label class="setting">
+            <span>Late margin</span>
+            <input id="set-late" type="range" min="0" max="180" step="15" />
+            <output for="set-late"></output>
           </label>
           <label class="setting">
             <span>Late is serious from</span>

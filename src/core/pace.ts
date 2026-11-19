@@ -166,27 +166,28 @@ export function mark(seconds: number): string {
 
 /**
  * How far off is too far, in seconds (`time`) or as shares of the talk's
- * target length (`share`): being early by up to `early` passes without a
- * color; being late always shows, `serious` and `severe` mark the next levels.
+ * target length (`share`): the `early` and `late` margins are neutral;
+ * `serious` and `severe` mark the stronger late colors.
  */
 export interface Slack {
   unit: "time" | "share";
   early: number;
+  late: number;
   serious: number;
   severe: number;
 }
 
 /** Defaults for each unit. */
 export const SLACK: Record<Slack["unit"], Slack> = {
-  time: { unit: "time", early: 60, serious: 60, severe: 120 },
-  share: { unit: "share", early: 0.05, serious: 0.03, severe: 0.06 },
+  time: { unit: "time", early: 60, late: 60, serious: 90, severe: 120 },
+  share: { unit: "share", early: 0.05, late: 0.05, serious: 0.07, severe: 0.10 },
 };
 
 export type Grade = "early" | "on" | "late" | "serious" | "severe";
 
 /** Grades `offset` seconds off plan (positive: late) in a talk of `target` seconds. */
 export function grade(offset: number, target: number, slack: Slack): Grade {
-  const limit = (v: number) => (slack.unit === "time" ? v : v * target);
-  if (offset > 0) return offset >= limit(slack.severe) ? "severe" : offset >= limit(slack.serious) ? "serious" : "late";
-  return -offset > limit(slack.early) ? "early" : "on";
+  const delta = slack.unit === "time" ? offset : offset / target;
+  if (delta > slack.late) return delta >= slack.severe ? "severe" : delta >= slack.serious ? "serious" : "late";
+  return -delta > slack.early ? "early" : "on";
 }

@@ -88,13 +88,17 @@ test("deprecated: old timing lines read as lengths; a window's length only", () 
   assert.equal(readOldNote("Said.\n\n*ref* A.\n\n*ref* B.").note, "Said.\n\n[ref] A.\n\n[ref] B.");
 });
 
-test("pace levels: early only past the slack, late always, deeper as it gets serious", () => {
-  assert.equal(grade(-30, 600, SLACK.time), "on");
-  assert.equal(grade(-90, 600, SLACK.time), "early");
-  assert.equal(grade(10, 600, SLACK.time), "late");
-  assert.equal(grade(60, 600, SLACK.time), "serious");
+test("pace levels: neutral through the margins, stronger as lateness increases", () => {
+  assert.equal(grade(-60, 600, SLACK.time), "on");
+  assert.equal(grade(-61, 600, SLACK.time), "early");
+  assert.equal(grade(60, 600, SLACK.time), "on");
+  assert.equal(grade(61, 600, SLACK.time), "late");
+  assert.equal(grade(90, 600, SLACK.time), "serious");
   assert.equal(grade(120, 600, SLACK.time), "severe");
-  assert.equal(grade(20, 600, SLACK.share), "serious", "3% of a 10-minute talk is 18 s");
+  assert.equal(grade(-30, 600, SLACK.share), "on");
+  assert.equal(grade(30, 600, SLACK.share), "on", "5% of a 10-minute talk is 30 s");
+  assert.equal(grade(31, 600, SLACK.share), "late");
+  assert.equal(grade(42, 600, SLACK.share), "serious");
 });
 
 test("the clock counts the time not paused", () => {

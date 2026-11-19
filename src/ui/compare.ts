@@ -68,8 +68,9 @@ export class Comparison {
    * This slide's line and the talk's, run in the other file's times; under
    * them, both times and the difference, in the lines' colors.
    */
-  renderTimes(slide: number, endSlide: number, slack: Slack): { slide: SlideLine | null; talk: TalkLine } {
+  renderTimes(slide: number, endSlide: number, levels: Slack): { slide: SlideLine | null; talk: TalkLine } {
     this.plan(endSlide);
+    const slack = { ...levels, late: 0 };
     const [a, b] = [this.ours, this.theirs];
     const target = this.target;
     const own = this.slideLine(slide, slack);
@@ -90,8 +91,9 @@ export class Comparison {
   }
 
   /** Each slide's line, for the thumbnails. */
-  slideLines(endSlide: number, slack: Slack): Array<SlideLine | null> {
+  slideLines(endSlide: number, levels: Slack): Array<SlideLine | null> {
     this.plan(endSlide);
+    const slack = { ...levels, late: 0 };
     return this.deck.slides.map((_, slide) => this.slideLine(slide, slack));
   }
 

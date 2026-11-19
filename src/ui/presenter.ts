@@ -728,8 +728,7 @@ export class Presenter {
     this.drawTalkbar(p.scale, p.target, p.at, p.finish, tone, p.segments.find((s) => s.slide === this.talk.slide) ?? null);
     // Where the talk would end, or how early or late, at the clock's right, under the target end.
     $("target-at").textContent = T.formatShort(p.target * 1000);
-    // A little early is simply on time.
-    const pace = p.late > 0 ? `${span(p.late)} late` : p.tone === "early" ? `${span(p.late)} early` : "on time";
+    const pace = p.tone === "on" || p.tone === "idle" ? "on time" : `${span(p.late)} ${p.late > 0 ? "late" : "early"}`;
     const plan = `Planned to end at ${mark(p.planned)}; target ${mark(p.target)}.`;
     const finish = $("finish");
     finish.className = `finish ${tone}`;

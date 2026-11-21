@@ -3,6 +3,24 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the notes' length tags are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.11.0 (2026-11-21)
+
+### Added
+
+- **Slide and reveal position.** The counter under the talk bar shows the current slide, reveal steps and backup slides. The bar highlights the current step within the slide's planned time, and Go to slide shows the total.
+
+### Changed
+
+- **Presenter controls.** Start, Pause, Reset, Black, Freeze and Laser sit below the notes. Clock and audience notices sit on the current slide and name the button and shortcut to use. The layout keeps controls and notes visible in narrow windows.
+- **Settings and Help.** Display, clock and pace colors have their own sections in Settings. Open files is now in Help.
+- **Projector and Sharing.** The guide explains how to use a projector or share the audience window in a meeting, even on one screen. The demo deck and notes walk through both setups.
+
+### Fixed
+
+- Clicking the current slide starts an idle clock on that slide. The next click advances.
+- The browser refits the audience window to the slide after leaving fullscreen for Sharing.
+- Hovering over a presenter button at the right edge keeps the thumbnail strip closed.
+
 ## 1.10.0 (2026-11-19)
 
 ### Added

@@ -107,8 +107,13 @@ for (const [engine, [type, options]] of Object.entries(engines)) {
   const ready = (page, name) => page.waitForFunction((name) => document.querySelector("#ready-name")?.textContent === name, name, { timeout: 15000 });
   const said = (page, re) => page.waitForFunction((re) => new RegExp(re).test(document.querySelector("#start-error").textContent), re.source, { timeout: 15000 });
   const saves = async (page, row, label, name, bytes) => {
-    const [download] = await Promise.all([page.waitForEvent("download"), row.getByRole("link", { name: label }).click()]);
-    assert.equal(download.suggestedFilename(), name);
+    const link = row.getByRole("link", { name: label });
+    assert.equal(await link.getAttribute("download"), name);
+    const [download] = await Promise.all([page.waitForEvent("download"), link.click()]);
+    // WebKit on Linux can replace spaces in its suggested filename.
+    const expectedNames = engine === "webkit" && process.platform === "linux" ? [name, name.replaceAll(" ", "_")] : [name];
+    const suggestedName = download.suggestedFilename();
+    assert.ok(expectedNames.includes(suggestedName), `unexpected download name: ${suggestedName}`);
     assert.deepEqual(readFileSync(await download.path()), bytes);
   };
   const uploads = [

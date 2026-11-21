@@ -272,12 +272,12 @@ export class Talk {
       case "timerReset":
         // Never mid-talk by a stray key: the clock has to be paused first.
         if (s.timer.startedAt === null) return;
-        if (s.timer.pausedAt === null) return "The clock is running. Pause it first (p), then reset, or click Reset twice.";
+        if (s.timer.pausedAt === null) return "The clock is running. Pause it first with Pause (p), then reset, or click Reset twice.";
         s.timer = T.freshTimer();
         this.forgetVisits();
         return s.page === 0
-          ? "Clock reset to 0:00:00. Press s or → to start."
-          : "Clock reset to 0:00:00. It starts again at your next move, or press s.";
+          ? "Clock reset to 0:00:00. Click Start (s) or press → to start."
+          : "Clock reset to 0:00:00. Click Start (s) or advance to start.";
       case "endSlide":
         s.endSlide = slide;
         this.replan();

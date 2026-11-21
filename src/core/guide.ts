@@ -60,16 +60,18 @@ export const audienceReady = (a: AudienceStatus, solo: boolean) => a.mode === "f
 
 /** One screen, or two mirrored: each system's way to a second one. */
 const EXTEND = {
-  mac: "connect the projector, or stop mirroring (⌘ + brightness down)",
-  windows: "connect the projector and choose Extend (Win+P)",
-  linux: "connect the projector and extend the displays (Super+P)",
-  other: "connect the projector and extend the displays, not mirror",
+  mac: "connect/extend a projector (⌘ + brightness down)",
+  windows: "connect/extend a projector (Win+P)",
+  linux: "connect/extend a projector (Super+P)",
+  other: "connect and extend a projector",
 };
 
 /** The audience's next step, while it doesn't see the slides. */
 function audienceStep(a: AudienceStatus): string {
-  if (!a.remote) return "Drag the audience window to the projector, then double-click it.";
-  return a.screen ? `Press ⇧W to make the audience window fullscreen on ${a.screen}.` : "Drag the audience window to the projector, then press ⇧W.";
+  if (!a.remote) return "Drag the audience window to the projector and double-click it, or click Sharing for a meeting.";
+  return a.screen
+    ? `Click Projector for fullscreen on ${a.screen}, or Sharing for a meeting.`
+    : "Drag the audience window to the projector and click Projector, or click Sharing for a meeting.";
 }
 
 /** The line over the buttons, or null for none. */
@@ -77,18 +79,26 @@ export function guideLine(s: Situation): Line | null {
   const a = s.audience;
   const comparing = s.comparing ? `Comparing with ${s.comparing}` : undefined;
   if (a.mode === "closed" && !s.solo) {
+    const reopen = s.reopenWith === "Sharing"
+      ? "Click Sharing to reopen it."
+      : "Click Projector to reopen it, or Sharing for a meeting.";
     return {
       kind: "blocked",
-      text: `Audience window closed. Click ${s.reopenWith ?? "Projector"} to reopen it.`,
+      text: `Audience window closed. ${reopen}`,
       fact: comparing,
     };
   }
   const ready = audienceReady(a, s.solo);
   if (comparing) return { kind: "hint", text: `${comparing}.` };
-  // In the way, whenever it is.
-  if (s.oneScreen && !ready) return { kind: "blocked", text: `One screen only: ${EXTEND[s.system ?? "other"]}.` };
+  // In the way, whenever it is (yellow before the talk since Sharing works on one screen).
+  if (s.oneScreen && !ready) {
+    return {
+      kind: s.clock === "idle" ? "next" : "blocked",
+      text: `One screen: click Sharing for a meeting, or ${EXTEND[s.system ?? "other"]}.`,
+    };
+  }
   if (a.mode === "window" && a.refused) {
-    return { kind: "blocked", text: "Can't go fullscreen from here: double-click the audience window." };
+    return { kind: "blocked", text: "Can't go fullscreen from here: double-click the audience window, or click Sharing for a meeting." };
   }
   // Before the talk, as the buttons stand out: the audience first, then the clock.
   if (s.clock === "idle" || s.stale) {
@@ -96,7 +106,7 @@ export function guideLine(s: Situation): Line | null {
     // Reset, not Shift+R: that waits for a pause, and the clock likely runs.
     if (s.stale) return { kind: "next", text: "The clock has time from a rehearsal: click Reset before the talk." };
     if (a.mode === "window" && a.forSharing) {
-      return { kind: "next", text: "Share the audience window in your meeting app; keep it windowed." };
+      return { kind: "next", text: "Ready to share: select the audience window in your meeting app (keep it windowed)." };
     }
     const fact = s.startsAt
       ? `The talk starts at ${s.startsAt.time}, in ${s.startsAt.in}`
@@ -106,7 +116,7 @@ export function guideLine(s: Situation): Line | null {
     return fact ? { kind: "fact", text: fact } : null;
   }
   if (s.finished) return { kind: "hint", text: "Click Save run to keep this run's times, to compare with the plan." };
-  if (s.laser) return { kind: "hint", text: "Laser on: + and − size the dot; l turns it off." };
+  if (s.laser) return { kind: "hint", text: "Laser on: + and − size the dot; click Laser to turn it off." };
   if (s.lastPlanned) return { kind: "fact", text: "Last planned slide: backup slides follow." };
   return null;
 }

@@ -89,7 +89,7 @@ try {
       assert.ok(await painted(page, "#next canvas"), "next slide is blank");
       assert.match(await text("#notes"), /Welcome/);
       // Only the audience window can make itself fullscreen here: the guide explains the extra step.
-      await page.waitForFunction(() => /^Drag the audience window to the projector, then double-click it/.test(document.querySelector("#guide").textContent), null, { timeout: 5000 });
+      await page.waitForFunction(() => /^Drag the audience window to the projector and double-click it/.test(document.querySelector("#guide").textContent), null, { timeout: 5000 });
       assert.equal(await text("#audience-button"), "Projector");
     });
 

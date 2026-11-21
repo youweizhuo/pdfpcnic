@@ -93,7 +93,9 @@ export class Presenter {
     document.documentElement.style.setProperty("--aspect", `${first.width} / ${first.height}`);
     document.title = `${deck.name} · pdfpcnic`;
 
+    const states = $("slide-states");
     this.current = new SlideView($("current"), deck, this.cache, 1, { follow: this.follow, marked: true });
+    this.current.root.append(states);
     this.current.onLayout = () => this.fitSlidebar();
     this.next = new SlideView($("next"), deck, this.cache, 2, { align: "start" });
     this.next.onLayout = () => this.fitLine($("talkbar"), this.next.canvas);
@@ -244,6 +246,17 @@ export class Presenter {
   /** Suppress repeats of the key that started the clock until a fresh keypress. */
   private startKey: string | null = null;
 
+  /** A click starts an idle clock in place. An advance key does so on the title page. */
+  private advance(key?: string): void {
+    const { page, timer } = this.talk.state;
+    if (timer.startedAt === null && !this.comparison && (key === undefined || page === 0)) {
+      this.startKey = key ?? null;
+      this.act("timerStart");
+      return;
+    }
+    this.act("next");
+  }
+
   onKey(e: KeyboardEvent): void {
     if (e.defaultPrevented || e.isComposing) return;
     if (isIgnored(e)) {
@@ -268,14 +281,9 @@ export class Presenter {
       }
       if (action !== "help" && action !== "overview" && action !== "escape" && action !== "settings") return;
     }
-    if (action === "next" && this.talk.state.page === 0 && this.talk.state.timer.startedAt === null && !this.comparison) {
-      e.preventDefault();
-      this.startKey = e.key;
-      this.act("timerStart");
-      return;
-    }
     e.preventDefault();
-    this.act(action);
+    if (action === "next") this.advance(e.key);
+    else this.act(action);
   }
 
   /** Follows a link on a slide, in this window or the audience's. */
@@ -302,7 +310,7 @@ export class Presenter {
     const cur = this.current.root;
     cur.addEventListener("pointermove", (e) => this.pointAt(this.current.toPage(e.clientX, e.clientY)), { signal });
     cur.addEventListener("pointerleave", () => this.pointAt(null), { signal });
-    cur.addEventListener("click", () => this.act("next"), { signal });
+    cur.addEventListener("click", () => this.advance(), { signal });
     cur.addEventListener(
       "contextmenu",
       (e) => {
@@ -323,7 +331,7 @@ export class Presenter {
       "mousemove",
       (e) => {
         if (strip.classList.contains("open")) return;
-        if (e.clientX < innerWidth - 64) stay();
+        if (e.clientX < innerWidth - 64 || (e.target instanceof Element && e.target.closest("button"))) stay();
         else if (!stripTimer) stripTimer = window.setTimeout(() => ((stripTimer = 0), strip.classList.add("open")), 300);
       },
       { signal },
@@ -392,6 +400,8 @@ export class Presenter {
     $("help").addEventListener("click", (e) => {
       if (e.target === e.currentTarget) this.setHelp(false);
     }, { signal });
+    const goto = $<HTMLDialogElement>("goto");
+    goto.addEventListener("click", (e) => e.target === goto && goto.close(), { signal });
     this.settings.wire(signal);
 
     const win = this.platform.window;
@@ -411,6 +421,37 @@ export class Presenter {
     const room = t.audience;
 
     this.current.show(s.page);
+    const slideNum = here.slide + 1;
+    const totalPlanned = s.endSlide + 1;
+    const totalSlides = d.slides.length;
+    const steps = d.slides[here.slide];
+    const stepNum = steps.length > 1 ? steps.indexOf(s.page) + 1 : 0;
+    const backup = here.slide > s.endSlide;
+    const counterKey = `${slideNum}/${backup ? totalSlides : totalPlanned}/${stepNum}/${steps.length}/${backup}`;
+    const counter = $("slide-counter");
+    if (counter.dataset.key !== counterKey) {
+      counter.dataset.key = counterKey;
+      const num = el("span", "slide-num");
+      num.append(el("span", "slide-cur", String(slideNum)), `/${backup ? totalSlides : totalPlanned}`);
+      const parts: Array<Node | string> = [num];
+      if (stepNum) {
+        if (steps.length <= 6) {
+          const dots = el("span", "step-dots");
+          dots.setAttribute("aria-label", `step ${stepNum} of ${steps.length}`);
+          for (let i = 1; i <= steps.length; i++) dots.append(el("i", i <= stepNum ? "step-dot done" : "step-dot"));
+          parts.push(dots);
+        } else {
+          parts.push(el("span", "step-text", `step ${stepNum}/${steps.length}`));
+        }
+      }
+      if (backup) parts.push(el("span", "backup-tag", "backup"));
+      counter.replaceChildren(...parts);
+      counter.title = backup
+        ? `Backup slide ${slideNum - totalPlanned} of ${totalSlides - totalPlanned} (slide ${slideNum} of ${totalSlides})`
+        : totalPlanned < totalSlides
+          ? `Slide ${slideNum} of ${totalPlanned} planned (${totalSlides} total)`
+          : `Slide ${slideNum} of ${totalSlides}`;
+    }
     const next = t.nextPage();
     const shown = this.preview ?? next;
     this.next.show(shown);
@@ -455,10 +496,15 @@ export class Presenter {
     const card = $("audience-state");
     card.hidden = !s.black && frozen === null;
     card.className = `audience-state ${s.black ? "black" : "frozen"}`;
-    card.querySelector("strong")!.textContent = s.black ? "Audience screen is black" : `Audience frozen on slide ${frozen! + 1}`;
-    card.querySelector("span")!.textContent = s.black
-      ? `Press b to show slide ${(frozen ?? here.slide) + 1}${frozen === null ? "" : " (frozen)"}`
-      : `Press f to move it to slide ${here.slide + 1}`;
+    card.querySelector("strong")!.textContent = s.black ? "Screen black" : `Frozen on slide ${frozen! + 1}`;
+    const audienceHint = card.querySelector("span")!;
+    if (s.black) {
+      audienceHint.replaceChildren("Click Black ", el("kbd", "", "b"), ` for slide ${(frozen ?? here.slide) + 1}${frozen === null ? "" : " (frozen)"}`);
+    } else if (frozen === here.slide) {
+      audienceHint.replaceChildren("Click Freeze ", el("kbd", "", "f"), " to unfreeze");
+    } else {
+      audienceHint.replaceChildren("Click Freeze ", el("kbd", "", "f"), ` for slide ${here.slide + 1}`);
+    }
 
     const status = this.audience.status;
     if (status.mode === "fullscreen") this.reconnectAction = "prepareProjector";
@@ -481,11 +527,21 @@ export class Presenter {
       if (b.dataset.action === "prepareProjector" || b.dataset.action === "prepareSharing") {
         const closed = status.mode === "closed" && !this.view.solo && b.dataset.action === this.reconnectAction;
         b.classList.toggle("audience-closed", closed);
-        b.title = closed
-          ? "The audience window is closed. Click to reopen it."
-          : b.dataset.action === "prepareProjector"
-            ? "Open the audience window and make it fullscreen on the projector. Shift+W toggles fullscreen."
-            : "Shift+O: enlarge the audience window without fullscreen, then select it in your meeting app.";
+        if (b.dataset.action === "prepareProjector") {
+          const canShortcut = status.remote && status.mode !== "closed";
+          label(b, "Projector", canShortcut ? "⇧W" : "");
+          b.title = closed
+            ? "The audience window is closed. Click to reopen it."
+            : canShortcut
+              ? "Show the audience window fullscreen on a projector or second display (⇧W toggles fullscreen)."
+              : status.remote
+                ? "Open the audience window and show it fullscreen on a projector or second display."
+                : "Focus the audience window; double-click it for fullscreen.";
+        } else {
+          b.title = closed
+            ? "The audience window is closed. Click to reopen it."
+            : "Resize the audience window for screen sharing in a meeting app (⇧O).";
+        }
         b.setAttribute("aria-pressed", String(active));
       }
     }
@@ -583,9 +639,15 @@ export class Presenter {
     const waiting = t.startedAt === null;
     const firstPage = this.talk.state.page === 0;
     const heading = waiting ? "Clock not started" : "Clock paused";
-    const instruction = waiting ? firstPage ? "Press s or → to start" : "Press s to start" : "Press p to resume";
+    const hintKey = waiting ? (firstPage ? "start-first" : "start") : "resume";
     if (card.querySelector("strong")!.textContent !== heading) card.querySelector("strong")!.textContent = heading;
-    if (card.querySelector("span")!.textContent !== instruction) card.querySelector("span")!.textContent = instruction;
+    if (card.dataset.hint !== hintKey) {
+      card.dataset.hint = hintKey;
+      const hint = card.querySelector("span")!;
+      if (hintKey === "start-first") hint.replaceChildren("Click Start ", el("kbd", "", "s"), " or press ", el("kbd", "", "→"));
+      else if (hintKey === "start") hint.replaceChildren("Click Start ", el("kbd", "", "s"));
+      else hint.replaceChildren("Click Resume ", el("kbd", "", "p"));
+    }
     card.title = waiting
       ? firstPage ? "Start the clock without advancing the slide (s, →, ↓, Page Down, Enter, or Space)" : "Press s or click Start to begin"
       : "Press p or click Resume to continue";
@@ -636,7 +698,14 @@ export class Presenter {
 
   /** The talk bar's parts, back to front. */
   private buildTalkbar(): void {
-    $("talkbar").replaceChildren(el("div", "past"), el("div", "projected"), el("div", "spent"), el("div", "window"), el("div", "target"), );
+    $("talkbar").replaceChildren(
+      el("div", "past"),
+      el("div", "projected"),
+      el("div", "spent"),
+      el("div", "slide-window"),
+      el("div", "window"),
+      el("div", "target"),
+    );
     this.barScale = "";
   }
 
@@ -725,7 +794,8 @@ export class Presenter {
     this.beatMs = moving ? Math.min(250, Math.max(40, (budget * 1000) / Math.max(1, this.fillPixels, this.spoken.total))) : 250;
 
     const tone = `t-${p.started ? p.tone : "on"}`;
-    this.drawTalkbar(p.scale, p.target, p.at, p.finish, tone, p.segments.find((s) => s.slide === this.talk.slide) ?? null);
+    const slideWindow = p.segments.find((s) => s.slide === this.talk.slide) ?? null;
+    this.drawTalkbar(p.scale, p.target, p.at, p.finish, tone, own?.plan ?? slideWindow, slideWindow);
     // Where the talk would end, or how early or late, at the clock's right, under the target end.
     $("target-at").textContent = T.formatShort(p.target * 1000);
     const pace = p.tone === "on" || p.tone === "idle" ? "on time" : `${span(p.late)} ${p.late > 0 ? "late" : "early"}`;
@@ -744,9 +814,18 @@ export class Presenter {
   /**
    * The whole talk's line: a red line at the `target` end, time spent `at` in
    * the pace's `tone` and going on lighter to where the talk would end, this
-   * slide's planned `window` over them; all of it against `scale` seconds.
+   * slide's planned `slideWindow` in soft yellow and the active step `window`
+   * in solid yellow over them; all of it against `scale` seconds.
    */
-  private drawTalkbar(scale: number, target: number, at: number, finish: number, tone: string, window: { start: number; end: number } | null): void {
+  private drawTalkbar(
+    scale: number,
+    target: number,
+    at: number,
+    finish: number,
+    tone: string,
+    window: { start: number; end: number } | null,
+    slideWindow: { start: number; end: number } | null = null,
+  ): void {
     const bar = $("talkbar");
     const x = (t: number) => `${((Math.min(Math.max(t, 0), scale) / scale) * 100).toFixed(3)}%`;
     if (`${scale}:${target}` !== this.barScale) {
@@ -759,6 +838,13 @@ export class Presenter {
     const projected = bar.querySelector<HTMLElement>(".projected")!;
     projected.style.width = x(finish);
     projected.className = `projected ${tone}`;
+    const slideSlot = bar.querySelector<HTMLElement>(".slide-window")!;
+    const showSlide = !!slideWindow && (!window || slideWindow.start !== window.start || slideWindow.end !== window.end);
+    slideSlot.hidden = !showSlide;
+    if (showSlide) {
+      slideSlot.style.left = x(slideWindow.start);
+      slideSlot.style.width = `calc(${x(slideWindow.end)} - ${x(slideWindow.start)})`;
+    }
     const slot = bar.querySelector<HTMLElement>(".window")!;
     slot.hidden = !window;
     if (window) {
@@ -993,13 +1079,15 @@ export class Presenter {
   private openGoto(): void {
     const dialog = $<HTMLDialogElement>("goto");
     const input = $<HTMLInputElement>("goto-input");
+    const total = this.deck.slides.length;
     input.value = "";
-    input.max = String(this.deck.slides.length);
+    input.max = String(total);
+    $("goto-total").textContent = `of ${total}`;
     let submitted = false;
     dialog.querySelector("form")!.onsubmit = () => (submitted = true);
     dialog.onclose = () => {
       const n = Number.parseInt(input.value, 10);
-      if (submitted && n >= 1 && n <= this.deck.slides.length) this.go(this.talk.firstOf(n - 1));
+      if (submitted && n >= 1 && n <= total) this.go(this.talk.firstOf(n - 1));
     };
     dialog.showModal();
   }
@@ -1013,7 +1101,7 @@ export class Presenter {
       this.solo = new SlideView(host, this.deck, this.cache, 0, { follow: this.follow });
       this.solo.start();
       host.onpointermove = (e) => this.pointAt(this.solo?.toPage(e.clientX, e.clientY) ?? null);
-      host.onclick = () => this.act("next");
+      host.onclick = () => this.advance();
       this.platform.window.setFullscreen(true).catch(() => {});
     } else {
       this.solo?.dispose();

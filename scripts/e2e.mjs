@@ -105,6 +105,7 @@ try {
     await new Promise((r) => setTimeout(r, 120));
   };
   const text = (sel) => page.$eval(sel, (e) => e.textContent);
+  const focused = () => page.evaluate(() => document.activeElement.id || document.activeElement.dataset.action);
   // For text the presenter redraws on the audience's fullscreenchange, which comes a frame after fullscreenElement.
   const textMatches = (sel, re) =>
     page.waitForFunction((sel, re) => new RegExp(re).test(document.querySelector(sel).textContent), { timeout: 5000 }, sel, re.source);
@@ -161,7 +162,9 @@ try {
       hidden: window.pdfpcnic.deck.pages.filter((p) => p.hidden).map((p) => p.index),
     }));
     assert.deepEqual(d, { pages: 10, slides: 8, end: 6, hidden: [7] });
-    assert.match(await text("#notes"), /Welcome/);
+    assert.match(await text("#notes"), /Welcome.*Click the slide/s);
+    assert.deepEqual(await page.$eval("#slide-counter", (e) => [e.tagName, e.tabIndex, e.parentElement.previousElementSibling.id]), ["SPAN", -1, "talkbar"]);
+    assert.equal(await text("#slide-counter"), "1/7");
   });
 
   await check("current and next slides render", async () => {
@@ -175,9 +178,18 @@ try {
 
   await check("setup keys work on slide 1; the first advance key starts the clock", async () => {
     assert.equal((await state()).timer.startedAt, null);
-    if (mode === "site") await textMatches("#guide", /^Press ⇧W to make the audience window fullscreen on /);
-    await press("Tab");
-    assert.equal(await page.evaluate(() => document.activeElement.dataset.action), "blank");
+    assert.equal(await text("#timer-state span"), "Click Start s or press →");
+    assert.deepEqual(await page.$$eval("#timer-state kbd", (keys) => keys.map((key) => key.textContent)), ["s", "→"]);
+    if (mode === "site") await textMatches("#guide", /^Click Projector for fullscreen on /);
+    // Follow the visible order along the notes, then move to the clock. Reset is disabled while idle.
+    for (const id of ["timer-toggle", "blank", "freeze", "laserMode", "timer", "finish"]) {
+      await page.keyboard.press("Tab");
+      assert.equal(await focused(), id);
+    }
+    for (const id of ["timer", "laserMode", "freeze", "blank"]) {
+      await press("Shift+Tab");
+      assert.equal(await focused(), id);
+    }
     await press("Space");
     assert.equal((await state()).black, true, "Space did not activate the focused Black button");
     await press("b", "?");
@@ -194,6 +206,27 @@ try {
     const s = await state();
     assert.equal(s.page, 1);
     assert.ok(s.timer.startedAt > 0);
+  });
+
+  await check("clicking the current slide starts the clock in place, including after a reset", async () => {
+    await press("Home", "p", "Shift+R");
+    assert.equal((await state()).timer.startedAt, null);
+    await page.click("#current canvas");
+    const started = await state();
+    assert.ok(started.timer.startedAt > 0);
+    assert.equal(started.page, 0);
+    assert.equal(await page.$eval("#timer-state", (e) => e.hidden), true);
+    await page.click("#current canvas");
+    const advanced = await state();
+    assert.equal(advanced.page, 1);
+    assert.equal(advanced.timer.startedAt, started.timer.startedAt);
+
+    await press("p", "Shift+R");
+    assert.equal((await state()).timer.startedAt, null);
+    await page.click("#current canvas");
+    const restarted = await state();
+    assert.ok(restarted.timer.startedAt > 0);
+    assert.equal(restarted.page, 1);
   });
 
   await check("a step into a new slide finds the next slide's place drawn ahead, at full size, not dark or blurry", async () => {
@@ -214,22 +247,61 @@ try {
   });
 
   await check("reveal steps: step forward, Shift+PageDown skips, back jumps to first step", async () => {
+    const steps = () => page.$eval("#slide-counter", (e) => [
+      e.querySelector(".slide-num").textContent,
+      e.querySelector(".step-dots")?.getAttribute("aria-label") ?? null,
+      e.querySelectorAll(".step-dot.done").length,
+    ]);
     await press("ArrowRight");
     assert.equal((await state()).page, 2);
+    assert.deepEqual(await steps(), ["3/7", "step 1 of 3", 1]);
+    await page.click("#slide-counter");
+    assert.equal((await state()).page, 2, "the slide counter changed slides");
+    assert.equal(await page.$eval("#goto", (e) => e.open), false, "the slide counter opened the go-to dialog");
     // Each step here has a window of its own; the talk bar spans all three.
     await press("ArrowRight");
+    assert.deepEqual(await steps(), ["3/7", "step 2 of 3", 2]);
     assert.equal(await page.$eval("#pace-slide", (e) => e.title), "This slide: planned 03:30–04:10, 40 s");
     await press("ArrowLeft");
     await press("Shift+PageDown");
     assert.equal((await state()).page, 5);
+    assert.deepEqual(await steps(), ["4/7", null, 0]);
     await press("ArrowLeft");
     assert.equal((await state()).page, 2);
+  });
+
+  await check("the talk bar keeps the whole timed slide visible while the yellow slice follows each step", async () => {
+    const timingSpan = (selector) => page.$eval(`#talkbar ${selector}`, (element) => {
+      const { left, width } = element.getBoundingClientRect();
+      return { left, width, hidden: element.hidden, color: getComputedStyle(element).backgroundColor };
+    });
+    const whole = await timingSpan(".slide-window");
+    assert.equal(whole.hidden, false);
+    assert.equal(whole.color, "rgba(255, 214, 10, 0.3)");
+    // The demo plans 60, 40 and 50 seconds for these three steps.
+    for (const [start, length] of [[0, 60], [60, 40], [100, 50]]) {
+      const active = await timingSpan(".window");
+      assert.deepEqual(await timingSpan(".slide-window"), whole);
+      assert.equal(active.hidden, false);
+      assert.equal(active.color, "rgb(255, 214, 10)");
+      assert.ok(Math.abs(active.left - whole.left - whole.width * start / 150) < 1, `step at ${start}s starts in the wrong place`);
+      assert.ok(Math.abs(active.width - whole.width * length / 150) < 1, `step at ${start}s has the wrong width`);
+      await press("ArrowRight");
+    }
+    assert.equal((await timingSpan(".slide-window")).hidden, true);
+    assert.equal((await timingSpan(".window")).hidden, false);
+    await press("ArrowLeft");
   });
 
   await check("hidden slide is skipped", async () => {
     await press("End");
     assert.equal((await state()).page, 8);
+    assert.equal(await text("#slide-counter .slide-num"), "7/7");
     assert.equal(await page.$eval("#next", (e) => e.classList.contains("backup")), true);
+    await press("ArrowRight");
+    assert.equal(await text("#slide-counter .slide-num"), "8/8");
+    assert.equal(await text("#slide-counter .backup-tag"), "backup");
+    await press("ArrowLeft");
     await press("ArrowLeft");
     assert.equal((await state()).page, 6);
     await press("ArrowRight");
@@ -360,7 +432,7 @@ try {
     assert.equal(s.frozen, 6);
     assert.equal(s.page, 8);
     // Said over the current slide, and marked in the strip.
-    assert.equal(await text("#audience-state strong"), "Audience frozen on slide 5");
+    assert.equal(await text("#audience-state strong"), "Frozen on slide 5");
     assert.equal(await page.$eval("#strip li.frozen .num", (e) => e.textContent), "5");
     await press("f");
     assert.equal((await state()).frozen, null);
@@ -369,7 +441,7 @@ try {
   await check("black screen covers the audience", async () => {
     await press("b");
     assert.equal(await audience.$eval("#black", (e) => e.hidden), false);
-    assert.equal(await text("#audience-state strong"), "Audience screen is black");
+    assert.equal(await text("#audience-state strong"), "Screen black");
     await press("b");
     assert.equal(await audience.$eval("#black", (e) => e.hidden), true);
     assert.equal(await page.$eval("#audience-state", (e) => e.hidden), true);
@@ -530,7 +602,6 @@ try {
     assert.equal(await text("#finish"), "on time");
     await press("e");
     await press(",");
-    await page.click("#pace-settings > summary");
     assert.deepEqual(await page.$$eval("#set-early, #set-late", (inputs) => inputs.map((input) => input.value)), ["60", "60"]);
     await page.$eval("#set-late", (input) => {
       input.value = 30;
@@ -541,7 +612,6 @@ try {
     assert.match(await cls("#finish"), /t-late/);
     await page.click("#set-defaults");
     assert.match(await cls("#slide-fill"), /t-on/);
-    await page.click("#pace-settings > summary");
     await press("Escape");
     // Reached 1:30 into its window: moving on now ends a minute early, which
     // is within the early margin.
@@ -562,6 +632,9 @@ try {
     assert.match(await text("#finish"), /^13:0\d$/);
     assert.deepEqual(await page.$$eval("#timer, #finish", (es) => es.map((e) => getComputedStyle(e).fontWeight)), ["300", "300"], "a clock is bold");
     // Clicked, or e, where the talk would end says how early or late instead, and back.
+    await page.hover("#finish");
+    await new Promise((r) => setTimeout(r, 450));
+    assert.equal(await page.$("#strip.open"), null, "the thumbnails covered the projected-end button");
     await page.click("#finish");
     assert.match(await text("#finish"), /^3:0\d late$/);
     assert.match(await page.$eval("#finish", (e) => e.title), /^How early or late/);
@@ -603,11 +676,11 @@ try {
     assert.match(await text("#timer"), /^0:12:\d\d$/);
     const shownOn = (id) => page.$eval(`#${id} button.on`, (b) => b.textContent);
     await press(",");
-    assert.deepEqual([await shownOn("set-times"), await shownOn("set-end")], ["clock", "a time"]);
+    assert.deepEqual([await shownOn("set-times"), await shownOn("set-end")], ["Elapsed", "Time"]);
     await page.click('#set-end [data-end="pace"]');
-    assert.deepEqual([await shownOn("set-times"), await shownOn("set-end")], ["clock", "early or late"]);
+    assert.deepEqual([await shownOn("set-times"), await shownOn("set-end")], ["Elapsed", "Early / late"]);
     await page.click('#set-times [data-times="day"]');
-    assert.deepEqual([await shownOn("set-times"), await shownOn("set-end")], ["time of day", "early or late"]);
+    assert.deepEqual([await shownOn("set-times"), await shownOn("set-end")], ["Time of day", "Early / late"]);
     await page.click('#set-times [data-times="clock"]');
     await page.click('#set-end [data-end="time"]');
     await press("Escape");
@@ -654,7 +727,6 @@ try {
     assert.match(await cls("#finish"), /t-on/);
     await page.screenshot({ path: `${out}/pace.png` });
     await press(",");
-    await page.click("#pace-settings > summary");
     await page.click('#set-unit [data-unit="share"]');
     assert.match(await page.$eval("#set-early + output", (e) => e.textContent), /^\d+% \(/);
     await page.$eval("#set-early", (e) => {
@@ -672,7 +744,7 @@ try {
   const toggle = () => page.$eval("#timer-toggle > :not(.off)", (e) => e.firstChild.textContent.trim());
   const ctaIs = (sel, on) => page.waitForFunction((sel, on) => document.querySelector(sel).classList.contains("cta") === on, { timeout: 5000 }, sel, on);
 
-  await check("the button by the clock pauses and resumes the timer; the slide indicator explains how to continue", async () => {
+  await check("the button in the notes bar pauses and resumes the timer; the slide indicator explains how to continue", async () => {
     assert.equal(await toggle(), "Pause");
     const notesHeight = () => page.$eval("#next-notes", (e) => e.getBoundingClientRect().height);
     const running = await notesHeight();
@@ -681,17 +753,42 @@ try {
     assert.equal(await toggle(), "Resume");
     assert.equal(await page.$eval("#timer-state", (e) => e.hidden), false);
     assert.equal(await text("#timer-state strong"), "Clock paused");
+    assert.equal(await text("#timer-state span"), "Click Resume p");
+    assert.equal(await text("#timer-state kbd"), "p");
     assert.equal(await cta("#timer-toggle"), true);
     assert.equal(await page.$eval("#timer-toggle", (e) => getComputedStyle(e).borderColor), "rgb(168, 85, 247)");
     // Pausing affects the clock only; audience notices can coexist with it.
     assert.equal((await state()).black, false);
     assert.equal((await state()).frozen, null);
-    await press("b");
+    await press("f");
     assert.equal(await page.$eval("#audience-state", (e) => e.hidden), false);
-    assert.equal(await page.$eval("#timer-state", (e) => e.hidden), false);
-    const notices = await page.$$eval(".slide-states > div", (els) => els.map((e) => ({ top: e.getBoundingClientRect().top, bottom: e.getBoundingClientRect().bottom, left: e.getBoundingClientRect().left, right: e.getBoundingClientRect().right })));
-    assert.ok(notices[0].right <= notices[1].left || notices[0].bottom <= notices[1].top, "the pause and audience notices overlap");
-    await press("b");
+    assert.equal(await text("#audience-state span"), "Click Freeze f to unfreeze");
+    assert.equal(await text("#audience-state kbd"), "f");
+    const cardLayout = () => page.evaluate(() => {
+      const [audience, timer] = ["#audience-state", "#timer-state"].map((s) => document.querySelector(s));
+      const [a, t] = [audience, timer].map((e) => e.getBoundingClientRect());
+      const slide = document.querySelector("#current").getBoundingClientRect();
+      return {
+        joined: a.right === t.left && a.top === t.top && a.bottom === t.bottom,
+        anchored: Math.abs(slide.bottom - a.bottom - 16) < 1,
+        visible: a.left >= slide.left && t.right <= slide.right && a.top >= slide.top,
+        sharp: [audience, timer].every((e) => getComputedStyle(e).borderRadius === "0px"),
+        keycaps: [audience, timer].every((e) => /monospace/.test(getComputedStyle(e.querySelector("kbd")).fontFamily)),
+      };
+    });
+    const expectedCards = { joined: true, anchored: true, visible: true, sharp: true, keycaps: true };
+    assert.deepEqual(await cardLayout(), expectedCards);
+    const viewport = page.viewport();
+    try {
+      await page.setViewport({ width: 320, height: 480 });
+      assert.deepEqual(await cardLayout(), expectedCards, "frozen at 320×480");
+      await press("b");
+      assert.deepEqual(await cardLayout(), expectedCards, "black and frozen at 320×480");
+    } finally {
+      await page.setViewport(viewport);
+      if ((await state()).black) await press("b");
+      await press("f");
+    }
     assert.doesNotMatch(await text("#guide"), /Paused:|click Resume|press s to start/);
     // The hint and the target end read as large as the buttons' labels.
     const sizes = await page.evaluate(() => ["#guide", "#target-at", "#timer-toggle"].map((s) => getComputedStyle(document.querySelector(s)).fontSize));
@@ -742,11 +839,12 @@ try {
     await page.click("#timer-reset");
     assert.equal((await state()).timer.startedAt, null);
     assert.equal(await text("#timer"), "0:00:00");
-    assert.match(await text("#toast"), /next move/);
+    assert.equal(await text("#toast"), "Clock reset to 0:00:00. Click Start (s) or advance to start.");
     assert.equal(await toggle(), "Start");
     assert.equal(await page.$eval("#timer-state", (e) => e.hidden), false);
     assert.equal(await text("#timer-state strong"), "Clock not started");
-    assert.equal(await text("#timer-state span"), "Press s to start");
+    assert.equal(await text("#timer-state span"), "Click Start s");
+    assert.equal(await text("#timer-state kbd"), "s");
     assert.equal(await page.$eval("#timer-toggle", (e) => getComputedStyle(e).borderColor), "rgb(168, 85, 247)");
     assert.equal(await cta("#timer-toggle"), true, "Start doesn't stand out before the talk");
     assert.equal(await page.$eval("#timer-reset", (e) => e.disabled), true);
@@ -788,10 +886,10 @@ try {
     mkdirSync(downloads, { recursive: true });
     const cdp = await browser.target().createCDPSession();
     await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: downloads });
-    // Comparison keeps the controls' rows and the clock in place. The footer's
+    // Comparison keeps the controls' rows, counter and clock in place. The footer's
     // Save run label widens to End comparison, so Help may move along that row.
     const spots = () =>
-      page.$$eval(".slide-tools button, .timer-controls button, .foot button, #timer, #guide", (els) =>
+      page.$$eval(".slide-tools button, .timer-controls button, .foot button, #slide-counter, #timer, #guide", (els) =>
         els.map((e) => [e.id || e.dataset.action, e.closest(".foot") ? null : Math.round(e.getBoundingClientRect().x), Math.round(e.getBoundingClientRect().y)]),
       );
     // A second and a half on this slide, so the run has some time to save, however quick the checks before.
@@ -848,15 +946,17 @@ try {
 
     // Another export of the notes: the words each note doesn't share, marked.
     const v2 = JSON.parse(readFileSync("demo/demo.pdfpc", "utf8"));
-    v2.pages[8].note = v2.pages[8].note.replace("is planned to end", "is due to end");
+    assert.match(v2.pages[8].note, /marks the planned end/);
+    v2.pages[8].note = v2.pages[8].note.replace("marks the planned end", "signals the planned end");
     writeFileSync(`${out}/demo-v2.pdfpc`, JSON.stringify(v2));
     await input.uploadFile(`${out}/demo-v2.pdfpc`);
     await textMatches("#guide", /^Comparing with demo-v2\.pdfpc\.$/);
-    await textMatches("#next-notes", /is due to end/);
+    await textMatches("#next-notes", /signals the planned end/);
     const marked = () =>
       page.evaluate(() => ["removed", "added"].map((name) => [...(CSS.highlights.get(name) ?? [])].map((r) => r.toString())));
-    assert.deepEqual(await marked(), [["planned"], ["due"]]);
+    assert.deepEqual(await marked(), [["marks"], ["signals"]]);
     assert.equal(await text("#compare-slide"), "1:00 1:00 same");
+    assert.deepEqual(await spots(), before);
     await page.screenshot({ path: `${out}/compare-notes.png` });
 
     // A broken re-export leaves the active notes, comparison and paused run in place.
@@ -895,7 +995,7 @@ try {
     assert.equal((await state()).endSlide, 6);
     await press("End");
     await textMatches("#guide", /^Comparing with demo-v2\.pdfpc\.$/);
-    assert.deepEqual(await marked(), [["planned"], ["due"]]);
+    assert.deepEqual(await marked(), [["marks"], ["signals"]]);
     await press("Escape");
     assert.notEqual(await page.$("#presenter.comparing"), null, "Esc ended the comparison");
     await page.click("#save-run");
@@ -953,6 +1053,18 @@ try {
     assert.equal(await page.$eval("#help", (e) => e.hidden), true);
     assert.equal(await page.$eval("#settings", (e) => e.open), true);
     assert.equal(await page.$("#settings kbd"), null);
+    const groups = await page.$$eval("#settings .settings-group", (cards) => cards.map((card) => {
+      const { x, y, height, right } = card.getBoundingClientRect();
+      const style = getComputedStyle(card);
+      return { title: card.querySelector("h3").textContent, x, y, height, right, panel: style.backgroundColor, border: style.borderTopWidth };
+    }));
+    const [display, clock, pace] = groups;
+    assert.deepEqual(groups.map((group) => group.title), ["Display", "Clock", "Pace colors"]);
+    assert.ok(groups.every((group) => group.height > 0 && group.border === "1px" && group.panel === display.panel));
+    assert.notEqual(display.panel, await page.$eval("#settings", (e) => getComputedStyle(e).backgroundColor));
+    assert.ok(display.y === pace.y && display.right < pace.x && clock.x === display.x && clock.y > display.y);
+    assert.deepEqual(await page.$$eval("#set-times button, #set-end button", (buttons) => buttons.map((button) => button.textContent)),
+      ["Elapsed", "Time of day", "Time", "Early / late"]);
     assert.equal(await page.$eval("#set-stage + output", (e) => e.textContent), "100%");
     const width = () => page.$eval("#current", (e) => e.getBoundingClientRect().width);
     const before = await width();
@@ -1076,20 +1188,51 @@ try {
     assert.ok(help.rows > 25, `only ${help.rows} rows`);
     assert.ok(help.lit.includes("Esc") && help.lit.includes("Drag a divider"), `highlighted: ${help.lit}`);
     assert.ok(help.fits, "the help doesn't fit its window");
+    assert.deepEqual(await page.$$eval("#help header .overlay-actions button", (buttons) => buttons.map((button) => button.textContent)),
+      ["Open files…", "Close"]);
+    assert.equal(await page.$(".foot #open-files"), null);
+    const [chooser] = await Promise.all([page.waitForFileChooser({ timeout: 5000 }), page.click("#help header #open-files")]);
+    await chooser.cancel();
     await press("Escape");
     assert.equal(await page.$eval("#help", (e) => e.hidden), true);
   });
 
-  await check("a narrow presenter keeps notes, clock and controls visible", async () => {
+  await check("narrow and portrait layouts keep controls and the end of the notes visible", async () => {
     const viewport = page.viewport();
     try {
-      await page.setViewport({ width: 760, height: 600 });
-      const fits = await page.evaluate(() => {
-        const bottom = (selector) => document.querySelector(selector).getBoundingClientRect().bottom;
-        const notes = document.querySelector("#notes").getBoundingClientRect();
-        return notes.height >= 100 && bottom(".clock") <= innerHeight && bottom(".foot") <= innerHeight;
-      });
-      assert.equal(fits, true);
+      await press("g");
+      await page.keyboard.type("2");
+      await press("Enter");
+      for (const { width, height } of [{ width: 760, height: 600 }, { width: 390, height: 844 }, { width: 320, height: 480 }]) {
+        await page.setViewport({ width, height });
+        await page.waitForFunction(() =>
+          [["#current canvas", "#pace-slide"], ["#next canvas", "#talkbar"]].every(([slide, line]) => {
+            const canvas = document.querySelector(slide).getBoundingClientRect();
+            const bar = document.querySelector(line).getBoundingClientRect();
+            return Math.abs(bar.top - canvas.bottom) < 1 && Math.abs(bar.left - canvas.left) < 1 && Math.abs(bar.width - canvas.width) < 1;
+          }),
+        );
+        const layout = await page.evaluate(() => {
+          const rect = (selector) => document.querySelector(selector).getBoundingClientRect();
+          const presenter = document.querySelector("#presenter");
+          const notes = document.querySelector("#notes");
+          notes.scrollTop = notes.scrollHeight;
+          const last = document.createRange();
+          last.selectNodeContents(notes.querySelector("li:last-child"));
+          const lines = last.getClientRects();
+          const line = lines[lines.length - 1];
+          const timer = rect(".timer-controls");
+          const tools = rect(".slide-tools");
+          return {
+            fits: presenter.scrollWidth <= presenter.clientWidth &&
+              [".notes-bar", ".clock", ".foot"].every((s) => rect(s).bottom <= innerHeight),
+            lastLineVisible: line.top >= rect("#notes").top && line.bottom <= rect(".notes-bar").top,
+            controlsInOrder: timer.top < tools.top || (timer.top === tools.top && timer.right <= tools.left),
+          };
+        });
+        assert.deepEqual(layout, { fits: true, lastLineVisible: true, controlsInOrder: true }, `${width}×${height}`);
+        if (width === 390) await page.screenshot({ path: `${out}/portrait.png` });
+      }
     } finally {
       await page.setViewport(viewport);
     }
@@ -1220,12 +1363,19 @@ try {
       watch(popup, "sharing audience");
       const target = popup.target();
       await sharing.click('[data-action="prepareSharing"]');
+      await sharing.waitForFunction(() => window.pdfpcnic.audience.status.forSharing, { timeout: 5000 });
       await popup.waitForFunction(
         () =>
           !document.fullscreenElement &&
           (outerWidth >= screen.availWidth - 16 || outerHeight >= screen.availHeight - 16) &&
           Math.abs(innerWidth / innerHeight - 16 / 9) < 0.02,
-      );
+        { timeout: 5000 },
+      ).catch(async (error) => {
+        const bounds = await popup.evaluate(() =>
+          `inner ${innerWidth}×${innerHeight}, outer ${outerWidth}×${outerHeight}, screen ${screen.availWidth}×${screen.availHeight}`,
+        );
+        throw new Error(`the sharing window did not fit: ${bounds}`, { cause: error });
+      });
       assert.equal(await sharing.evaluate(() => window.pdfpcnic.audience.status.forSharing), true);
       assert.equal(await sharing.$eval("#audience-button", (e) => e.classList.contains("cta")), false);
       await sharing.click('[data-action="prepareSharing"]');

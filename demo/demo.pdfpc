@@ -4,15 +4,15 @@
   "endSlide": 6,
   "disableMarkdown": false,
   "pages": [
-    { "idx": 0, "label": "1", "overlay": 0, "note": "[45s] **Welcome.** This is the title slide.\n\nPress **s** or **→** to start the clock. Press **→** again to advance. Open **Help** for all keys." },
-    { "idx": 1, "label": "2", "overlay": 0, "note": "[105s] The audience window opens with the deck; in the Mac app, behind this one. If the browser blocked it, press **o**.\n\n- **Shift+W** here puts it fullscreen on the projector (Chrome, Edge, the Mac app)\n- Otherwise drag it to the projector and double-click it" },
-    { "idx": 2, "label": "3", "overlay": 0, "note": "[60s] Three reveal steps share one page label, so they count as **one slide**.\n\n*Next* on the right shows the next slide, not the next step." },
+    { "idx": 0, "label": "1", "overlay": 0, "note": "[45s] **Welcome.** Click the slide or press **s** or **→** to start the clock. Then click the slide or press **→** to advance.\n\nOpen **Settings** with `,` or **Help** with `?`." },
+    { "idx": 1, "label": "2", "overlay": 0, "note": "[105s] The audience window opens when you present. If your browser blocks it, allow pop-ups and press **o**.\n\n- **Projector** (`Shift+W`) puts the audience fullscreen on a second screen or projector. If remote fullscreen is unavailable, drag the audience window to that display and double-click it.\n- **Sharing** (`Shift+O`) fits the audience window to the slide's proportions, even with one screen. Select the audience window in Zoom, Meet, or Teams and return to the presenter for your notes and controls." },
+    { "idx": 2, "label": "3", "overlay": 0, "note": "[60s] Three reveal steps share one page label, so they count as **one slide**.\n\nClick or press **→** to reveal the next step. The *Next* pane previews the next slide." },
     { "idx": 3, "label": "3", "overlay": 1, "note": "[40s] Step two of three. A step can take its own time." },
-    { "idx": 4, "label": "3", "overlay": 2, "note": "[50s] Last step. Going back from the next slide jumps to the first step." },
-    { "idx": 5, "label": "4", "overlay": 0, "note": "[90s] Press `l` for the laser, and again to turn it off (`2` and `1` work too, as in pdfpc).\n\n`+` and `-` resize the laser while it is on." },
-    { "idx": 6, "label": "5", "overlay": 0, "note": "[120s] 各位老师好，这一页的备注是中文。备注字号可以用 `+` 和 `-` 调整，`[` 和 `]` 调整当前幻灯片的大小。\n\n[ref] A note opening with its length, like `[120s]`, is the time planned for it. It's drawn as the lines under the slides instead of shown here." },
-    { "idx": 7, "label": "6", "overlay": 0, "hidden": true, "note": "You only see this slide through the overview, the thumbnails or `g`." },
-    { "idx": 8, "label": "7", "overlay": 0, "note": "[60s] The end slide: the talk is planned to end here, and backup slides follow." },
-    { "idx": 9, "label": "8", "overlay": 0, "note": "[30s] Backup material, after the end slide. Its line runs against its own 30 s; the talk's clock keeps going, so early/late counts the detour." }
+    { "idx": 4, "label": "3", "overlay": 2, "note": "[50s] Last step. `Shift+PageDown` moves to the next slide from any step. Going back from that slide returns to the first step." },
+    { "idx": 5, "label": "4", "overlay": 0, "note": "[90s] Press `l` or `2` to toggle the laser. Press `1` to turn it off. Move the mouse over the presenter's current slide to point for the audience.\n\n`+` and `-` resize the laser while it is on." },
+    { "idx": 6, "label": "5", "overlay": 0, "note": "[120s] 各位老师好，这一页的备注是中文。备注字号可以用 `+` 和 `-` 调整，`[` 和 `]` 调整幻灯片的大小。\n\n[ref] A note can open with a planned length like `[120s]`. The pace lines under the slides use that length." },
+    { "idx": 7, "label": "6", "overlay": 0, "hidden": true, "note": "Normal navigation skips this slide. Press `g` and enter 6, or select it in **Overview** (`v`) or in the thumbnails at the right edge." },
+    { "idx": 8, "label": "7", "overlay": 0, "note": "[60s] The end slide marks the planned end of the talk. You can still move on to the backup slide." },
+    { "idx": 9, "label": "8", "overlay": 0, "note": "[30s] Backup material has its own 30-second pace line. The talk's clock keeps running and the early or late estimate includes the time spent here. If you jumped here, press `Shift+Backspace` to return." }
   ]
 }

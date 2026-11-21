@@ -217,16 +217,17 @@ export class PopupAudience implements Audience {
     this.freshOpen = false;
     // Resize the existing popup: replacing it would break an active window share.
     // Browsers may ignore these calls; the presenter also explains the manual option.
-    const ratio = this.aspect(this.view?.current ?? 0);
-    this.fitForSharing(ratio);
-    // Leaving fullscreen can restore the window's titlebar only after the first resize; refine once if needed.
-    if (Math.abs(win.innerWidth / Math.max(1, win.innerHeight) - ratio) > 0.02) {
-      this.fitForSharing(ratio);
-    }
+    this.fitForSharing(this.aspect(this.view?.current ?? 0));
     this.forSharing = true;
     this.refused = false;
     win.document.getElementById("hint")!.hidden = true;
     this.events.change();
+    // The outer bounds can update before the viewport does, especially when the titlebar returns from fullscreen.
+    win.setTimeout(() => {
+      if (this.win !== win || win.closed || !this.forSharing || win.document.fullscreenElement) return;
+      const ratio = this.aspect(this.view?.current ?? 0);
+      if (Math.abs(win.innerWidth / Math.max(1, win.innerHeight) - ratio) > 0.02) this.fitForSharing(ratio);
+    }, 100);
   }
 
   private aspect(page = 0): number {

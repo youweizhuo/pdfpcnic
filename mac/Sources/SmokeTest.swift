@@ -111,9 +111,9 @@ final class SmokeTest {
             else { throw Failure("it isn't behind the presenter") }
             try await until("the slide in it") { Self.painted(app.audience.view) }
             try await until("the guide's next step") {
-                // On a machine with one screen, the line says to connect the projector first.
+                // On a machine with one screen, the guide offers Sharing or a projector.
                 let line = try await js("return document.querySelector('#guide').textContent") as? String ?? ""
-                return line.hasPrefix("Press ⇧W to make the audience window fullscreen on") || line.hasPrefix("One screen only:")
+                return line.hasPrefix("Click Projector for fullscreen on") || line.hasPrefix("One screen:")
             }
         }
         await check("the first key starts the clock; the next key advances") {
@@ -178,7 +178,7 @@ final class SmokeTest {
             if !oneScreen, !app.audience.isFullscreen { throw Failure("Esc took the audience out of fullscreen") }
         }
         await check("Screen sharing fills the same window, including after fullscreen, and slides keep updating") {
-            guard try await js("return !document.querySelector('#sharing-controls').hidden && document.querySelector('[data-action=prepareSharing]').textContent === 'Sharing'") as? Bool == true else {
+            guard try await js("return !document.querySelector('#sharing-controls').hidden && document.querySelector('[data-action=prepareSharing]').textContent.startsWith('Sharing')") as? Bool == true else {
                 throw Failure("the Sharing button is missing")
             }
             @MainActor func prepare(click: Bool = false) async throws {

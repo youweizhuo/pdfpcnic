@@ -1,9 +1,10 @@
-// Demo deck for pdfpcnic. Rebuild with `typst compile demo.typ` (needs a CJK
-// font such as Noto Sans CJK SC for the last slides); demo.pdfpc is
-// hand-written to match its pages.
+// Rebuild from the repo root with `typst compile demo/demo.typ demo/demo.pdf`.
+// On systems without PingFang SC, pass --input cjk-font="Noto Sans CJK SC".
+// The matching notes and timings are in demo.pdfpc.
 #set page(width: 32cm, height: 18cm, margin: 2cm, fill: rgb("#f7f5f0"), numbering: "1",
   footer: context align(right, text(14pt, fill: luma(140), counter(page).display())))
-#set text(font: ("Libertinus Serif", "Noto Sans CJK SC"), size: 26pt, fill: rgb("#1d1d1f"))
+#let cjk-font = sys.inputs.at("cjk-font", default: "PingFang SC")
+#set text(font: ("Libertinus Serif", cjk-font), size: 26pt, fill: rgb("#1d1d1f"))
 #show heading: set text(40pt, weight: "bold", fill: rgb("#8a1c1c"))
 
 #let slide(title, body) = {
@@ -17,16 +18,17 @@
 #align(center + horizon)[
   #text(60pt, weight: "bold", fill: rgb("#8a1c1c"))[pdfpcnic]
   #v(0.2em)
-  #text(30pt)[A pdfpc-style presenter in the browser]
+  #text(30pt)[A pdfpc-style presenter for PDF slides]
   #v(1em)
-  #text(20pt, fill: luma(110))[demo deck · press → to start the clock]
+  #text(20pt, fill: luma(110))[demo deck · click or press → to start the clock]
 ]
 
 #pagebreak()
 #slide[Two windows][
-  - *Presenter*: clock, current and next slide, notes, thumbnails
-  - *Audience*: the slide, fullscreen on the projector
-  - It opens with the deck: press #box(stroke: 1pt, inset: 4pt, radius: 3pt)[Shift+W] for fullscreen
+  - *Presenter* shows the clock, slides, notes, and thumbnails.
+  - *Projector* (`Shift+W`) puts the audience fullscreen on a second screen.
+    If remote fullscreen is unavailable, drag the audience window there and double-click it.
+  - *Sharing* (`Shift+O`) fits the audience window to the slide's proportions for Zoom, Meet, or Teams, even with one screen.
 ]
 
 #pagebreak()
@@ -44,12 +46,14 @@
 #slide[Reveal steps][
   - First, a point
   - Then another
-  - And a third: Shift+PageDown skips the rest
+  - And a third
+  #v(0.5em)
+  Press `Shift+PageDown` to skip to the next slide.
 ]
 
 #pagebreak()
 #slide[Laser pointer][
-  Press #box(stroke: 1pt, inset: 4pt, radius: 3pt)[l] and move the mouse over the current slide.
+  Press #box(stroke: 1pt, inset: 4pt, radius: 3pt)[l] and move the mouse over the presenter's current slide.
   #v(1em)
   #align(center, grid(columns: 3, gutter: 1.2cm,
     circle(radius: 1.6cm, fill: rgb("#e0a458")),
@@ -62,22 +66,24 @@
 #slide[中文备注][
   备注支持中文和 Markdown。
   #v(0.5em)
-  Notes come from the `.pdfpc` file.
+  The `.pdfpc` file supplies speaker notes and planned timings.
 ]
 
 #pagebreak()
 #slide[A hidden slide][
-  Marked `hidden` in the `.pdfpc` file: normal navigation skips it.
+  Normal navigation skips this slide.
+  #v(0.5em)
+  Press `g` and enter 6, or pick it in Overview (`v`) or the thumbnails at the right edge.
 ]
 
 #pagebreak()
 #align(center + horizon)[
   #text(54pt, weight: "bold", fill: rgb("#8a1c1c"))[Thanks]
   #v(0.4em)
-  #text(24pt, fill: luma(110))[the end slide: backup slides follow]
+  #text(24pt, fill: luma(110))[the end slide · backup follows]
 ]
 
 #pagebreak()
 #slide[Backup: details][
-  Slides after `endSlide` stay reachable but don't count in the progress.
+  Backup slides are outside the talk's pace plan. This slide has its own 30-second pace line.
 ]

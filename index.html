@@ -39,7 +39,7 @@
             <button id="present" class="primary" type="button">Present <kbd>Enter</kbd></button>
             <button id="choose-other" type="button">Choose other files</button>
           </div>
-          <span class="drop-sub">Opens the presenter here and the audience window for the projector.</span>
+          <span class="drop-sub">Opens the presenter here and the audience window for a projector or screen sharing.</span>
         </div>
 
         <div id="actions" class="start-actions">
@@ -60,28 +60,35 @@
     </section>
 
     <main id="presenter" class="presenter" tabindex="-1" hidden>
-      <div id="current"></div>
-      <div class="slide-states">
-        <div id="audience-state" class="audience-state" role="status" hidden><strong></strong><span></span></div>
-        <div id="timer-state" class="audience-state clock-state" role="status" hidden>
-          <strong></strong><span></span>
+      <div id="current">
+        <div id="slide-states" class="slide-states">
+          <div id="audience-state" class="audience-state" role="status" hidden><strong></strong><span></span></div>
+          <div id="timer-state" class="audience-state clock-state" role="status" hidden>
+            <strong></strong><span></span>
+          </div>
         </div>
       </div>
       <!-- This slide's planned time, filling as you spend it. -->
       <div id="pace-slide" class="slidebar">
         <div class="slidebar-track"><div id="slide-fill" class="slide-fill"></div></div>
       </div>
-      <!-- What the audience sees, under the slide it shows. -->
-      <nav class="toolbar slide-tools">
-        <!-- Comparing two plans: this slide's time in each, and the difference. -->
-        <span id="compare-slide" class="compare-times"></span>
-        <button type="button" data-action="blank">Black <kbd>b</kbd></button>
-        <button type="button" data-action="freeze">Freeze <kbd>f</kbd></button>
-        <button type="button" data-action="laserMode">Laser <kbd>l</kbd></button>
-      </nav>
+      <!-- Comparing two plans: this slide's time in each, and the difference. -->
+      <span id="compare-slide" class="compare-times"></span>
       <div id="split" class="split" role="separator" aria-orientation="vertical" title="Drag to resize the columns"></div>
       <div id="stage-split" class="hsplit" role="separator" aria-orientation="horizontal" title="Drag to trade slide size for notes"></div>
       <article id="notes" class="notes"><div id="notes-body" class="notes-body"></div></article>
+      <!-- Live talk controls blended along the bottom of the notes, level with the footer on the right. -->
+      <div class="notes-bar">
+        <nav class="toolbar timer-controls">
+          <button id="timer-toggle" class="ctl cta" type="button">Start <kbd>s</kbd></button>
+          <button id="timer-reset" class="ctl" type="button" disabled>Reset <kbd>⇧R</kbd></button>
+        </nav>
+        <nav class="toolbar slide-tools">
+          <button type="button" data-action="blank">Black <kbd>b</kbd></button>
+          <button type="button" data-action="freeze">Freeze <kbd>f</kbd></button>
+          <button type="button" data-action="laserMode">Laser <kbd>l</kbd></button>
+        </nav>
+      </div>
 
       <aside class="side">
         <div id="next"></div>
@@ -89,16 +96,14 @@
         <div
           id="talkbar"
           class="talkbar"
-          title="The whole talk: time spent, colored by the pace, then paler to where the talk would end; this slide's planned part in yellow; the target end in red."
+          title="The whole talk: time spent, colored by the pace, then paler to where the talk would end; this slide's planned part in yellow (brighter for the current step); the target end in red."
         ></div>
-        <!-- Level with black, freeze and the laser, and the clock with the notes' first line, as the columns start. The
-             target end over where the talk would end. -->
-        <nav class="toolbar timer-controls">
-          <button id="timer-toggle" class="ctl cta" type="button">Start <kbd>s</kbd></button>
-          <button id="timer-reset" class="ctl" type="button" disabled>Reset <kbd>⇧R</kbd></button>
+        <!-- Quiet metadata strip right under the talk bar: slide/reveal position on the left, target end on the right. -->
+        <div class="talk-meta">
+          <span id="slide-counter" class="slide-counter"></span>
           <span id="target-at" class="target-at" title="The target end: the red line"></span>
           <span id="compare-talk" class="compare-times"></span>
-        </nav>
+        </div>
         <div class="clock">
           <button id="timer" class="timer idle" type="button" data-action="timesOfDay">0:00:00</button>
           <button id="finish" class="finish" type="button" data-action="earlyLate"></button>
@@ -110,8 +115,7 @@
         <!-- Audience preparation modes stay named alike and highlight only while prepared. -->
         <nav class="toolbar foot">
           <button type="button" id="audience-button" data-action="prepareProjector">Projector</button>
-          <button type="button" id="sharing-controls" data-action="prepareSharing" hidden>Sharing</button>
-          <button type="button" id="open-files">Open…</button>
+          <button type="button" id="sharing-controls" data-action="prepareSharing" hidden>Sharing <kbd>⇧O</kbd></button>
           <!-- Saves the run's times, to compare with the plan; while comparing, ends the comparison. -->
           <button id="save-run" class="ctl" type="button" data-action="saveRun" hidden>Save run</button>
           <button id="help-button" type="button" data-action="help" aria-haspopup="dialog" aria-controls="help">Help <kbd>?</kbd></button>
@@ -136,7 +140,10 @@
       <div class="help-card">
         <header class="overlay-head">
           <h2 id="help-title">Help</h2>
-          <button id="help-close" type="button" data-action="help">Close</button>
+          <div class="overlay-actions">
+            <button type="button" id="open-files">Open files…</button>
+            <button id="help-close" type="button" data-action="help">Close</button>
+          </div>
         </header>
         <div id="help-grid" class="help-grid"></div>
         <section class="legend">
@@ -152,13 +159,13 @@
             </div>
             <div>
               <dt>Notes</dt>
-              <dd>What you'd have said by now, at this slide's planned pace, dims character by character; <em>ref</em> paragraphs don't count (turn it off in Settings).</dd>
+              <dd>What you'd have said by now, at this slide's planned pace, dims character by character; <em>ref</em> paragraphs don't count (turn it off in <button type="button" class="help-link" data-action="settings">Settings</button>).</dd>
             </div>
             <div>
               <dt><i class="sw this"></i><i class="sw next"></i></dt>
               <dd>The line under the next slide is the whole talk: time spent, then paler to where the talk would end if you moved on now, this slide's planned part in yellow over it. It's colored by the pace, as is the time at the clock's right, where the talk would end:</dd>
               <dt><i class="sw on"></i></dt>
-              <dd>within the early and late margins (one minute each by default, adjustable in Settings);</dd>
+              <dd>within the early and late margins (one minute each by default, adjustable in <button type="button" class="help-link" data-action="settings">Settings</button>);</dd>
               <dt><i class="sw late"></i><i class="sw serious"></i><i class="sw severe"></i></dt>
               <dd>late; deeper as it gets serious and very serious (by default at 1:30 and 2:00);</dd>
               <dt><i class="sw early"></i></dt>
@@ -176,87 +183,97 @@
 
     <dialog id="settings" class="settings" aria-labelledby="settings-title">
       <form method="dialog">
-        <h2 id="settings-title">Settings</h2>
-        <h3>Display</h3>
-        <label class="setting">
-          <span>Slide size</span>
-          <input id="set-stage" type="range" min="50" max="100" step="1" />
-          <output for="set-stage"></output>
-        </label>
-        <label class="setting">
-          <span>Notes text</span>
-          <input id="set-notes" type="range" min="12" max="72" step="2" />
-          <output for="set-notes"></output>
-        </label>
-        <label class="setting">
-          <span>Laser dot</span>
-          <input id="set-laser" type="range" min="1" max="20" step="0.5" />
-          <output for="set-laser"></output>
-        </label>
-        <div class="setting">
-          <span>Dim elapsed notes</span>
-          <div id="set-dim" class="switch" role="group" aria-label="Dim elapsed notes">
-            <button type="button" data-dim="off">off</button>
-            <button type="button" data-dim="on">on</button>
+        <header class="overlay-head">
+          <h2 id="settings-title">Settings</h2>
+          <button type="submit" autofocus>Close</button>
+        </header>
+        <div class="settings-columns">
+          <div class="settings-col">
+            <section class="settings-group">
+              <h3>Display</h3>
+              <label class="setting slider">
+                <span>Slides</span>
+                <input id="set-stage" type="range" min="50" max="100" step="1" />
+                <output for="set-stage"></output>
+              </label>
+              <label class="setting slider">
+                <span>Notes size</span>
+                <input id="set-notes" type="range" min="12" max="72" step="2" />
+                <output for="set-notes"></output>
+              </label>
+              <label class="setting slider">
+                <span>Laser dot</span>
+                <input id="set-laser" type="range" min="1" max="20" step="0.5" />
+                <output for="set-laser"></output>
+              </label>
+              <div class="setting toggle">
+                <span>Dim spoken notes</span>
+                <div id="set-dim" class="switch" role="group" aria-label="Dim spoken notes">
+                  <button type="button" data-dim="off">Off</button>
+                  <button type="button" data-dim="on">On</button>
+                </div>
+              </div>
+            </section>
+            <section class="settings-group">
+              <h3>Clock</h3>
+              <div class="setting toggle">
+                <span>Clock</span>
+                <div id="set-times" class="switch" role="group" aria-label="Clock display">
+                  <button type="button" data-times="clock">Elapsed</button>
+                  <button type="button" data-times="day">Time of day</button>
+                </div>
+              </div>
+              <div class="setting toggle">
+                <span>Projected end</span>
+                <div id="set-end" class="switch" role="group" aria-label="Projected end display">
+                  <button type="button" data-end="time">Time</button>
+                  <button type="button" data-end="pace">Early / late</button>
+                </div>
+              </div>
+            </section>
           </div>
-        </div>
-        <h3>Clock</h3>
-        <div class="setting">
-          <span>Show</span>
-          <div id="set-times" class="switch" role="group" aria-label="Clock display">
-            <button type="button" data-times="clock">clock</button>
-            <button type="button" data-times="day">time of day</button>
-          </div>
-        </div>
-        <div class="setting">
-          <span>Talk's end</span>
-          <div id="set-end" class="switch" role="group" aria-label="Talk's end display">
-            <button type="button" data-end="time">a time</button>
-            <button type="button" data-end="pace">early or late</button>
-          </div>
-        </div>
-        <details id="pace-settings" class="settings-details">
-          <summary>Pace colors</summary>
-          <div class="setting">
-            <span>Measure in</span>
-            <div id="set-unit" class="switch" role="group" aria-label="Pace units">
-              <button type="button" data-unit="time">time</button>
-              <button type="button" data-unit="share">% of the talk</button>
+          <section id="pace-settings" class="settings-col settings-group">
+            <h3>Pace colors</h3>
+            <div class="setting toggle">
+              <span>Units</span>
+              <div id="set-unit" class="switch" role="group" aria-label="Pace units">
+                <button type="button" data-unit="time">Time</button>
+                <button type="button" data-unit="share">% of talk</button>
+              </div>
             </div>
-          </div>
-          <label class="setting">
-            <span>Early margin</span>
-            <input id="set-early" type="range" min="0" max="180" step="15" />
-            <output for="set-early"></output>
-          </label>
-          <label class="setting">
-            <span>Late margin</span>
-            <input id="set-late" type="range" min="0" max="180" step="15" />
-            <output for="set-late"></output>
-          </label>
-          <label class="setting">
-            <span>Late is serious from</span>
-            <input id="set-serious" type="range" min="1" max="30" step="1" />
-            <output for="set-serious"></output>
-          </label>
-          <label class="setting">
-            <span>Very serious from</span>
-            <input id="set-severe" type="range" min="1" max="30" step="1" />
-            <output for="set-severe"></output>
-          </label>
-          <p class="settings-foot">Blue when early; orange to red as you fall behind.</p>
-        </details>
-        <p class="settings-foot">Changes save automatically on this device.</p>
+            <label class="setting slider">
+              <span><i class="pace-dot early" aria-hidden="true"></i>Early</span>
+              <input id="set-early" type="range" min="0" max="180" step="15" />
+              <output for="set-early"></output>
+            </label>
+            <label class="setting slider">
+              <span><i class="pace-dot late" aria-hidden="true"></i>Late</span>
+              <input id="set-late" type="range" min="0" max="180" step="15" />
+              <output for="set-late"></output>
+            </label>
+            <label class="setting slider">
+              <span><i class="pace-dot serious" aria-hidden="true"></i>Serious</span>
+              <input id="set-serious" type="range" min="1" max="30" step="1" />
+              <output for="set-serious"></output>
+            </label>
+            <label class="setting slider">
+              <span><i class="pace-dot severe" aria-hidden="true"></i>Severe</span>
+              <input id="set-severe" type="range" min="1" max="30" step="1" />
+              <output for="set-severe"></output>
+            </label>
+            <p class="settings-note">Blue when early; orange to red as you fall behind.</p>
+          </section>
+        </div>
         <div class="settings-actions">
+          <p class="settings-foot">Saved automatically on this device.</p>
           <button id="set-defaults" type="button">Restore defaults</button>
-          <button class="primary" autofocus>Done</button>
         </div>
       </form>
     </dialog>
 
-    <dialog id="goto" class="goto">
+    <dialog id="goto" class="goto" aria-label="Go to slide">
       <form method="dialog">
-        <label>Go to slide <input id="goto-input" type="number" min="1" inputmode="numeric" autocomplete="off" /></label>
+        <label>Go to slide <input id="goto-input" type="number" min="1" inputmode="numeric" autocomplete="off" /><span id="goto-total" class="goto-total"></span></label>
       </form>
     </dialog>
 

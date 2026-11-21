@@ -84,7 +84,7 @@ try {
       assert.ok(await painted(page, "#next canvas"), "next slide is blank");
       assert.match(await page.$eval("#notes", (e) => e.textContent), /Welcome/);
       // Until the talk starts, the line under the bar says what to do with the audience window.
-      await page.waitForFunction(() => /^Drag the audience window to the projector, then double-click it/.test(document.querySelector("#guide").textContent), { timeout: 5000 });
+      await page.waitForFunction(() => /^Drag the audience window to the projector and double-click it/.test(document.querySelector("#guide").textContent), { timeout: 5000 });
     });
 
     await check(`${build}: keys step through, the clock runs, pace shows`, async () => {
@@ -122,7 +122,11 @@ try {
       await audience.screenshot({ path: `${out}/${build}-audience.png` });
       // Sharing uses an ordinary large window even though remote fullscreen is unavailable.
       await page.click('[data-action="prepareSharing"]');
-      await audience.waitForFunction(() => !document.fullscreenElement && outerWidth >= screen.availWidth - 16 && outerHeight >= screen.availHeight - 16);
+      await audience.waitForFunction(() =>
+        !document.fullscreenElement &&
+        (outerWidth >= screen.availWidth - 16 || outerHeight >= screen.availHeight - 16) &&
+        Math.abs(innerWidth / innerHeight - 16 / 9) < 0.02,
+      );
       assert.equal(await page.evaluate(() => window.pdfpcnic.audience.status.forSharing), true);
       assert.equal(await page.$eval("#sharing-controls", (e) => e.getAttribute("aria-pressed")), "true");
       assert.equal(await page.$eval("#audience-button", (e) => e.getAttribute("aria-pressed")), "false");

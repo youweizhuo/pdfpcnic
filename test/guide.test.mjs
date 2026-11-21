@@ -27,17 +27,17 @@ test("the audience is ready fullscreen or in solo mode, but not in an ordinary w
 
 test("before the talk, in yellow: the audience's step, by the button that does it", () => {
   const next = (a) => guideLine(at({ audience: status(a) }));
-  assert.equal(next({ screen: "DELL U2720Q" }).text, "Press ⇧W to make the audience window fullscreen on DELL U2720Q.");
+  assert.equal(next({ screen: "DELL U2720Q" }).text, "Click Projector for fullscreen on DELL U2720Q, or Sharing for a meeting.");
   // Not knowing the screens, it goes fullscreen where it is: there first.
-  assert.equal(next({}).text, "Drag the audience window to the projector, then press ⇧W.");
-  assert.equal(next({ remote: false }).text, "Drag the audience window to the projector, then double-click it.");
+  assert.equal(next({}).text, "Drag the audience window to the projector and click Projector, or click Sharing for a meeting.");
+  assert.equal(next({ remote: false }).text, "Drag the audience window to the projector and double-click it, or click Sharing for a meeting.");
 });
 
 test("a window prepared for sharing needs no projector or fullscreen, but still needs sharing in the meeting app", () => {
   const audience = status({ forSharing: true });
   assert.equal(audienceReady(audience, false), true);
   assert.deepEqual(guideLine(at({ audience, oneScreen: true })), {
-    kind: "next", text: "Share the audience window in your meeting app; keep it windowed.",
+    kind: "next", text: "Ready to share: select the audience window in your meeting app (keep it windowed).",
   });
   assert.equal(guideLine(at({ audience, oneScreen: true, clock: "running" })), null);
   assert.equal(audienceReady(status({ mode: "closed", forSharing: true }), false), false);
@@ -55,34 +55,35 @@ test("readiness shows audience or scheduled-time facts without repeating the clo
   assert.equal(guideLine(at({ audience: status({ mode: "closed" }), solo: true })), null);
 });
 
-test("in orange, what no button fixes: one screen, by the system's keys, and a browser that says no", () => {
+test("one screen offers sharing before the talk (yellow) and warns mid-talk (orange); refused fullscreen is orange", () => {
   const one = (system) => guideLine(at({ oneScreen: true, system }));
-  assert.deepEqual(one("mac"), { kind: "blocked", text: "One screen only: connect the projector, or stop mirroring (⌘ + brightness down)." });
+  assert.deepEqual(one("mac"), { kind: "next", text: "One screen: click Sharing for a meeting, or connect/extend a projector (⌘ + brightness down)." });
   assert.match(one("windows").text, /\(Win\+P\)\.$/);
   assert.match(one("linux").text, /\(Super\+P\)\.$/);
-  assert.equal(one(null).text, "One screen only: connect the projector and extend the displays, not mirror.");
-  // Mid-talk too, until the audience sees the slides.
+  assert.equal(one(null).text, "One screen: click Sharing for a meeting, or connect and extend a projector.");
+  // Mid-talk, until the audience sees the slides, it's orange.
   assert.equal(guideLine(at({ oneScreen: true, clock: "running" })).kind, "blocked");
   assert.equal(guideLine(at({ oneScreen: true, audience: status({ mode: "fullscreen" }) })).kind, "fact");
   const refused = guideLine(at({ audience: status({ remote: false, refused: true }), clock: "running" }));
-  assert.deepEqual(refused, { kind: "blocked", text: "Can't go fullscreen from here: double-click the audience window." });
+  assert.deepEqual(refused, { kind: "blocked", text: "Can't go fullscreen from here: double-click the audience window, or click Sharing for a meeting." });
 });
 
 test("after a rehearsal, Reset; the audience's step first", () => {
   const fullscreen = status({ mode: "fullscreen" });
   const stale = guideLine(at({ audience: fullscreen, clock: "running", stale: true }));
   assert.deepEqual(stale, { kind: "next", text: "The clock has time from a rehearsal: click Reset before the talk." });
-  assert.equal(guideLine(at({ clock: "running", stale: true })).text, "Drag the audience window to the projector, then press ⇧W.");
+  assert.equal(guideLine(at({ clock: "running", stale: true })).text, "Drag the audience window to the projector and click Projector, or click Sharing for a meeting.");
 });
 
 test("during the talk: no duplicate pause hint; laser and last-slide guidance remain", () => {
   const talk = (s) => guideLine(at({ audience: status({ mode: "fullscreen" }), clock: "running", ...s }));
   assert.equal(talk({}), null);
   assert.equal(talk({ clock: "paused" }), null);
-  assert.deepEqual(talk({ clock: "paused", laser: true }), { kind: "hint", text: "Laser on: + and − size the dot; l turns it off." });
-  assert.deepEqual(talk({ laser: true, lastPlanned: true }), { kind: "hint", text: "Laser on: + and − size the dot; l turns it off." });
+  assert.deepEqual(talk({ clock: "paused", laser: true }), { kind: "hint", text: "Laser on: + and − size the dot; click Laser to turn it off." });
+  assert.deepEqual(talk({ laser: true, lastPlanned: true }), { kind: "hint", text: "Laser on: + and − size the dot; click Laser to turn it off." });
   assert.deepEqual(talk({ lastPlanned: true }), { kind: "fact", text: "Last planned slide: backup slides follow." });
-  assert.match(talk({ audience: status({ mode: "closed" }) }).text, /Projector/);
+  assert.equal(talk({ audience: status({ mode: "closed" }) }).text, "Audience window closed. Click Projector to reopen it, or Sharing for a meeting.");
+  assert.equal(talk({ audience: status({ mode: "closed" }), reopenWith: "Sharing" }).text, "Audience window closed. Click Sharing to reopen it.");
 });
 
 test("at the end of a run, in purple, the button that saves its times", () => {

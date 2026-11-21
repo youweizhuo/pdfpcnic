@@ -245,7 +245,7 @@ final class Audience: NSObject, NSWindowDelegate {
 
     func windowDidFailToExitFullScreen(_ window: NSWindow) {
         changingSpace = false
-        finishSharing(error: Failure("Couldn't leave fullscreen. Exit fullscreen and click Audience: sharing again."))
+        finishSharing(error: Failure("Couldn't leave fullscreen. Exit fullscreen and click Sharing again."))
         changed()
     }
 

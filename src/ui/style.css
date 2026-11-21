@@ -1216,6 +1216,20 @@ kbd {
   text-underline-offset: 3px;
   cursor: pointer;
 }
+
+@media (max-height: 840px) {
+  .help {
+    padding-block: 12px;
+  }
+  .help-card {
+    max-height: calc(100dvh - 24px);
+    padding-block: 16px;
+  }
+  .help-grid td {
+    padding-block: 2px;
+  }
+}
+
 .settings {
   box-sizing: border-box;
   width: min(760px, calc(100vw - 32px));

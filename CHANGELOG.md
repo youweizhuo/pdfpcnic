@@ -20,6 +20,7 @@ fields read and the notes' length tags are the interface. Each release attaches 
 - Clicking the current slide starts an idle clock on that slide. The next click advances.
 - The browser refits the audience window to the slide after leaving fullscreen for Sharing.
 - Hovering over a presenter button at the right edge keeps the thumbnail strip closed.
+- Help uses less vertical space in shorter windows.
 
 ## 1.10.0 (2026-11-19)
 

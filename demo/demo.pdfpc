@@ -4,7 +4,7 @@
   "endSlide": 6,
   "disableMarkdown": false,
   "pages": [
-    { "idx": 0, "label": "1", "overlay": 0, "note": "[45s] **Welcome.** Click the slide or press **s** or **→** to start the clock. Then click the slide or press **→** to advance.\n\nOpen **Settings** with `,` or **Help** with `?`." },
+    { "idx": 0, "label": "1", "overlay": 0, "note": "[45s] **Welcome.** Click **Start** or press **s** to start the clock. Click the slide or press **→** to move to the next slide whenever you like.\n\nOpen **Settings** with `,` or **Help** with `?`." },
     { "idx": 1, "label": "2", "overlay": 0, "note": "[105s] The audience window opens when you present. If your browser blocks it, allow pop-ups and press **o**.\n\n- **Projector** (`Shift+W`) puts the audience fullscreen on a second screen or projector. If remote fullscreen is unavailable, drag the audience window to that display and double-click it.\n- **Sharing** (`Shift+O`) fits the audience window to the slide's proportions, even with one screen. Select the audience window in Zoom, Meet, or Teams and return to the presenter for your notes and controls." },
     { "idx": 2, "label": "3", "overlay": 0, "note": "[60s] Three reveal steps share one page label, so they count as **one slide**.\n\nClick or press **→** to reveal the next step. The *Next* pane previews the next slide." },
     { "idx": 3, "label": "3", "overlay": 1, "note": "[40s] Step two of three. A step can take its own time." },

@@ -3,6 +3,8 @@ import { test } from "node:test";
 import { audienceReady, guideLine } from "../src/core/guide.ts";
 
 const status = (s) => ({ mode: "window", screen: null, remote: true, refused: false, ...s });
+const projector = { button: "Projector" };
+const sharing = { button: "Sharing" };
 /** Before the talk, two screens, the audience window open. */
 const at = (s = {}) => ({
   audience: status(),
@@ -27,10 +29,10 @@ test("the audience is ready fullscreen or in solo mode, but not in an ordinary w
 
 test("before the talk, in yellow: the audience's step, by the button that does it", () => {
   const next = (a) => guideLine(at({ audience: status(a) }));
-  assert.equal(next({ screen: "DELL U2720Q" }).text, "Click Projector for fullscreen on DELL U2720Q, or Sharing for a meeting.");
+  assert.deepEqual(next({ screen: "DELL U2720Q" }).text, ["Click ", projector, " for fullscreen on DELL U2720Q, or ", sharing, " for a meeting."]);
   // Not knowing the screens, it goes fullscreen where it is: there first.
-  assert.equal(next({}).text, "Drag the audience window to the projector and click Projector, or click Sharing for a meeting.");
-  assert.equal(next({ remote: false }).text, "Drag the audience window to the projector and double-click it, or click Sharing for a meeting.");
+  assert.deepEqual(next({}).text, ["Drag the audience window to the projector and click ", projector, ", or click ", sharing, " for a meeting."]);
+  assert.deepEqual(next({ remote: false }).text, ["Drag the audience window to the projector and double-click it, or click ", sharing, " for a meeting."]);
 });
 
 test("a window prepared for sharing needs no projector or fullscreen, but still needs sharing in the meeting app", () => {
@@ -57,39 +59,41 @@ test("readiness shows audience or scheduled-time facts without repeating the clo
 
 test("one screen offers sharing before the talk (yellow) and warns mid-talk (orange); refused fullscreen is orange", () => {
   const one = (system) => guideLine(at({ oneScreen: true, system }));
-  assert.deepEqual(one("mac"), { kind: "next", text: "One screen: click Sharing for a meeting, or connect/extend a projector (⌘ + brightness down)." });
-  assert.match(one("windows").text, /\(Win\+P\)\.$/);
-  assert.match(one("linux").text, /\(Super\+P\)\.$/);
-  assert.equal(one(null).text, "One screen: click Sharing for a meeting, or connect and extend a projector.");
+  assert.deepEqual(one("mac"), { kind: "next", text: ["One screen: click ", sharing, " for a meeting, or connect/extend a projector (⌘ + brightness down)."] });
+  assert.match(one("windows").text.at(-1), /\(Win\+P\)\.$/);
+  assert.match(one("linux").text.at(-1), /\(Super\+P\)\.$/);
+  assert.deepEqual(one(null).text, ["One screen: click ", sharing, " for a meeting, or connect and extend a projector."]);
   // Mid-talk, until the audience sees the slides, it's orange.
   assert.equal(guideLine(at({ oneScreen: true, clock: "running" })).kind, "blocked");
   assert.equal(guideLine(at({ oneScreen: true, audience: status({ mode: "fullscreen" }) })).kind, "fact");
   const refused = guideLine(at({ audience: status({ remote: false, refused: true }), clock: "running" }));
-  assert.deepEqual(refused, { kind: "blocked", text: "Can't go fullscreen from here: double-click the audience window, or click Sharing for a meeting." });
+  assert.deepEqual(refused, { kind: "blocked", text: ["Can't go fullscreen from here: double-click the audience window, or click ", sharing, " for a meeting."] });
 });
 
 test("after a rehearsal, Reset; the audience's step first", () => {
   const fullscreen = status({ mode: "fullscreen" });
   const stale = guideLine(at({ audience: fullscreen, clock: "running", stale: true }));
-  assert.deepEqual(stale, { kind: "next", text: "The clock has time from a rehearsal: click Reset before the talk." });
-  assert.equal(guideLine(at({ clock: "running", stale: true })).text, "Drag the audience window to the projector and click Projector, or click Sharing for a meeting.");
+  assert.deepEqual(stale, { kind: "next", text: ["The clock has time from a rehearsal: click ", { button: "Reset" }, " before the talk."] });
+  assert.deepEqual(guideLine(at({ clock: "running", stale: true })).text, ["Drag the audience window to the projector and click ", projector, ", or click ", sharing, " for a meeting."]);
 });
 
 test("during the talk: no duplicate pause hint; laser and last-slide guidance remain", () => {
   const talk = (s) => guideLine(at({ audience: status({ mode: "fullscreen" }), clock: "running", ...s }));
   assert.equal(talk({}), null);
   assert.equal(talk({ clock: "paused" }), null);
-  assert.deepEqual(talk({ clock: "paused", laser: true }), { kind: "hint", text: "Laser on: + and − size the dot; click Laser to turn it off." });
-  assert.deepEqual(talk({ laser: true, lastPlanned: true }), { kind: "hint", text: "Laser on: + and − size the dot; click Laser to turn it off." });
+  const laser = { kind: "hint", text: ["Laser on: + and − size the dot; click ", { button: "Laser" }, " to turn it off."] };
+  assert.deepEqual(talk({ clock: "paused", laser: true }), laser);
+  assert.deepEqual(talk({ laser: true, lastPlanned: true }), laser);
   assert.deepEqual(talk({ lastPlanned: true }), { kind: "fact", text: "Last planned slide: backup slides follow." });
-  assert.equal(talk({ audience: status({ mode: "closed" }) }).text, "Audience window closed. Click Projector to reopen it, or Sharing for a meeting.");
-  assert.equal(talk({ audience: status({ mode: "closed" }), reopenWith: "Sharing" }).text, "Audience window closed. Click Sharing to reopen it.");
+  assert.deepEqual(talk({ audience: status({ mode: "closed" }) }).text, ["Audience window closed. Click ", projector, " to reopen it, or ", sharing, " for a meeting."]);
+  assert.deepEqual(talk({ audience: status({ mode: "closed" }), reopenWith: "Sharing" }).text, ["Audience window closed. Click ", sharing, " to reopen it."]);
 });
 
 test("at the end of a run, in purple, the button that saves its times", () => {
   const end = (s) => guideLine(at({ audience: status({ mode: "fullscreen" }), clock: "running", finished: true, ...s }));
-  assert.deepEqual(end({ lastPlanned: true }), { kind: "hint", text: "Click Save run to keep this run's times, to compare with the plan." });
-  assert.match(end({ clock: "paused" }).text, /^Click Save run/, "paused at the end, saving comes first");
+  const save = { kind: "hint", text: ["Click ", { button: "Save run" }, " to keep this run's times, to compare with the plan."] };
+  assert.deepEqual(end({ lastPlanned: true }), save);
+  assert.deepEqual(end({ clock: "paused" }), save, "paused at the end, saving comes first");
 });
 
 test("comparing two plans, the line names the other file, before anything else", () => {

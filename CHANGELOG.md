@@ -3,6 +3,14 @@
 Notable changes to pdfpcnic. Versions follow [Semantic Versioning](https://semver.org/): the keys, the `.pdfpc`
 fields read and the notes' length tags are the interface. Each release attaches the offline file, `pdfpcnic.html`.
 
+## 1.12.0 (2026-11-22)
+
+### Changed
+
+- **Start the clock manually.** Browse slides with the keyboard, clicks, scroll wheel, or thumbnails. Click **Start** or press `s` to start the clock on the current slide. Press `p` to pause or resume.
+- **Close windows on macOS.** `⌘W` closes the focused window and leaves pdfpcnic running. Closing the presenter also closes the audience and lets the display sleep. Click the Dock icon to reopen the presenter.
+- **Presenter notices.** Button names stand out in the guide, slide notices, and toasts. Toasts appear at the top center and use the same colors as the guide and slide notices. On macOS, sharing guidance appears in the guide only. When a deck has no `.pdfpc` file, the empty notes pane explains how to add one.
+
 ## 1.11.0 (2026-11-21)
 
 ### Added

@@ -37,8 +37,8 @@ to take anywhere.
 1. Drop the PDF on the page, with its `.pdfpc` file if it has one, and press **Present**. The audience window opens
    with it.
 2. `Shift+W` puts the audience fullscreen on the projector, `w` the presenter.
-3. Click **Start** or press `s` to start the clock. On the first slide, the first press of an advance key such as `→`,
-   Space or Page Down also starts the clock. Press it again to advance.
+3. Use the arrow keys, clicks, or thumbnails to choose your starting slide. Click **Start** or press `s` to start the
+   clock there.
 
 The button outlined in yellow is the next one to press; filled yellow means on. A dashed red outline on
 **Projector** or **Sharing** means the audience window is closed. The guide above the buttons tells you which one to click.
@@ -52,7 +52,7 @@ thumbnails, move the mouse to the right edge; rest on one to see it large in the
 | `g` / `v` | go to a slide / overview |
 | `b` or `.` / `f` | black / freeze the audience |
 | `l` | laser pointer on / off (`2` / `1` too, as in pdfpc) |
-| `s` / `p` | start / pause the clock |
+| `s` / `p` | start / pause or resume the clock |
 | `w` / `Shift+W` | presenter / audience fullscreen |
 | `?` | every key, and what the colors mean |
 
@@ -80,8 +80,9 @@ If the browser blocks automatic resizing, enlarge the audience manually (on macO
 The same presenter, without a browser's limits: the audience window opens behind the presenter, frameless, and `Shift+W`
 puts it fullscreen on the projector at once, with nothing to allow. macOS draws the slides itself, as Preview does. Open
 a PDF from the Finder, File › Open or by dropping it, and the `.pdfpc` file of the same name beside it comes along, as
-in pdfpc. The start screen loads the deck, then **Present** opens the audience window. The app shows when an update is
-downloading and opens the new version at the next launch. To install it, paste this into Terminal:
+in pdfpc. The start screen loads the deck, then **Present** opens the audience window. `⌘W` closes the focused window.
+Closing the presenter also closes its audience window. Click the Dock icon to reopen the presenter, or use `⌘Q` to quit.
+The app shows when an update is downloading and opens the new version at the next launch. To install it, paste this into Terminal:
 
 ```sh
 curl -fsSL https://github.com/youweizhuo/pdfpcnic/releases/latest/download/pdfpcnic-mac.zip -o /tmp/pdfpcnic.zip && ditto -x -k /tmp/pdfpcnic.zip /Applications && open /Applications/pdfpcnic.app

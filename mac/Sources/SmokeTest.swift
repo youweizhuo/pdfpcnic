@@ -116,13 +116,15 @@ final class SmokeTest {
                 return line.hasPrefix("Click Projector for fullscreen on") || line.hasPrefix("One screen:")
             }
         }
-        await check("the first key starts the clock; the next key advances") {
+        await check("the arrow advances with the clock idle; s starts it on the chosen slide") {
             try await press("ArrowRight")
-            try await until("the clock started on page 1") {
-                try await js("return window.pdfpcnic.state.page === 0 && window.pdfpcnic.state.timer.startedAt !== null") as? Bool == true
+            try await until("page 2 with the clock still idle") {
+                try await js("return window.pdfpcnic.state.page === 1 && window.pdfpcnic.state.timer.startedAt === null") as? Bool == true
             }
-            try await press("ArrowRight")
-            try await until("page 2") { try await page() == 1 }
+            try await press("s")
+            try await until("the clock started on page 2") {
+                try await js("return window.pdfpcnic.state.page === 1 && window.pdfpcnic.state.timer.startedAt !== null") as? Bool == true
+            }
         }
         await check("Shift+W makes the audience fullscreen, and the presenter knows") {
             try await press("W", shift: true)
@@ -185,7 +187,13 @@ final class SmokeTest {
                 // Repeated calls must await completion: the already-ready state can't acknowledge a new call.
                 _ = try await js(click
                     ? "document.querySelector('[data-action=prepareSharing]').click(); return null"
-                    : "await window.pdfpcnic.audience.prepareSharing(); return null")
+                    : """
+                      await Promise.race([
+                        window.pdfpcnic.audience.prepareSharing(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Preparing the audience for sharing timed out')), 8000)),
+                      ]);
+                      return null;
+                      """)
                 try await until("the audience prepared for sharing") {
                     app.audience.status["forSharing"] as? Bool == true && !app.audience.isFullscreen
                 }
@@ -263,6 +271,46 @@ final class SmokeTest {
             try await until("page 2") { try await page() == 1 }
             guard (try await js("return document.querySelector('#update:not([hidden])')?.textContent ?? ''") as? String ?? "").hasPrefix("9.9.9 is installed") else {
                 throw Failure("the update's word went with the reload")
+            }
+        }
+        await check("Command-W closes the focused window and the Dock reopens the presenter") {
+            NSApp.activate(ignoringOtherApps: true)
+            @MainActor func closeWithShortcut(_ window: NSWindow) async throws {
+                window.makeKeyAndOrderFront(nil)
+                do {
+                    try await until("\(window.title) focused", seconds: 5) { (NSApp.keyWindow ?? NSApp.mainWindow) === window }
+                } catch {
+                    throw Failure("Couldn't focus \(window.title). App active: \(NSApp.isActive), key: \(NSApp.keyWindow?.title ?? "none"), main: \(NSApp.mainWindow?.title ?? "none"), visible: \(window.isVisible).")
+                }
+                guard let event = NSEvent.keyEvent(
+                    with: .keyDown, location: .zero, modifierFlags: .command, timestamp: 0,
+                    windowNumber: window.windowNumber, context: nil, characters: "w", charactersIgnoringModifiers: "w",
+                    isARepeat: false, keyCode: 13
+                ), NSApp.mainMenu?.performKeyEquivalent(with: event) == true else { throw Failure("Command-W was not handled") }
+                try await until("the window closed") { !window.isVisible }
+            }
+            guard let audience = app.audience.view.window else { throw Failure("the audience window is missing") }
+            try await closeWithShortcut(audience)
+            guard app.presenter.window.isVisible else { throw Failure("closing the audience also closed the presenter") }
+            try await press("o")
+            try await until("the audience reopened") { app.audience.status["mode"] as? String == "window" }
+            try await closeWithShortcut(app.presenter.window)
+            try await until("both windows closed and the display released") {
+                app.audience.status["mode"] as? String == "closed" && !app.presenter.keepingAwake
+            }
+            _ = app.applicationShouldHandleReopen(NSApp, hasVisibleWindows: true)
+            try await until("the presenter reopened") { app.presenter.window.isVisible && app.presenter.keepingAwake }
+            guard try await page() == 1 else { throw Failure("reopening lost the current page") }
+        }
+        await check("minimizing and restoring the presenter releases and renews the display wake lock") {
+            let window = app.presenter.window
+            window.miniaturize(nil)
+            try await until("the presenter minimized and the display released") {
+                window.isMiniaturized && !app.presenter.keepingAwake
+            }
+            window.deminiaturize(nil)
+            try await until("the presenter restored and the display kept awake") {
+                !window.isMiniaturized && app.presenter.keepingAwake
             }
         }
         print(failed == 0 ? "all checks passed (mac)" : "\(failed) checks failed (mac)")

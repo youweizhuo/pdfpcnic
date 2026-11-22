@@ -18,10 +18,11 @@ test("a run's times as a .pdfpc file: each slide opens with how long the run too
   const d = planned();
   const talk = new Talk(d, undefined, T0);
   talk.act("next", sec(0));
+  talk.act("timerStart", sec(0));
   talk.act("next", sec(70));
   talk.act("next", sec(100));
   talk.act("next", sec(200));
-  assert.deepEqual(talk.spentBySlide(sec(260)), [0, 100, 100, 60], "the clock started on leaving slide 1; reveal steps count to their slide");
+  assert.deepEqual(talk.spentBySlide(sec(260)), [0, 100, 100, 60], "reveal steps count to their slide");
   const text = runFile(d, 2, talk.spentBySlide(sec(260)));
   const file = parsePdfpc(text);
   assert.equal(file.endSlide, 2);
@@ -77,6 +78,7 @@ test("runFile preserves hidden pages, forced overlays, and per-step times", () =
   });
   const talk = new Talk(d, undefined, T0);
   talk.act("next", sec(0)); // skips hidden idx 1, lands on idx 2
+  talk.act("timerStart", sec(0));
   talk.act("next", sec(35)); // lands on forcedOverlay idx 3
   talk.act("next", sec(65)); // lands on idx 4
   const file = parsePdfpc(runFile(d, 2, talk.spentByPage(sec(95)), true));

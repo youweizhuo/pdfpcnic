@@ -51,12 +51,14 @@ final class App: NSObject, NSApplicationDelegate {
         open(urls)
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag || !presenter.isVisible { presenter.show() }
+        return true
     }
 
     /// Files opened from the Finder or File > Open: the page gets their names, and fetches their bytes from the app.
     func open(_ urls: [URL]) {
+        if !urls.isEmpty { presenter?.show() }
         waiting += urls
         guard ready, !waiting.isEmpty else { return }
         let files = waiting.compactMap { url in (try? Data(contentsOf: url)).map { (url.lastPathComponent, $0) } }
@@ -84,6 +86,7 @@ final class App: NSObject, NSApplicationDelegate {
     private func wire() {
         audience.presenter = { [unowned self] in presenter.web.window }
         audience.emit = { [unowned self] name, data in presenter.emit(name, data) }
+        presenter.onClose = { [unowned self] in audience.close() }
         presenter.onChange = { [unowned self] in
             presenter.emit("window", presenter.state)
             audience.changed()
@@ -191,9 +194,16 @@ final class App: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// The audience window is part of the presenter's: it closes with it, and the app with them.
     @objc private func closeWindow() {
-        presenter.window.performClose(nil)
+        guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return }
+        if window === audience.view.window {
+            audience.close()
+        } else if window === presenter.web.window {
+            presenter.setFullscreen(false)
+            presenter.window.performClose(nil)
+        } else {
+            window.performClose(nil)
+        }
     }
 
     @objc private func checkForUpdates() {

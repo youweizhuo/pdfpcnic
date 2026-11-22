@@ -24,3 +24,9 @@
   margin: 0;
   color: var(--fg);
 }
+.update.toast[data-phase="installed"] {
+  --toast-accent: var(--accent);
+}
+.update.toast[data-phase="failed"] {
+  --toast-accent: var(--over);
+}

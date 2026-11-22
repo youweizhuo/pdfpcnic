@@ -78,8 +78,6 @@ export class Talk {
   readonly state: TalkState;
   /** The slides on the talk bar. */
   onBar: number[] = [];
-  /** Looking through the slides rather than presenting them, as when comparing two plans: moving doesn't start the clock. */
-  review = false;
   /** Each slide's planned window, from its first step's start to its last step's end. */
   private plans: Array<Plan | null> = [];
   /** Each page's planned window, for a step with a length of its own. */
@@ -166,9 +164,6 @@ export class Talk {
       s.back.push(s.page);
       s.forward = [];
     }
-    // As in pdfpc, the clock starts when the talk leaves its title page, or
-    // at the first move after a reset.
-    if (s.timer.startedAt === null && !this.review) s.timer = T.start(s.timer, now);
     s.page = page;
     this.book(now);
   }
@@ -275,9 +270,7 @@ export class Talk {
         if (s.timer.pausedAt === null) return "The clock is running. Pause it first with Pause (p), then reset, or click Reset twice.";
         s.timer = T.freshTimer();
         this.forgetVisits();
-        return s.page === 0
-          ? "Clock reset to 0:00:00. Click Start (s) or press → to start."
-          : "Clock reset to 0:00:00. Click Start (s) or advance to start.";
+        return "Clock reset to 0:00:00.";
       case "endSlide":
         s.endSlide = slide;
         this.replan();

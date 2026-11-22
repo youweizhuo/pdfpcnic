@@ -20,7 +20,7 @@
   #v(0.2em)
   #text(30pt)[A pdfpc-style presenter for PDF slides]
   #v(1em)
-  #text(20pt, fill: luma(110))[demo deck · click or press → to start the clock]
+  #text(20pt, fill: luma(110))[demo deck · click Start or press s to start the clock]
 ]
 
 #pagebreak()

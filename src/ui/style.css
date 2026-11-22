@@ -534,7 +534,7 @@ kbd {
 #audience-state:not([hidden]) + #timer-state:not([hidden]) {
   border-left: 0;
 }
-.audience-state strong {
+.audience-state > strong {
   color: var(--state-color);
   font-size: 18px;
   font-weight: 500;
@@ -552,6 +552,14 @@ kbd {
   background: rgb(255 255 255 / 0.06);
   color: var(--fg);
   font-size: 12px;
+}
+.hint-button {
+  padding: 0 4px;
+  border: 1px solid #636366;
+  background: #2c2c2e;
+  color: var(--fg);
+  font-weight: 700;
+  white-space: nowrap;
 }
 .audience-state.frozen {
   --state-color: var(--ahead);
@@ -824,6 +832,13 @@ kbd {
 }
 .guide .fact {
   color: var(--dim);
+}
+.guide .hint-button {
+  padding: 0 4px;
+  border: 0;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px #636366;
+  font-weight: inherit;
 }
 .toolbar {
   display: flex;
@@ -1435,12 +1450,12 @@ kbd {
   font-variant-numeric: tabular-nums;
 }
 
-/* Notes come and go clear of the footer buttons and guide; an error stays
-   above them, to be read, selected and copied, until closed. */
+/* Transient confirmations and persistent errors: studio-bar style at the top,
+   clear of the notes, guide, footer buttons, and slide-state overlays. */
 .toasts {
   position: fixed;
   left: 50%;
-  bottom: 116px;
+  top: 16px;
   z-index: 40;
   display: flex;
   flex-direction: column;
@@ -1452,20 +1467,51 @@ kbd {
   pointer-events: none;
 }
 .toast {
-  padding: 10px 16px;
+  --toast-accent: #636366;
+  padding: 11px 18px;
   border: 1px solid #3a3a3c;
-  border-radius: 10px;
-  background: #2c2c2e;
-  box-shadow: 0 8px 30px rgb(0 0 0 / 0.5);
+  border-left: 3px solid var(--toast-accent);
+  border-radius: 0;
+  background: rgb(16 16 18 / 0.94);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.55);
+  backdrop-filter: blur(8px);
   color: var(--fg);
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.45;
+  text-align: center;
+}
+.toast.hint {
+  --toast-accent: var(--hint);
+}
+.toast.warn {
+  --toast-accent: var(--behind);
+}
+.toast kbd {
+  margin: 0 2px;
+  padding: 2px 5px;
+  border: 1px solid #48484a;
+  border-radius: 0;
+  background: rgb(255 255 255 / 0.06);
+  color: var(--fg);
+  font-size: 12px;
+}
+.toast .hint-button {
+  padding: 0 4px;
+  border: 0;
+  box-shadow: 0 0 0 1px #636366;
+  font-weight: 600;
 }
 .toast.error {
+  --toast-accent: var(--over);
   display: flex;
   align-items: flex-start;
   gap: 16px;
-  background: #3a1210;
+  border-color: rgb(255 69 58 / 0.45);
+  border-left-color: var(--toast-accent);
+  background: rgb(42 14 13 / 0.96);
   color: #ffb4ab;
+  text-align: left;
   white-space: pre-line;
   pointer-events: auto;
 }
@@ -1523,7 +1569,7 @@ kbd {
     gap: 3px;
     padding: 5px 6px;
   }
-  .audience-state strong {
+  .audience-state > strong {
     font-size: 15px;
   }
   .audience-state span {

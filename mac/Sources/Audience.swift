@@ -134,6 +134,11 @@ final class Audience: NSObject, NSWindowDelegate {
         changed()
     }
 
+    func close() {
+        if view.isInFullScreenMode { view.exitFullScreenMode(options: nil) }
+        window?.close()
+    }
+
     /// Keeps the existing capture target, on the desktop, at the screen's usable size.
     func prepareSharing() async throws {
         open()
@@ -251,6 +256,7 @@ final class Audience: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         window = nil
+        fullscreenOn = nil
         forSharing = false
         freshOpen = false
         changingSpace = false

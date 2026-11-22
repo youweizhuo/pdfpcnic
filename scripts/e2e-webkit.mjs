@@ -95,9 +95,10 @@ try {
 
     await check(`${build}: keys step through, the clock runs, pace shows, and the audience follows`, async () => {
       await page.keyboard.press("ArrowRight");
-      assert.equal(await page.evaluate(() => window.pdfpcnic.state.page), 0);
+      assert.equal(await page.evaluate(() => window.pdfpcnic.state.page), 1);
+      assert.equal(await page.evaluate(() => window.pdfpcnic.state.timer.startedAt), null);
+      await page.keyboard.press("s");
       assert.ok(await page.evaluate(() => window.pdfpcnic.state.timer.startedAt));
-      await page.keyboard.press("ArrowRight");
       await sleep(2200);
       assert.equal(await page.evaluate(() => window.pdfpcnic.state.page), 1);
       assert.match(await text("#timer"), /^0:00:0[1-3]$/);

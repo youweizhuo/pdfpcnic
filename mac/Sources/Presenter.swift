@@ -10,10 +10,12 @@ final class Presenter: NSObject, WKNavigationDelegate, WKUIDelegate, NSWindowDel
     let web: WKWebView
     /// Fullscreen or the screens changed.
     var onChange: () -> Void = {}
+    var onClose: () -> Void = {}
     private var title: NSKeyValueObservation?
     /// Where the page's files came from, by name, to find a PDF's notes beside it.
     private var paths: [String: URL] = [:]
-    /// Held while a deck is open: the display doesn't sleep.
+    private var wantsAwake = false
+    /// Held while the presenter is open with a deck: the display doesn't sleep.
     private var awake: NSObjectProtocol?
 
     init(scheme: PageScheme, bridge: Bridge) {
@@ -54,12 +56,25 @@ final class Presenter: NSObject, WKNavigationDelegate, WKUIDelegate, NSWindowDel
 
     var fullscreen: Bool { web.isInFullScreenMode }
 
+    var isVisible: Bool { window.isVisible && !window.isMiniaturized || fullscreen }
+
     /// The screen the presenter is on.
     var screen: NSScreen? { web.window?.screen ?? window.screen }
 
     var keepingAwake: Bool { awake != nil }
 
     func keepAwake(_ on: Bool) {
+        wantsAwake = on
+        updateAwake(visible: isVisible)
+    }
+
+    func show() {
+        (web.window ?? window).makeKeyAndOrderFront(nil)
+        updateAwake(visible: true)
+    }
+
+    private func updateAwake(visible: Bool) {
+        let on = wantsAwake && visible
         if on, awake == nil {
             awake = ProcessInfo.processInfo.beginActivity(options: [.idleDisplaySleepDisabled, .userInitiated], reason: "Presenting")
         } else if !on, let held = awake {
@@ -156,8 +171,17 @@ final class Presenter: NSObject, WKNavigationDelegate, WKUIDelegate, NSWindowDel
         webView.reload()
     }
 
+    func windowDidMiniaturize(_ notification: Notification) {
+        updateAwake(visible: false)
+    }
+
+    func windowDidDeminiaturize(_ notification: Notification) {
+        updateAwake(visible: isVisible)
+    }
+
     func windowWillClose(_ notification: Notification) {
-        NSApp.terminate(nil)
+        updateAwake(visible: false)
+        onClose()
     }
 }
 

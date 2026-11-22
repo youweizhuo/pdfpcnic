@@ -8,12 +8,17 @@ import { deck, pdfpc } from "./decks.mjs";
 const T0 = 1_000_000_000_000;
 const sec = (s) => T0 + s * 1000;
 
-test("next steps through the visible pages, and leaving the first one starts the clock", () => {
+test("next steps through the visible pages with the clock idle until Start", () => {
   const talk = new Talk(deck(["1", "2", "3"], { meta: { pages: [{ idx: 1, hidden: true }] } }), undefined, T0);
   assert.equal(talk.state.timer.startedAt, null);
   talk.act("next", sec(5));
   assert.equal(talk.state.page, 2);
-  assert.equal(talk.state.timer.startedAt, sec(5));
+  talk.act("timerPause", sec(6));
+  assert.equal(talk.state.timer.startedAt, null);
+  talk.act("timerStart", sec(10));
+  assert.equal(talk.state.timer.startedAt, sec(10));
+  assert.equal(talk.state.page, 2);
+  assert.deepEqual(talk.spentByPage(sec(15)), [0, 0, 5]);
 });
 
 test("back steps through reveal steps, then jumps to the previous slide's first step", () => {
@@ -35,6 +40,7 @@ test("a jump can be undone with back and redone with forward", () => {
   assert.equal(talk.state.page, 0);
   talk.act("forward");
   assert.equal(talk.state.page, 3);
+  assert.equal(talk.state.timer.startedAt, null);
 });
 
 test("links go to their page, or do what their named action says", () => {
@@ -47,15 +53,18 @@ test("links go to their page, or do what their named action says", () => {
   assert.equal(talk.state.page, 1);
   talk.follow({ url: "https://example.com/" });
   assert.equal(talk.state.page, 1);
+  assert.equal(talk.state.timer.startedAt, null);
 });
 
 test("reset only while paused: a stray key can't zero the clock mid-talk", () => {
   const talk = new Talk(deck(["1", "2"]), undefined, T0);
   talk.act("next", sec(0));
+  talk.act("timerStart", sec(0));
   assert.match(talk.act("timerReset", sec(10)), /Pause it first/);
   assert.equal(talk.state.timer.startedAt, sec(0));
   talk.act("timerPause", sec(10));
   assert.match(talk.act("timerReset", sec(11)), /^Clock reset/);
+  talk.act("prev", sec(12));
   assert.equal(talk.state.timer.startedAt, null);
 });
 
@@ -79,6 +88,7 @@ test("back on slide 1 with time on the clock, the talk looks stale", () => {
   const talk = new Talk(deck(["1", "2"]), undefined, T0);
   assert.equal(talk.stale, false);
   talk.act("next", sec(0));
+  talk.act("timerStart", sec(0));
   talk.act("prev", sec(30));
   assert.equal(talk.stale, true);
   // Started on slide 1 itself, it isn't: that's the talk starting.
@@ -87,9 +97,10 @@ test("back on slide 1 with time on the clock, the talk looks stale", () => {
   assert.equal(started.stale, false);
 });
 
-test("on the end slide after other slides, a run is over; looking through the slides doesn't start the clock", () => {
+test("on the end slide after other slides, a run is over", () => {
   const talk = new Talk(deck(["1", "2", "3", "4"], { meta: { pages: [], endSlide: 2 } }), undefined, T0);
   talk.act("next", sec(0));
+  talk.act("timerStart", sec(0));
   assert.equal(talk.finished, false);
   talk.act("next", sec(60));
   assert.equal(talk.finished, true, "on the end slide, after time on slide 2");
@@ -100,11 +111,8 @@ test("on the end slide after other slides, a run is over; looking through the sl
   // Started on the end slide itself, nothing has been run.
   const there = new Talk(deck(["1", "2"]), undefined, T0);
   there.go(1, false, sec(0));
+  there.act("timerStart", sec(0));
   assert.equal(there.finished, false);
-  const review = new Talk(deck(["1", "2"]), undefined, T0);
-  review.review = true;
-  review.act("next", sec(0));
-  assert.equal(review.state.timer.startedAt, null);
 });
 
 /** Three slides planned for 1, 2 and 1 minutes. */
@@ -125,6 +133,7 @@ test("pace: this slide against its window, the talk against its end", () => {
   ]);
 
   talk.act("next", T0);
+  talk.act("timerStart", T0);
   talk.progress(T0, SLACK.time);
   p = talk.progress(sec(90), SLACK.time);
   assert.equal(p.slide.over, -30);
@@ -148,6 +157,7 @@ test("pace: this slide against its window, the talk against its end", () => {
 test("a slide keeps its time over visits", () => {
   const talk = new Talk(timed(), undefined, T0);
   talk.act("next", T0);
+  talk.act("timerStart", T0);
   talk.progress(T0, SLACK.time);
   talk.act("prev", sec(100));
   talk.progress(sec(100), SLACK.time);
@@ -197,6 +207,7 @@ test("a reload picks up the talk where it was, with its time per slide", () => {
   const d = timed();
   const talk = new Talk(d, undefined, T0);
   talk.act("next", T0);
+  talk.act("timerStart", T0);
   talk.progress(T0, SLACK.time);
   const saved = talk.save(sec(30));
   assert.deepEqual(saved.spent, { "1": 30 });
@@ -222,6 +233,7 @@ test("reveal steps with their own lengths keep their own spent times", () => {
   const d = deck(["1", "2", "2", "3"], { meta: pdfpc({ 0: "[30s]", 1: "[40s] Step 1.", 2: "[50s] Step 2.", 3: "[30s]" }) });
   const talk = new Talk(d, undefined, T0);
   talk.act("next", sec(0));
+  talk.act("timerStart", sec(0));
   talk.act("next", sec(35));
   talk.act("next", sec(90));
   assert.deepEqual(talk.spentByPage(sec(110)), [0, 35, 55, 20]);

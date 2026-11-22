@@ -1,5 +1,7 @@
 // Small helpers for the presenter page.
 
+import type { InlineText } from "../core/guide.ts";
+
 export const $ = <E extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as E;
 
 export function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text = ""): HTMLElementTagNameMap[K] {
@@ -7,6 +9,14 @@ export function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = ""
   if (className) e.className = className;
   if (text) e.textContent = text;
   return e;
+}
+
+/** Turns structured inline text (strings, button names, and keys) into DOM nodes. */
+export function renderInline(text: InlineText): Array<Node | string> {
+  if (typeof text === "string") return [text];
+  return text.map((part) =>
+    typeof part === "string" ? part : "button" in part ? el("strong", "hint-button", part.button) : el("kbd", "", part.key),
+  );
 }
 
 /** A button's label and key, redrawn only when they change (so a click in progress isn't lost). */
@@ -38,11 +48,15 @@ export function steadyLabel(b: HTMLElement, labels: Array<[text: string, key: st
   [...b.children].forEach((c, i) => c.classList.toggle("off", i !== shown));
 }
 
+export type ToastTone = "info" | "hint" | "warn";
+
 let toastTimer = 0;
-/** A note at the bottom that goes away on its own, out of the way of clicks. */
-export function toast(message: string, ms = 4500): void {
+/** A note at the top that goes away on its own, out of the way of clicks. */
+export function toast(message: InlineText, options: number | { ms?: number; tone?: ToastTone } = {}): void {
+  const { ms = 4500, tone = "info" } = typeof options === "number" ? { ms: options } : options;
   const t = $("toast");
-  t.textContent = message;
+  t.className = tone === "info" ? "toast" : `toast ${tone}`;
+  t.replaceChildren(...renderInline(message));
   t.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => (t.hidden = true), ms);

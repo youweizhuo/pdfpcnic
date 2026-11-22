@@ -165,7 +165,6 @@ export async function start(platform: Platform): Promise<void> {
       void platform.store.saveDeck({ pdfName: source.pdf.name, pdf: source.pdf.data, pdfpcName: source.pdfpc?.name, pdfpc: source.pdfpc?.text });
     }
     if (notices.length) report(notices.join(" "));
-    else if (!source.pdfpc) toast("No .pdfpc file. Drop it on this window any time to add notes and timing.", 6000);
   }
 
   const openSource = async (source: Source, options?: OpenOptions) => present(await prepare(source), options);

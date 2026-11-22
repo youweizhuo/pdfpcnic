@@ -11,7 +11,7 @@ import { Talk, type Point, type SavedSession } from "../core/talk.ts";
 import * as T from "../core/timer.ts";
 import type { Audience, Pdf, Platform } from "../platform.ts";
 import { Comparison } from "./compare.ts";
-import { $, el, label, reportError, steadyLabel, toast, wheelStepper } from "./dom.ts";
+import { $, el, label, renderInline, reportError, steadyLabel, toast, wheelStepper } from "./dom.ts";
 import { renderNote } from "./notes.ts";
 import { PageCache } from "./page-cache.ts";
 import { Settings } from "./settings.ts";
@@ -146,7 +146,18 @@ export class Presenter {
     if (this.comparison && (action === "timerStart" || action === "timerPause" || action === "timerReset")) return;
     if (isTalkAction(action)) {
       const said = this.talk.act(action);
-      if (said) toast(said);
+      if (said) {
+        if (action === "timerReset" && this.talk.state.timer.startedAt !== null) {
+          toast(
+            ["The clock is running. Pause it first with ", { button: "Pause" }, " ", { key: "p" }, ", then reset, or click ", { button: "Reset" }, " twice."],
+            { tone: "warn" },
+          );
+        } else if (action === "bookmark") {
+          toast([`Bookmarked slide ${this.talk.slide + 1}. `, { key: "⇧M" }, " returns here."]);
+        } else {
+          toast(said, action === "timerReset" ? 2500 : 4500);
+        }
+      }
       if (action === "endSlide") {
         this.buildStrip();
         this.buildTalkbar();
@@ -192,9 +203,9 @@ export class Presenter {
         return;
       case "prepareSharing":
         void this.audience.prepareSharing?.().then(() => {
-          toast(__BUILD__ === "mac"
-            ? "Share Audience in your meeting app; keep it windowed."
-            : "Share the audience window in your meeting app. If it stayed small, use Window → Fill or maximize it manually.", 7000);
+          if (__BUILD__ !== "mac") {
+            toast("If the audience window stayed small, use Window → Fill or maximize it manually.", 6000);
+          }
         }).catch(reportError);
         return;
       case "slideSmaller":
@@ -243,20 +254,6 @@ export class Presenter {
     return true;
   }
 
-  /** Suppress repeats of the key that started the clock until a fresh keypress. */
-  private startKey: string | null = null;
-
-  /** A click starts an idle clock in place. An advance key does so on the title page. */
-  private advance(key?: string): void {
-    const { page, timer } = this.talk.state;
-    if (timer.startedAt === null && !this.comparison && (key === undefined || page === 0)) {
-      this.startKey = key ?? null;
-      this.act("timerStart");
-      return;
-    }
-    this.act("next");
-  }
-
   onKey(e: KeyboardEvent): void {
     if (e.defaultPrevented || e.isComposing) return;
     if (isIgnored(e)) {
@@ -266,11 +263,6 @@ export class Presenter {
     // The audience can forward events from another window, whose HTMLElement type is different.
     const target = e.target as HTMLElement | null;
     if (target?.matches?.("input, textarea, select") || target?.isContentEditable || document.querySelector("dialog[open]")) return;
-    if (e.repeat && this.startKey === e.key) {
-      e.preventDefault();
-      return;
-    }
-    if (!e.repeat) this.startKey = null;
     const action = actionFor(e);
     if (!action) return;
     if ((e.key === "Enter" || e.key === " ") && target?.closest?.("button, a[href], summary")) return;
@@ -282,8 +274,7 @@ export class Presenter {
       if (action !== "help" && action !== "overview" && action !== "escape" && action !== "settings") return;
     }
     e.preventDefault();
-    if (action === "next") this.advance(e.key);
-    else this.act(action);
+    this.act(action);
   }
 
   /** Follows a link on a slide, in this window or the audience's. */
@@ -310,7 +301,7 @@ export class Presenter {
     const cur = this.current.root;
     cur.addEventListener("pointermove", (e) => this.pointAt(this.current.toPage(e.clientX, e.clientY)), { signal });
     cur.addEventListener("pointerleave", () => this.pointAt(null), { signal });
-    cur.addEventListener("click", () => this.advance(), { signal });
+    cur.addEventListener("click", () => this.act("next"), { signal });
     cur.addEventListener(
       "contextmenu",
       (e) => {
@@ -465,7 +456,17 @@ export class Presenter {
       this.notesPage = s.page;
       const body = $("notes-body");
       if (here.note) renderNote(body, here.note, d.markdown);
-      else body.replaceChildren(el("p", "empty", "No notes for this slide."));
+      else {
+        body.replaceChildren(
+          el(
+            "p",
+            "empty",
+            this.opened.source.pdfpc
+              ? "No notes for this slide."
+              : "No notes for this slide. Drop a .pdfpc file on this window any time to add notes and timing.",
+          ),
+        );
+      }
       $("notes").scrollTop = 0;
       this.spoken.index(body);
     }
@@ -499,11 +500,13 @@ export class Presenter {
     card.querySelector("strong")!.textContent = s.black ? "Screen black" : `Frozen on slide ${frozen! + 1}`;
     const audienceHint = card.querySelector("span")!;
     if (s.black) {
-      audienceHint.replaceChildren("Click Black ", el("kbd", "", "b"), ` for slide ${(frozen ?? here.slide) + 1}${frozen === null ? "" : " (frozen)"}`);
+      audienceHint.replaceChildren(
+        ...renderInline(["Click ", { button: "Black" }, " ", { key: "b" }, ` for slide ${(frozen ?? here.slide) + 1}${frozen === null ? "" : " (frozen)"}`]),
+      );
     } else if (frozen === here.slide) {
-      audienceHint.replaceChildren("Click Freeze ", el("kbd", "", "f"), " to unfreeze");
+      audienceHint.replaceChildren(...renderInline(["Click ", { button: "Freeze" }, " ", { key: "f" }, " to unfreeze"]));
     } else {
-      audienceHint.replaceChildren("Click Freeze ", el("kbd", "", "f"), ` for slide ${here.slide + 1}`);
+      audienceHint.replaceChildren(...renderInline(["Click ", { button: "Freeze" }, " ", { key: "f" }, ` for slide ${here.slide + 1}`]));
     }
 
     const status = this.audience.status;
@@ -630,27 +633,20 @@ export class Presenter {
       const until = T.untilStart(this.deck, now);
       toggle.title = until
         ? `The talk starts at ${T.formatClock(now + until)}, in ${T.format(until)}.`
-        : this.talk.state.page === 0
-          ? "Start the clock without advancing the slide (s, →, ↓, Page Down, Enter, or Space)."
-          : "Starts the clock. It also starts at your next move.";
+        : "Start the clock (s).";
     } else toggle.title = "";
     const comparing = !!this.comparison;
     const card = $("timer-state");
     const waiting = t.startedAt === null;
-    const firstPage = this.talk.state.page === 0;
     const heading = waiting ? "Clock not started" : "Clock paused";
-    const hintKey = waiting ? (firstPage ? "start-first" : "start") : "resume";
+    const hintKey = waiting ? "start" : "resume";
     if (card.querySelector("strong")!.textContent !== heading) card.querySelector("strong")!.textContent = heading;
     if (card.dataset.hint !== hintKey) {
       card.dataset.hint = hintKey;
       const hint = card.querySelector("span")!;
-      if (hintKey === "start-first") hint.replaceChildren("Click Start ", el("kbd", "", "s"), " or press ", el("kbd", "", "→"));
-      else if (hintKey === "start") hint.replaceChildren("Click Start ", el("kbd", "", "s"));
-      else hint.replaceChildren("Click Resume ", el("kbd", "", "p"));
+      hint.replaceChildren(...renderInline(["Click ", { button: waiting ? "Start" : "Resume" }, " ", { key: waiting ? "s" : "p" }]));
     }
-    card.title = waiting
-      ? firstPage ? "Start the clock without advancing the slide (s, →, ↓, Page Down, Enter, or Space)" : "Press s or click Start to begin"
-      : "Press p or click Resume to continue";
+    card.title = waiting ? "Click Start or press s." : "Click Resume or press p.";
     card.hidden = running || comparing;
     toggle.disabled = comparing;
     toggle.classList.toggle("cta", !running && !comparing);
@@ -690,7 +686,7 @@ export class Presenter {
     });
     const p = $("guide");
     p.className = `guide ${line?.kind ?? ""}`;
-    p.replaceChildren(...(line?.fact ? [el("span", "fact", `${line.fact} · `)] : []), line?.text ?? "");
+    p.replaceChildren(...(line?.fact ? [el("span", "fact", `${line.fact} · `)] : []), ...renderInline(line?.text ?? ""));
   }
 
   /** The talk bar's scale and target, as last laid out. */
@@ -1101,7 +1097,7 @@ export class Presenter {
       this.solo = new SlideView(host, this.deck, this.cache, 0, { follow: this.follow });
       this.solo.start();
       host.onpointermove = (e) => this.pointAt(this.solo?.toPage(e.clientX, e.clientY) ?? null);
-      host.onclick = () => this.advance();
+      host.onclick = () => this.act("next");
       this.platform.window.setFullscreen(true).catch(() => {});
     } else {
       this.solo?.dispose();
@@ -1119,8 +1115,8 @@ export class Presenter {
 
   /**
    * Compares the deck's plan with another `.pdfpc` file (ui/compare.ts), or
-   * stops. Meanwhile the clock stands still, paused if it was running: moving
-   * through the slides doesn't start it, and its keys and buttons do nothing.
+   * stops. Meanwhile the clock stands still, paused if it was running: its
+   * keys and buttons do nothing.
    */
   compareWith(other: { name: string; text: string } | null): void {
     const was = this.comparison;
@@ -1129,7 +1125,6 @@ export class Presenter {
     was?.dispose();
     const t = this.talk.state.timer;
     if (other && t.startedAt !== null && t.pausedAt === null) this.talk.act("timerPause");
-    this.talk.review = !!other;
     $("presenter").classList.toggle("comparing", !!other);
     this.drawThumbLines();
     this.nextNote = null;
@@ -1140,13 +1135,13 @@ export class Presenter {
   private async saveRun(): Promise<void> {
     const t = this.talk;
     const started = t.state.timer.startedAt;
-    if (started === null) return toast("No run to save yet: the clock hasn't started.");
+    if (started === null) return toast("No run to save yet: the clock hasn't started.", { tone: "warn" });
     const now = Date.now();
     const name = runName(this.deck.name, new Date(now));
     try {
       const where = await this.platform.save(name, runFile(this.deck, t.state.endSlide, t.spentByPage(now), true), this.deck.name);
       this.savedRun = started;
-      toast(`${where ? `Saved ${where}` : `Downloaded ${name}`}. Drop it on this window to compare it with the plan.`, 8000);
+      toast(`${where ? `Saved ${where}` : `Downloaded ${name}`}. Drop it on this window to compare it with the plan.`, { ms: 8000, tone: "hint" });
       this.renderGuide(now);
     } catch (err) {
       reportError(err);
